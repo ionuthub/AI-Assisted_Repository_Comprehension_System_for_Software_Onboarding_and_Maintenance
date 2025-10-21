@@ -610,33 +610,6 @@ const Index = () => {
         )}
       </main>
 
-      {/* Disclaimer Section */}
-      <section className="border-t border-border bg-destructive/5 py-8 px-4 md:px-8">
-        <div className="container mx-auto max-w-4xl">
-          <h3 className="text-lg font-semibold mb-4 text-foreground">⚠️ Important Disclaimer</h3>
-          <div className="space-y-3 text-sm text-muted-foreground">
-            <p>
-              <strong>Accuracy:</strong> AI Code Tutor provides explanations powered by artificial intelligence. While we strive for accuracy, AI-generated explanations may contain errors, oversimplifications, or inaccuracies. Always verify critical information with official documentation or experienced developers.
-            </p>
-            <p>
-              <strong>No Warranty:</strong> This tool is provided "as-is" without any warranty of any kind. We do not guarantee that explanations will be accurate, complete, or suitable for any particular purpose.
-            </p>
-            <p>
-              <strong>Limitation of Liability:</strong> We are not responsible for any errors, omissions, or damages resulting from the use of this tool. Users rely on AI Code Tutor at their own risk.
-            </p>
-            <p>
-              <strong>Rate Limits:</strong> This application uses the Google Gemini API free tier, which has rate limits (15 requests/minute). Service may be interrupted if limits are exceeded.
-            </p>
-            <p>
-              <strong>Data Privacy:</strong> Code snippets submitted to this tool may be processed by third-party AI services. Do not submit sensitive, proprietary, or confidential code.
-            </p>
-            <p>
-              <strong>Educational Purpose:</strong> This tool is designed for educational purposes only. It should not be used as a substitute for professional code review or security audits.
-            </p>
-          </div>
-        </div>
-      </section>
-
       <footer className="border-t border-border bg-secondary/30 mt-20">
         <div className="container mx-auto px-4 py-12 md:px-8">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-8">
@@ -690,13 +663,13 @@ const Index = () => {
               <h4 className="font-semibold mb-4">Resources</h4>
               <ul className="space-y-2 text-sm text-muted-foreground">
                 <li>
-                  <button className="hover:text-foreground transition-colors">Documentation</button>
+                  <a href="/terms" className="hover:text-foreground transition-colors">Terms of Service</a>
                 </li>
                 <li>
-                  <button className="hover:text-foreground transition-colors">GitHub</button>
+                  <a href="/privacy" className="hover:text-foreground transition-colors">Privacy Policy</a>
                 </li>
                 <li>
-                  <button className="hover:text-foreground transition-colors">Support</button>
+                  <a href="https://github.com/ionuthub/unravel-code-ai" target="_blank" rel="noopener noreferrer" className="hover:text-foreground transition-colors">GitHub</a>
                 </li>
               </ul>
             </motion.div>

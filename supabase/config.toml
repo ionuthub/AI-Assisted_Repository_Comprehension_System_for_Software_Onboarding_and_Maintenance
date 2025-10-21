@@ -1,0 +1,10 @@
+project_id = "jvbdjzobmnwzlicpocfp"
+
+[functions.analyze-repo]
+verify_jwt = false
+
+[functions.generate-project]
+verify_jwt = false
+
+[functions.explain-code]
+verify_jwt = false

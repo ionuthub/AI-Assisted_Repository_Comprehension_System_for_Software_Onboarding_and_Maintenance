@@ -1,0 +1,143 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Definition of the design system. All colors, gradients, fonts, etc should be defined here. 
+All colors MUST be HSL.
+*/
+
+@layer base {
+  :root {
+    --background: 220 13% 9%;
+    --foreground: 210 20% 92%;
+
+    --card: 220 13% 12%;
+    --card-foreground: 210 20% 92%;
+
+    --popover: 220 13% 12%;
+    --popover-foreground: 210 20% 92%;
+
+    --primary: 217 91% 60%;
+    --primary-foreground: 220 13% 9%;
+    --primary-glow: 217 91% 70%;
+
+    --secondary: 220 13% 16%;
+    --secondary-foreground: 210 20% 92%;
+
+    --muted: 220 13% 16%;
+    --muted-foreground: 215 15% 60%;
+
+    --accent: 142 76% 36%;
+    --accent-foreground: 210 20% 92%;
+    --accent-glow: 142 76% 45%;
+
+    --destructive: 0 72% 51%;
+    --destructive-foreground: 210 20% 92%;
+
+    --border: 220 13% 18%;
+    --input: 220 13% 14%;
+    --ring: 217 91% 60%;
+
+    --code-bg: 220 13% 8%;
+    --code-line: 220 13% 16%;
+    --code-number: 215 15% 50%;
+
+    --radius: 0.5rem;
+    
+    /* Gradients */
+    --gradient-primary: linear-gradient(135deg, hsl(217 91% 60% / 0.1), hsl(142 76% 36% / 0.1));
+    --gradient-glow: linear-gradient(135deg, hsl(217 91% 60% / 0.05), hsl(142 76% 36% / 0.05));
+    
+    /* Shadows */
+    --shadow-glow: 0 0 20px hsl(217 91% 60% / 0.15);
+    --shadow-card: 0 4px 20px -4px hsl(220 13% 4% / 0.4);
+    
+    /* Transitions */
+    --transition-base: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    --transition-smooth: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground antialiased;
+    font-feature-settings: "liga" 1, "calt" 1;
+  }
+}
+
+@layer utilities {
+  .text-gradient {
+    background: linear-gradient(135deg, hsl(217 91% 60%), hsl(142 76% 45%));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+  
+  .glow {
+    box-shadow: var(--shadow-glow);
+  }
+  
+  .animate-float {
+    animation: float 6s ease-in-out infinite;
+  }
+  
+  .slide-in-left {
+    animation: slideInLeft 0.6s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+    opacity: 0;
+  }
+  
+  .slide-in-right {
+    animation: slideInRight 0.6s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+    opacity: 0;
+  }
+  
+  .slide-out-right {
+    animation: slideOutRight 0.6s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+  }
+  
+  @keyframes float {
+    0%, 100% {
+      transform: translateY(0px);
+    }
+    50% {
+      transform: translateY(-20px);
+    }
+  }
+  
+  @keyframes slideInLeft {
+    from {
+      opacity: 0;
+      transform: translateX(-60px);
+    }
+    to {
+      opacity: 1;
+      transform: translateX(0);
+    }
+  }
+  
+  @keyframes slideInRight {
+    from {
+      opacity: 0;
+      transform: translateX(60px);
+    }
+    to {
+      opacity: 1;
+      transform: translateX(0);
+    }
+  }
+  
+  @keyframes slideOutRight {
+    from {
+      opacity: 1;
+      transform: translateX(0);
+    }
+    to {
+      opacity: 0;
+      transform: translateX(60px);
+    }
+  }
+}

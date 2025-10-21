@@ -1,0 +1,219 @@
+import type { Project, ProjectFile, ProjectSummary } from "@/types/project";
+
+const GITHUB_API = "https://api.github.com";
+
+// Security limits
+const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
+const MAX_FILES_TO_ANALYZE = 50;
+const MAX_REPO_NAME_LENGTH = 255;
+const MAX_OWNER_NAME_LENGTH = 39;
+const REQUEST_TIMEOUT = 10000; // 10 seconds
+
+interface GitHubRepoResponse {
+  name: string;
+  owner: { login: string };
+  description: string | null;
+  language: string | null;
+  default_branch: string;
+}
+
+interface GitHubTreeItem {
+  path: string;
+  type: "tree" | "blob";
+  size?: number;
+}
+
+const CODE_FILE_PATTERN = /\.(js|ts|tsx|jsx|py|rs|rb|go|java|cs|php|swift|kt|m|c|cpp|h|hs|scala|sql|md|json|yml|yaml|html|css)$/i;
+
+const inferLanguageFromPath = (path: string): string | null => {
+  const extension = path.split(".").pop();
+  if (!extension) {
+    return null;
+  }
+  const normalized = extension.toLowerCase();
+  const map: Record<string, string> = {
+    ts: "TypeScript",
+    tsx: "TypeScript",
+    js: "JavaScript",
+    jsx: "JavaScript",
+    py: "Python",
+    rs: "Rust",
+    rb: "Ruby",
+    go: "Go",
+    java: "Java",
+    cs: "C#",
+    php: "PHP",
+    swift: "Swift",
+    kt: "Kotlin",
+    m: "Objective-C",
+    cpp: "C++",
+    c: "C",
+    h: "C",
+    hs: "Haskell",
+    scala: "Scala",
+    sql: "SQL",
+    md: "Markdown",
+    json: "JSON",
+    yml: "YAML",
+    yaml: "YAML",
+    html: "HTML",
+    css: "CSS"
+  };
+  return map[normalized] ?? null;
+};
+
+const validateGitHubIdentifier = (identifier: string, maxLength: number, type: string): string => {
+  if (!identifier || identifier.length === 0) {
+    throw new Error(`${type} cannot be empty`);
+  }
+  if (identifier.length > maxLength) {
+    throw new Error(`${type} exceeds maximum length of ${maxLength}`);
+  }
+  // Only allow alphanumeric, hyphens, and underscores
+  if (!/^[a-zA-Z0-9_-]+$/.test(identifier)) {
+    throw new Error(`${type} contains invalid characters`);
+  }
+  return identifier;
+};
+
+const parseGitHubUrl = (url: string) => {
+  try {
+    const parsed = new URL(url.trim());
+    if (!parsed.hostname.includes("github.com")) {
+      throw new Error("Provide a valid GitHub URL");
+    }
+    const segments = parsed.pathname.replace(/\.git$/, "").split("/").filter(Boolean);
+    if (segments.length < 2) {
+      throw new Error("GitHub URL must include owner and repository");
+    }
+    
+    const owner = validateGitHubIdentifier(segments[0], MAX_OWNER_NAME_LENGTH, "Owner");
+    const repo = validateGitHubIdentifier(segments[1], MAX_REPO_NAME_LENGTH, "Repository");
+    
+    return { owner, repo };
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Invalid GitHub URL";
+    throw new Error(message);
+  }
+};
+
+const handleGitHubError = async (response: Response) => {
+  if (response.ok) {
+    return;
+  }
+  if (response.status === 404) {
+    throw new Error("Repository not found");
+  }
+  if (response.status === 403) {
+    const limit = response.headers.get("x-ratelimit-remaining");
+    if (limit === "0") {
+      throw new Error("GitHub API rate limit exceeded. Wait a few minutes and try again.");
+    }
+    throw new Error("GitHub API request forbidden");
+  }
+  const text = await response.text();
+  throw new Error(text || "GitHub API request failed");
+};
+
+const buildProjectSummary = (repo: GitHubRepoResponse): ProjectSummary => ({
+  name: repo.name,
+  owner: repo.owner.login,
+  repo: repo.name,
+  description: repo.description,
+  source: "github",
+  language: repo.language,
+  branch: repo.default_branch
+});
+
+const validateFilePath = (path: string): boolean => {
+  // Prevent directory traversal attacks
+  if (path.includes("..") || path.startsWith("/")) {
+    return false;
+  }
+  return true;
+};
+
+const buildProjectFiles = (items: GitHubTreeItem[]): ProjectFile[] => {
+  return items
+    .filter((item) => 
+      item.type === "blob" && 
+      CODE_FILE_PATTERN.test(item.path) &&
+      validateFilePath(item.path) &&
+      (item.size ?? 0) <= MAX_FILE_SIZE
+    )
+    .slice(0, MAX_FILES_TO_ANALYZE)
+    .map((item) => ({
+      path: item.path,
+      language: inferLanguageFromPath(item.path),
+      rawUrl: null,
+      size: item.size ?? null,
+      content: null
+    }));
+};
+
+export const fetchRepositoryProject = async (repoUrl: string): Promise<Project> => {
+  const { owner, repo } = parseGitHubUrl(repoUrl);
+  const repoResponse = await fetch(`${GITHUB_API}/repos/${owner}/${repo}`);
+  await handleGitHubError(repoResponse);
+  const repoData = (await repoResponse.json()) as GitHubRepoResponse;
+
+  const treeResponse = await fetch(`${GITHUB_API}/repos/${owner}/${repo}/git/trees/${repoData.default_branch}?recursive=1`);
+  await handleGitHubError(treeResponse);
+  const treePayload = await treeResponse.json();
+  const files = buildProjectFiles(treePayload.tree as GitHubTreeItem[]);
+
+  return {
+    summary: buildProjectSummary(repoData),
+    files
+  };
+};
+
+export const fetchFileContent = async (owner: string, repo: string, branch: string, path: string): Promise<ProjectFile> => {
+  // Validate inputs
+  if (!validateFilePath(path)) {
+    throw new Error("Invalid file path");
+  }
+  
+  const rawUrl = `https://raw.githubusercontent.com/${owner}/${repo}/${branch}/${path}`;
+  
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), REQUEST_TIMEOUT);
+  
+  try {
+    const response = await fetch(rawUrl, { signal: controller.signal });
+    
+    if (!response.ok) {
+      if (response.status === 404) {
+        throw new Error(`File not found: ${path}`);
+      }
+      throw new Error(`Unable to load ${path}`);
+    }
+    
+    const contentLength = response.headers.get("content-length");
+    if (contentLength && parseInt(contentLength) > MAX_FILE_SIZE) {
+      throw new Error(`File exceeds maximum size of 5MB`);
+    }
+    
+    const content = await response.text();
+    
+    if (content.length > MAX_FILE_SIZE) {
+      throw new Error(`File content exceeds maximum size`);
+    }
+    
+    return {
+      path,
+      language: inferLanguageFromPath(path),
+      rawUrl,
+      size: content.length,
+      content
+    };
+  } catch (error) {
+    if (error instanceof Error && error.name === "AbortError") {
+      throw new Error("Request timeout - file took too long to load");
+    }
+    throw error;
+  } finally {
+    clearTimeout(timeoutId);
+  }
+};
+

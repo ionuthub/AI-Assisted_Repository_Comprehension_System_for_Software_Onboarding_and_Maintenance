@@ -272,13 +272,16 @@ const Index = () => {
           description: `${nextProject.summary.owner}/${nextProject.summary.name} is ready to explore.`
         });
       } else {
+        console.log("Generating project with idea:", projectIdea.trim(), "skill level:", skillLevel);
         const nextProject = generateProject(projectIdea.trim(), skillLevel);
+        console.log("Generated project:", nextProject);
         const initialCache: Record<string, ProjectFile> = {};
         nextProject.files.forEach((file) => {
           if (file.content) {
             initialCache[file.path] = file;
           }
         });
+        console.log("Files generated:", nextProject.files.length);
         setProject(nextProject);
         setFileCache(initialCache);
         if (nextProject.files.length > 0) {
@@ -286,7 +289,7 @@ const Index = () => {
         }
         toast({
           title: "Project generated",
-          description: "A starter project has been created locally for you."
+          description: `A starter project with ${nextProject.files.length} files has been created locally for you.`
         });
       }
     } catch (error) {

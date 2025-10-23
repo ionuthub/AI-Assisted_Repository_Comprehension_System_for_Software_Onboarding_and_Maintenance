@@ -38,12 +38,5 @@
         }
       ]
     }
-  ],
-  "redirects": [
-    {
-      "source": "/api/explain-code",
-      "destination": "/api/explain-code",
-      "permanent": false
-    }
   ]
 }

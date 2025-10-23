@@ -153,49 +153,26 @@ const fetchAIExplanation = async (
   skillLevel: SkillLevel
 ): Promise<string> => {
   try {
-    const skillPrompts = {
-      beginner: "Explain this code line as if you're talking to a 5-6 year old child. Use simple analogies and everyday objects. Avoid technical jargon. Keep it to 2-3 sentences.",
-      intermediate: "Explain this code line with proper technical terms. Discuss what it does, how it works, and common patterns. Keep it to 3-4 sentences.",
-      advanced: "Provide an in-depth technical analysis of this code line. Discuss architectural implications, performance considerations, and potential improvements. Keep it to 4-5 sentences."
-    };
-
-    const GEMINI_API_KEY = import.meta.env.VITE_GEMINI_API_KEY;
-    if (!GEMINI_API_KEY) {
-      throw new Error("Gemini API key not configured. Please set VITE_GEMINI_API_KEY environment variable.");
-    }
-    const response = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${GEMINI_API_KEY}`,
-      {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json"
-        },
-        body: JSON.stringify({
-          contents: [
-            {
-              parts: [
-                {
-                  text: `${skillPrompts[skillLevel]}\n\nCode to explain:\n\`${code}\``
-                }
-              ]
-            }
-          ],
-          generationConfig: {
-            temperature: 0.7,
-            maxOutputTokens: 300
-          }
-        })
-      }
-    );
+    // Call our secure serverless function instead of Gemini directly
+    const response = await fetch('/api/explain-code', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        code,
+        skillLevel
+      })
+    });
 
     if (!response.ok) {
       const errorData = await response.json();
-      console.error("Gemini API error:", errorData);
-      throw new Error("AI API request failed");
+      console.error("API error:", errorData);
+      throw new Error(errorData.error || "AI API request failed");
     }
 
     const data = await response.json();
-    const explanation = data.candidates?.[0]?.content?.parts?.[0]?.text;
+    const explanation = data.explanation;
     
     if (!explanation) {
       throw new Error("No explanation generated");

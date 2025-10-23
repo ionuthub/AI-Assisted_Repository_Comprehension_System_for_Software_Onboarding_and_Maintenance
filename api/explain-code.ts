@@ -7,6 +7,36 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'Content-Type',
 };
 
+// Simple in-memory rate limiting (resets on cold start)
+const rateLimitMap = new Map<string, { count: number; resetTime: number }>();
+const RATE_LIMIT_WINDOW = 60 * 1000; // 1 minute
+const MAX_REQUESTS_PER_WINDOW = 10; // 10 requests per minute per IP
+
+function getRateLimitKey(req: VercelRequest): string {
+  // Use IP address or forwarded IP
+  return req.headers['x-forwarded-for']?.toString().split(',')[0] || 
+         req.headers['x-real-ip']?.toString() || 
+         'unknown';
+}
+
+function checkRateLimit(key: string): { allowed: boolean; remaining: number } {
+  const now = Date.now();
+  const record = rateLimitMap.get(key);
+
+  if (!record || now > record.resetTime) {
+    // New window
+    rateLimitMap.set(key, { count: 1, resetTime: now + RATE_LIMIT_WINDOW });
+    return { allowed: true, remaining: MAX_REQUESTS_PER_WINDOW - 1 };
+  }
+
+  if (record.count >= MAX_REQUESTS_PER_WINDOW) {
+    return { allowed: false, remaining: 0 };
+  }
+
+  record.count++;
+  return { allowed: true, remaining: MAX_REQUESTS_PER_WINDOW - record.count };
+}
+
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   // Handle CORS preflight
   if (req.method === 'OPTIONS') {
@@ -17,11 +47,42 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
+  // Rate limiting
+  const rateLimitKey = getRateLimitKey(req);
+  const { allowed, remaining } = checkRateLimit(rateLimitKey);
+
+  // Add rate limit headers
+  res.setHeader('X-RateLimit-Limit', MAX_REQUESTS_PER_WINDOW.toString());
+  res.setHeader('X-RateLimit-Remaining', remaining.toString());
+
+  if (!allowed) {
+    return res.status(429).json({ 
+      error: 'Rate limit exceeded. Please try again in a minute.',
+      retryAfter: 60 
+    });
+  }
+
   try {
     const { code, skillLevel } = req.body;
 
+    // Input validation
     if (!code || !skillLevel) {
       return res.status(400).json({ error: 'Missing required fields: code, skillLevel' });
+    }
+
+    // Validate skillLevel
+    const validSkillLevels = ['beginner', 'intermediate', 'advanced'];
+    if (!validSkillLevels.includes(skillLevel)) {
+      return res.status(400).json({ error: 'Invalid skill level' });
+    }
+
+    // Validate code length (prevent abuse)
+    if (typeof code !== 'string' || code.length > 10000) {
+      return res.status(400).json({ error: 'Code must be a string with max 10,000 characters' });
+    }
+
+    if (code.trim().length === 0) {
+      return res.status(400).json({ error: 'Code cannot be empty' });
     }
 
     const GEMINI_API_KEY = process.env.GEMINI_API_KEY;

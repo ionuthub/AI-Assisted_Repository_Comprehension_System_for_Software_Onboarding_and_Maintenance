@@ -168,6 +168,12 @@ const fetchAIExplanation = async (
     if (!response.ok) {
       const errorData = await response.json();
       console.error("API error:", errorData);
+      
+      // Handle rate limiting specifically
+      if (response.status === 429) {
+        throw new Error("Too many requests. Please wait a minute and try again.");
+      }
+      
       throw new Error(errorData.error || "AI API request failed");
     }
 

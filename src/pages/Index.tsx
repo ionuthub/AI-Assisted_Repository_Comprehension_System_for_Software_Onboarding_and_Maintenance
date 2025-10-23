@@ -187,6 +187,12 @@ const fetchAIExplanation = async (
     return explanation;
   } catch (error) {
     console.error("AI explanation error:", error);
+    // In development, fall back to mock API if serverless function fails
+    if (import.meta.env.DEV) {
+      console.log("Falling back to mock API for development");
+      const { mockExplainCode } = await import('@/lib/mockApi');
+      return mockExplainCode(code, skillLevel);
+    }
     throw error;
   }
 };

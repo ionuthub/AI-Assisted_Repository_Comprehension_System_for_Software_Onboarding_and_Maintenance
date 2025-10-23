@@ -3,9 +3,6 @@
   "outputDirectory": "dist",
   "installCommand": "npm install",
   "framework": "vite",
-  "env": [
-    "VITE_LOVABLE_API_KEY"
-  ],
   "headers": [
     {
       "source": "/(.*)",

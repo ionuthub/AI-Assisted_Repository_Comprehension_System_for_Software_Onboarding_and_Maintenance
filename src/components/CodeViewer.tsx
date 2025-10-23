@@ -1,5 +1,7 @@
 import { Card } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { detectLineComplexity, getComplexityBadge, getComplexityColor } from "@/lib/complexityDetector";
 
 interface CodeViewerProps {
   isLoading: boolean;
@@ -18,6 +20,7 @@ const CodeViewer = ({
 }: CodeViewerProps) => {
   const effectiveFileName = fileName ?? "Select a file";
   const contentLines = fileContent?.split(/\r?\n/) ?? [];
+  const complexityMap = contentLines.map((line) => detectLineComplexity(line));
 
   const renderPlaceholder = () => (
     <div className="text-sm md:text-base text-muted-foreground space-y-2">
@@ -47,22 +50,36 @@ const CodeViewer = ({
             ))}
           </div>
         ) : fileContent ? (
-          <pre className="text-xs md:text-sm font-mono">
-            {contentLines.map((line, idx) => (
-              <div
-                key={idx}
-                onClick={() => onLineSelect(idx + 1)}
-                className={`flex hover:bg-code-line/50 active:bg-code-line transition-colors cursor-pointer group ${
-                  selectedLine === idx + 1 ? "bg-primary/10 border-l-2 border-primary" : ""
-                }`}
-              >
-                <span className="select-none text-code-number w-8 md:w-12 pr-2 md:pr-4 text-right flex-shrink-0 text-[10px] md:text-sm">
-                  {idx + 1}
-                </span>
-                <code className="flex-1 text-foreground whitespace-pre-wrap break-words">{line}</code>
-              </div>
-            ))}
-          </pre>
+          <TooltipProvider>
+            <pre className="text-xs md:text-sm font-mono">
+              {contentLines.map((line, idx) => {
+                const complexity = complexityMap[idx];
+                return (
+                  <Tooltip key={idx}>
+                    <TooltipTrigger asChild>
+                      <div
+                        onClick={() => onLineSelect(idx + 1)}
+                        className={`flex hover:bg-code-line/50 active:bg-code-line transition-colors cursor-pointer group ${
+                          selectedLine === idx + 1 ? "bg-primary/10 border-l-2 border-primary" : ""
+                        } ${getComplexityColor(complexity.complexity)}`}
+                      >
+                        <span className="select-none text-code-number w-8 md:w-12 pr-2 md:pr-4 text-right flex-shrink-0 text-[10px] md:text-sm">
+                          {idx + 1}
+                        </span>
+                        <code className="flex-1 text-foreground whitespace-pre-wrap break-words">{line}</code>
+                      </div>
+                    </TooltipTrigger>
+                    <TooltipContent side="right" className="max-w-xs">
+                      <div className="space-y-1">
+                        <div className="font-semibold">{getComplexityBadge(complexity.complexity)}</div>
+                        <div className="text-xs">{complexity.reason}</div>
+                      </div>
+                    </TooltipContent>
+                  </Tooltip>
+                );
+              })}
+            </pre>
+          </TooltipProvider>
         ) : (
           renderPlaceholder()
         )}

@@ -9,9 +9,11 @@ import SkillSelector from "@/components/SkillSelector";
 import CodeViewer from "@/components/CodeViewer";
 import ExplanationPanel from "@/components/ExplanationPanel";
 import FileNavigator from "@/components/FileNavigator";
+import ProjectOverviewComponent from "@/components/ProjectOverview";
 import type { Project, ProjectFile } from "@/types/project";
 import { fetchRepositoryProject, fetchFileContent } from "@/lib/github";
 import { generateProject } from "@/lib/generation";
+import { analyzeProject } from "@/lib/projectAnalyzer";
 import { useToast } from "@/hooks/use-toast";
 
 type SkillLevel = "beginner" | "intermediate" | "advanced";
@@ -552,12 +554,20 @@ const Index = () => {
         </motion.div>
 
         {project && (
-          <motion.section
-            className="mt-16 grid gap-6 grid-cols-1 md:grid-cols-[260px_1fr_400px] lg:grid-cols-[300px_1fr_450px]"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ duration: 0.6, staggerChildren: 0.1 }}
-          >
+          <>
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.5 }}
+            >
+              <ProjectOverviewComponent overview={analyzeProject(project)} />
+            </motion.div>
+            <motion.section
+              className="mt-16 grid gap-6 grid-cols-1 md:grid-cols-[260px_1fr_400px] lg:grid-cols-[300px_1fr_450px]"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ duration: 0.6, staggerChildren: 0.1 }}
+            >
             <motion.div
               initial={{ opacity: 0, x: -30 }}
               animate={{ opacity: 1, x: 0 }}
@@ -595,7 +605,8 @@ const Index = () => {
                 lineExplanation={lineExplanation}
               />
             </motion.div>
-          </motion.section>
+            </motion.section>
+          </>
         )}
       </main>
 

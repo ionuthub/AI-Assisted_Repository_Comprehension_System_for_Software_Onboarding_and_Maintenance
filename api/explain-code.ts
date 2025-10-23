@@ -1,5 +1,3 @@
-import type { VercelRequest, VercelResponse } from '@vercel/node';
-
 // CORS headers
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -12,11 +10,12 @@ const rateLimitMap = new Map<string, { count: number; resetTime: number }>();
 const RATE_LIMIT_WINDOW = 60 * 1000; // 1 minute
 const MAX_REQUESTS_PER_WINDOW = 10; // 10 requests per minute per IP
 
-function getRateLimitKey(req: VercelRequest): string {
+function getRateLimitKey(headers: Headers): string {
   // Use IP address or forwarded IP
-  return req.headers['x-forwarded-for']?.toString().split(',')[0] || 
-         req.headers['x-real-ip']?.toString() || 
-         'unknown';
+  const xff = headers.get('x-forwarded-for') || '';
+  const realIp = headers.get('x-real-ip') || '';
+  const ip = (xff.split(',')[0] || realIp || 'unknown').trim();
+  return ip;
 }
 
 function checkRateLimit(key: string): { allowed: boolean; remaining: number } {
@@ -37,58 +36,62 @@ function checkRateLimit(key: string): { allowed: boolean; remaining: number } {
   return { allowed: true, remaining: MAX_REQUESTS_PER_WINDOW - record.count };
 }
 
-export default async function handler(req: VercelRequest, res: VercelResponse) {
+export default async function handler(req: Request): Promise<Response> {
   // Handle CORS preflight
   if (req.method === 'OPTIONS') {
-    return res.status(200).json({});
+    return new Response(JSON.stringify({}), { status: 200, headers: { ...corsHeaders } });
   }
 
   if (req.method !== 'POST') {
-    return res.status(405).json({ error: 'Method not allowed' });
+    return new Response(JSON.stringify({ error: 'Method not allowed' }), { status: 405, headers: { ...corsHeaders } });
   }
 
   // Rate limiting
-  const rateLimitKey = getRateLimitKey(req);
+  const rateLimitKey = getRateLimitKey(req.headers);
   const { allowed, remaining } = checkRateLimit(rateLimitKey);
 
-  // Add rate limit headers
-  res.setHeader('X-RateLimit-Limit', MAX_REQUESTS_PER_WINDOW.toString());
-  res.setHeader('X-RateLimit-Remaining', remaining.toString());
+  const baseHeaders: HeadersInit = {
+    ...corsHeaders,
+    'X-RateLimit-Limit': MAX_REQUESTS_PER_WINDOW.toString(),
+    'X-RateLimit-Remaining': remaining.toString(),
+    'Content-Type': 'application/json',
+  };
 
   if (!allowed) {
-    return res.status(429).json({ 
-      error: 'Rate limit exceeded. Please try again in a minute.',
-      retryAfter: 60 
-    });
+    return new Response(
+      JSON.stringify({ error: 'Rate limit exceeded. Please try again in a minute.', retryAfter: 60 }),
+      { status: 429, headers: baseHeaders }
+    );
   }
 
   try {
-    const { code, skillLevel } = req.body;
+    const body = await req.json().catch(() => ({} as any));
+    const { code, skillLevel } = body as { code?: string; skillLevel?: string };
 
     // Input validation
     if (!code || !skillLevel) {
-      return res.status(400).json({ error: 'Missing required fields: code, skillLevel' });
+      return new Response(JSON.stringify({ error: 'Missing required fields: code, skillLevel' }), { status: 400, headers: baseHeaders });
     }
 
     // Validate skillLevel
     const validSkillLevels = ['beginner', 'intermediate', 'advanced'];
     if (!validSkillLevels.includes(skillLevel)) {
-      return res.status(400).json({ error: 'Invalid skill level' });
+      return new Response(JSON.stringify({ error: 'Invalid skill level' }), { status: 400, headers: baseHeaders });
     }
 
     // Validate code length (prevent abuse)
     if (typeof code !== 'string' || code.length > 10000) {
-      return res.status(400).json({ error: 'Code must be a string with max 10,000 characters' });
+      return new Response(JSON.stringify({ error: 'Code must be a string with max 10,000 characters' }), { status: 400, headers: baseHeaders });
     }
 
     if (code.trim().length === 0) {
-      return res.status(400).json({ error: 'Code cannot be empty' });
+      return new Response(JSON.stringify({ error: 'Code cannot be empty' }), { status: 400, headers: baseHeaders });
     }
 
     const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
     if (!GEMINI_API_KEY) {
       console.error('GEMINI_API_KEY not configured');
-      return res.status(500).json({ error: 'API key not configured' });
+      return new Response(JSON.stringify({ error: 'API key not configured' }), { status: 500, headers: baseHeaders });
     }
 
     // Skill-based prompts
@@ -119,19 +122,20 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     if (!response.ok) {
       const error = await response.text();
       console.error('Gemini API error:', response.status, error);
-      return res.status(response.status).json({ error: 'AI service error' });
+      return new Response(JSON.stringify({ error: 'AI service error' }), { status: response.status, headers: baseHeaders });
     }
 
     const data = await response.json();
     const explanation = data.candidates?.[0]?.content?.parts?.[0]?.text || 'No explanation generated';
 
-    return res.status(200).json({ explanation });
+    return new Response(JSON.stringify({ explanation }), { status: 200, headers: baseHeaders });
 
   } catch (error) {
     console.error('Error in explain-code:', error);
-    return res.status(500).json({ 
-      error: error instanceof Error ? error.message : 'Internal server error' 
-    });
+    return new Response(
+      JSON.stringify({ error: error instanceof Error ? error.message : 'Internal server error' }),
+      { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+    );
   }
 }
 

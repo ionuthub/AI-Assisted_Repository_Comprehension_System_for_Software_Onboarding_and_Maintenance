@@ -115,29 +115,55 @@ const ExplanationPanel = ({
         ) : fileExplanation && selectedFile && !selectedLine ? (
           <>
             <div className="prose prose-sm dark:prose-invert max-w-none">
-              <div className="text-sm md:text-base text-foreground leading-relaxed space-y-3 md:space-y-4">
+              <div className="text-sm md:text-base text-foreground leading-relaxed space-y-4 md:space-y-5">
                 {fileExplanation.split("\n").map((line, idx) => {
+                  // Section headers (##)
                   if (line.startsWith("##")) {
                     return (
-                      <h2 key={idx} className="text-lg md:text-xl font-bold text-foreground mt-4 mb-2">
-                        {line.replace(/^##\s*/, "")}
-                      </h2>
+                      <div key={idx} className="mt-5 mb-3 first:mt-0">
+                        <h2 className="text-base md:text-lg font-bold text-primary flex items-center gap-2">
+                          {line.replace(/^##\s*/, "")}
+                        </h2>
+                        <div className="h-0.5 w-12 bg-primary/30 mt-2"></div>
+                      </div>
                     );
                   }
+                  // Bold section labels (**text**)
                   if (line.startsWith("**") && line.endsWith("**")) {
                     return (
-                      <p key={idx} className="font-semibold text-foreground">
+                      <p key={idx} className="font-semibold text-foreground text-sm md:text-base mt-3 mb-2">
                         {line.replace(/\*\*/g, "")}
                       </p>
                     );
                   }
+                  // Bullet points
                   if (line.startsWith("•")) {
+                    const content = line.replace(/^•\s*/, "");
                     return (
-                      <p key={idx} className="text-sm md:text-base text-muted-foreground ml-4">
-                        {line}
+                      <div key={idx} className="flex gap-3 text-sm md:text-base text-muted-foreground">
+                        <span className="text-primary font-bold flex-shrink-0 mt-0.5">•</span>
+                        <span className="leading-relaxed">{content}</span>
+                      </div>
+                    );
+                  }
+                  // Code references (backticks)
+                  if (line.includes("`")) {
+                    const parts = line.split(/(`[^`]+`)/);
+                    return (
+                      <p key={idx} className="text-sm md:text-base text-muted-foreground leading-relaxed">
+                        {parts.map((part, i) => 
+                          part.startsWith("`") ? (
+                            <code key={i} className="bg-code text-primary/90 px-2 py-0.5 rounded text-xs md:text-sm font-mono">
+                              {part.replace(/`/g, "")}
+                            </code>
+                          ) : (
+                            <span key={i}>{part}</span>
+                          )
+                        )}
                       </p>
                     );
                   }
+                  // Regular paragraphs
                   if (line.trim()) {
                     return (
                       <p key={idx} className="text-sm md:text-base text-muted-foreground leading-relaxed">
@@ -145,7 +171,8 @@ const ExplanationPanel = ({
                       </p>
                     );
                   }
-                  return null;
+                  // Empty lines for spacing
+                  return <div key={idx} className="h-2" />;
                 })}
               </div>
             </div>

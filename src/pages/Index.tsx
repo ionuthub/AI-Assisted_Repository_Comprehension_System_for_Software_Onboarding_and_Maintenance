@@ -174,9 +174,12 @@ const fetchAIExplanation = async (
         if (data.explanation) {
           return data.explanation;
         }
+      } else {
+        const errorData = await response.json().catch(() => ({}));
+        console.warn(`Serverless function failed with status ${response.status}:`, errorData);
       }
     } catch (error) {
-      console.warn("Serverless function failed, trying direct API");
+      console.warn("Serverless function failed, trying direct API:", error);
     }
   }
 

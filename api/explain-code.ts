@@ -107,6 +107,8 @@ export default async function handler(req: Request): Promise<Response> {
       console.error('GEMINI_API_KEY not configured');
       return new Response(JSON.stringify({ error: 'API key not configured' }), { status: 500, headers: baseHeaders });
     }
+    
+    console.log('GEMINI_API_KEY is set, making request to Gemini API');
 
     // Skill-based prompts
     const skillPrompts: Record<string, string> = {
@@ -136,11 +138,17 @@ export default async function handler(req: Request): Promise<Response> {
     if (!response.ok) {
       const error = await response.text();
       console.error('Gemini API error:', response.status, error);
-      return new Response(JSON.stringify({ error: 'AI service error' }), { status: response.status, headers: baseHeaders });
+      // Return 503 if Gemini API fails to indicate service unavailable
+      return new Response(JSON.stringify({ error: 'AI service error', details: error }), { status: 503, headers: baseHeaders });
     }
 
     const data = await response.json();
+    console.log('Gemini API response:', JSON.stringify(data).substring(0, 200));
     const explanation = data.candidates?.[0]?.content?.parts?.[0]?.text || 'No explanation generated';
+    
+    if (!explanation || explanation === 'No explanation generated') {
+      console.warn('No explanation in Gemini response:', data);
+    }
 
     return new Response(JSON.stringify({ explanation }), { status: 200, headers: baseHeaders });
 

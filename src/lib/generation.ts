@@ -26,11 +26,20 @@ const createSummary = (idea: string, skillLevel: "beginner" | "intermediate" | "
   };
 };
 
+const detectProjectType = (idea: string): "react" | "nextjs" | "vue" | "backend" => {
+  const lower = idea.toLowerCase();
+  if (lower.includes("next") || lower.includes("fullstack") || lower.includes("server")) return "nextjs";
+  if (lower.includes("vue")) return "vue";
+  if (lower.includes("api") || lower.includes("backend") || lower.includes("server")) return "backend";
+  return "react";
+};
+
 const createFiles = (idea: string, skillLevel: "beginner" | "intermediate" | "advanced"): ProjectFile[] => {
+  const projectType = detectProjectType(idea);
   const componentName = toPascalCase(idea) || "Hero";
   const hookName = `use${componentName}`;
 
-  const readme = `# ${toTitleCase(idea)}\n\nThis project was generated locally based on the idea: **${idea.trim()}**.\n\n## Getting Started\n\n- Install dependencies with \`npm install\`\n- Run the development server with \`npm run dev\`\n- Open http://localhost:5173 to view it\n\n## Features\n\n- Focused on ${skillLevel}-level developers\n- Includes a reusable React component and a custom hook\n`;
+  const readme = `# ${toTitleCase(idea)}\n\nThis project was generated locally based on the idea: **${idea.trim()}**.\n\n## Getting Started\n\n- Install dependencies with \`npm install\`\n- Run the development server with \`npm run dev\`\n- Open http://localhost:5173 to view it\n\n## Project Structure\n\nThis is a ${projectType === "nextjs" ? "Next.js full-stack" : projectType === "backend" ? "backend API" : "React"} project focused on ${skillLevel}-level developers.\n\n## Features\n\n- Includes reusable components and utilities\n- Modular architecture for easy extension\n- Skill-level appropriate patterns and practices\n- Ready for further development\n\n## Next Steps\n\n1. Explore the code structure\n2. Understand the main components\n3. Modify and extend as needed\n4. Deploy when ready\n`;
 
   const main = `import React from "react";
 import { createRoot } from "react-dom/client";
@@ -102,13 +111,129 @@ export const use${componentName} = (skillLevel: SkillLevel = "${skillLevel}") =>
 
   const styles = `.app {\n  font-family: system-ui, sans-serif;\n  min-height: 100vh;\n  display: grid;\n  place-items: center;\n  background: linear-gradient(135deg, #0ea5e9 0%, #6366f1 100%);\n  color: #0f172a;\n}\n\n.feature-card {\n  background: white;\n  border-radius: 1.5rem;\n  padding: 2.5rem;\n  box-shadow: 0 20px 50px rgba(15, 23, 42, 0.15);\n  max-width: 36rem;\n}\n\n.feature-card h1 {\n  font-size: clamp(2rem, 5vw, 3rem);\n  margin-bottom: 1.5rem;\n}\n\n.feature-card ul {\n  display: grid;\n  gap: 0.75rem;\n  padding-left: 1.25rem;\n}\n\n.feature-card li {\n  font-size: 1rem;\n  line-height: 1.5;\n}\n`;
 
-  return [
+  const files: ProjectFile[] = [
     { path: "README.md", language: "Markdown", content: readme },
     { path: "src/main.tsx", language: "TypeScript", content: main },
     { path: `src/${componentName}.tsx`, language: "TypeScript", content: component },
     { path: `src/${hookName}.ts`, language: "TypeScript", content: hook },
     { path: "src/styles.css", language: "CSS", content: styles },
   ];
+
+  // Add package.json
+  const packageJson = `{
+  "name": "${toPascalCase(idea).toLowerCase()}",
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1"
+  },
+  "devDependencies": {
+    "@types/react": "^18.3.23",
+    "@types/react-dom": "^18.3.7",
+    "@vitejs/plugin-react-swc": "^3.11.0",
+    "typescript": "^5.8.3",
+    "vite": "^5.4.19"
+  }
+}`;
+  files.push({ path: "package.json", language: "JSON", content: packageJson });
+
+  // Add TypeScript config
+  const tsconfig = `{
+  "compilerOptions": {
+    "target": "ES2020",
+    "useDefineForClassFields": true,
+    "lib": ["ES2020", "DOM", "DOM.Iterable"],
+    "module": "ESNext",
+    "skipLibCheck": true,
+    "esModuleInterop": true,
+    "allowSyntheticDefaultImports": true,
+    "strict": true,
+    "noImplicitAny": true,
+    "strictNullChecks": true,
+    "strictFunctionTypes": true,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
+    "noImplicitReturns": true,
+    "noFallthroughCasesInSwitch": true,
+    "resolveJsonModule": true,
+    "moduleResolution": "bundler",
+    "allowImportingTsExtensions": true,
+    "noEmit": true,
+    "jsx": "react-jsx"
+  },
+  "include": ["src"],
+  "references": [{ "path": "./tsconfig.node.json" }]
+}`;
+  files.push({ path: "tsconfig.json", language: "JSON", content: tsconfig });
+
+  // Add .gitignore
+  const gitignore = `# Logs
+logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+node_modules
+dist
+dist-ssr
+*.local
+
+# Editor directories and files
+.vscode/*
+!.vscode/extensions.json
+.idea
+.DS_Store
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# Environment
+.env
+.env.local
+.env.*.local`;
+  files.push({ path: ".gitignore", language: "Text", content: gitignore });
+
+  // Add index.html
+  const indexHtml = `<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>${toTitleCase(idea)}</title>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>`;
+  files.push({ path: "index.html", language: "HTML", content: indexHtml });
+
+  // Add vite.config.ts
+  const viteConfig = `import { defineConfig } from 'vite'
+import react from '@vitejs/plugin-react-swc'
+
+export default defineConfig({
+  plugins: [react()],
+  server: {
+    port: 5173,
+    open: true,
+  },
+})`;
+  files.push({ path: "vite.config.ts", language: "TypeScript", content: viteConfig });
+
+  return files;
 };
 
 export const generateProject = (

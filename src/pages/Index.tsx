@@ -167,16 +167,35 @@ const fetchAIExplanation = async (
       })
     });
 
+    // Check if response has content
+    const contentType = response.headers.get('content-type');
+    const isJson = contentType?.includes('application/json');
+
     if (!response.ok) {
-      const errorData = await response.json();
-      console.error("API error:", errorData);
+      console.error("API error status:", response.status);
       
       // Handle rate limiting specifically
       if (response.status === 429) {
         throw new Error("Too many requests. Please wait a minute and try again.");
       }
       
-      throw new Error(errorData.error || "AI API request failed");
+      // Try to parse error response
+      if (isJson) {
+        try {
+          const errorData = await response.json();
+          throw new Error(errorData.error || "AI API request failed");
+        } catch (e) {
+          throw new Error(`API error: ${response.status} ${response.statusText}`);
+        }
+      }
+      
+      throw new Error(`API error: ${response.status} ${response.statusText}`);
+    }
+
+    // Parse response
+    if (!isJson) {
+      console.warn("Response is not JSON, using fallback");
+      throw new Error("Invalid response format");
     }
 
     const data = await response.json();
@@ -189,13 +208,15 @@ const fetchAIExplanation = async (
     return explanation;
   } catch (error) {
     console.error("AI explanation error:", error);
-    // In development, fall back to mock API if serverless function fails
-    if (import.meta.env.DEV) {
-      console.log("Falling back to mock API for development");
+    // Always fall back to mock API if serverless function fails
+    console.log("Falling back to mock API");
+    try {
       const { mockExplainCode } = await import('@/lib/mockApi');
       return mockExplainCode(code, skillLevel);
+    } catch (mockError) {
+      console.error("Mock API also failed:", mockError);
+      throw error;
     }
-    throw error;
   }
 };
 
@@ -423,12 +444,28 @@ const Index = () => {
       }
 
       // Use AI for complex code
-      const aiExplanation = await fetchAIExplanation(targetLine, skillLevel);
-      setLineExplanation(aiExplanation);
+      try {
+        const aiExplanation = await fetchAIExplanation(targetLine, skillLevel);
+        setLineExplanation(aiExplanation);
+      } catch (aiError) {
+        console.warn("AI explanation failed, using pattern-based fallback:", aiError);
+        // Fallback to pattern-based explanation
+        setLineExplanation(buildLineExplanation(currentFileContent, lineNumber, skillLevel));
+        toast({
+          title: "Using offline explanation",
+          description: "AI service unavailable. Showing pattern-based explanation instead.",
+          variant: "default"
+        });
+      }
     } catch (error) {
       console.error("Error generating explanation:", error);
       // Fallback to pattern-based explanation
       setLineExplanation(buildLineExplanation(currentFileContent, lineNumber, skillLevel));
+      toast({
+        title: "Error",
+        description: "Could not generate explanation",
+        variant: "destructive"
+      });
     } finally {
       setIsExplaining(false);
     }

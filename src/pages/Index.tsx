@@ -155,7 +155,7 @@ const fetchAIExplanation = async (
   skillLevel: SkillLevel
 ): Promise<string> => {
   try {
-    // Call our secure serverless function instead of Gemini directly
+    // Call our secure serverless function
     const response = await fetch('/api/explain-code', {
       method: 'POST',
       headers: {
@@ -208,7 +208,7 @@ const fetchAIExplanation = async (
     return explanation;
   } catch (error) {
     console.error("AI explanation error:", error);
-    // Always fall back to mock API if serverless function fails
+    // Fall back to mock API if serverless function fails
     console.log("Falling back to mock API");
     try {
       const { mockExplainCode } = await import('@/lib/mockApi');

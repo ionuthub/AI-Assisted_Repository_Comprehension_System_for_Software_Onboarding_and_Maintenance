@@ -74,24 +74,24 @@ const ExplanationPanel = ({
 
             {/* Related Concepts */}
             {getRelatedConcepts(lineExplanation).length > 0 && (
-              <div className="mt-4 md:mt-6 p-3 md:p-4 bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800 rounded-lg">
-                <h4 className="text-xs md:text-sm font-semibold text-blue-900 dark:text-blue-100 flex items-center gap-2 mb-2">
-                  <BookOpen className="w-3.5 h-3.5 md:w-4 md:h-4" />
+              <div className="mt-4 md:mt-6 p-3 md:p-4 bg-primary/5 border border-primary/20 rounded-lg">
+                <h4 className="text-xs md:text-sm font-semibold text-foreground flex items-center gap-2 mb-2">
+                  <BookOpen className="w-3.5 h-3.5 md:w-4 md:h-4 text-primary" />
                   Related Concepts
                 </h4>
                 <div className="space-y-2">
                   {getRelatedConcepts(lineExplanation).map((concept, idx) => (
                     <div key={idx} className="text-xs md:text-sm">
-                      <div className="font-semibold text-blue-900 dark:text-blue-100 mb-1">
+                      <div className="font-semibold text-foreground mb-1">
                         {concept.primary.name}
                       </div>
-                      <p className="text-blue-800 dark:text-blue-200 mb-1.5">
+                      <p className="text-muted-foreground mb-1.5">
                         {concept.primary.description}
                       </p>
                       {concept.related.length > 0 && (
                         <div className="flex flex-wrap gap-1">
                           {concept.related.map((rel, ridx) => (
-                            <Badge key={ridx} variant="outline" className="text-xs bg-white dark:bg-blue-900">
+                            <Badge key={ridx} variant="outline" className="text-xs bg-secondary">
                               {rel.name}
                             </Badge>
                           ))}

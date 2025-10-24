@@ -1,8 +1,18 @@
-// CORS headers
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Methods': 'POST, OPTIONS',
-  'Access-Control-Allow-Headers': 'Content-Type',
+// Security headers
+const getSecurityHeaders = (origin?: string) => {
+  const allowedOrigins = process.env.ALLOWED_ORIGINS?.split(',') || ['http://localhost:5173', 'http://localhost:3000'];
+  const isAllowed = origin && allowedOrigins.some(allowed => origin.includes(allowed.trim()));
+  
+  return {
+    'Access-Control-Allow-Origin': isAllowed ? origin : allowedOrigins[0],
+    'Access-Control-Allow-Methods': 'POST, OPTIONS',
+    'Access-Control-Allow-Headers': 'Content-Type',
+    'X-Content-Type-Options': 'nosniff',
+    'X-Frame-Options': 'SAMEORIGIN',
+    'X-XSS-Protection': '1; mode=block',
+    'Referrer-Policy': 'strict-origin-when-cross-origin',
+    'Content-Security-Policy': "default-src 'self'; script-src 'self'",
+  };
 };
 
 // Simple in-memory rate limiting (resets on cold start)
@@ -37,13 +47,17 @@ function checkRateLimit(key: string): { allowed: boolean; remaining: number } {
 }
 
 export default async function handler(req: Request): Promise<Response> {
+  // Get origin for CORS validation
+  const origin = req.headers.get('origin') || undefined;
+  const securityHeaders = getSecurityHeaders(origin);
+
   // Handle CORS preflight
   if (req.method === 'OPTIONS') {
-    return new Response(JSON.stringify({}), { status: 200, headers: { ...corsHeaders } });
+    return new Response(JSON.stringify({}), { status: 200, headers: securityHeaders });
   }
 
   if (req.method !== 'POST') {
-    return new Response(JSON.stringify({ error: 'Method not allowed' }), { status: 405, headers: { ...corsHeaders } });
+    return new Response(JSON.stringify({ error: 'Method not allowed' }), { status: 405, headers: securityHeaders });
   }
 
   // Rate limiting
@@ -51,7 +65,7 @@ export default async function handler(req: Request): Promise<Response> {
   const { allowed, remaining } = checkRateLimit(rateLimitKey);
 
   const baseHeaders: HeadersInit = {
-    ...corsHeaders,
+    ...securityHeaders,
     'X-RateLimit-Limit': MAX_REQUESTS_PER_WINDOW.toString(),
     'X-RateLimit-Remaining': remaining.toString(),
     'Content-Type': 'application/json',
@@ -134,7 +148,7 @@ export default async function handler(req: Request): Promise<Response> {
     console.error('Error in explain-code:', error);
     return new Response(
       JSON.stringify({ error: error instanceof Error ? error.message : 'Internal server error' }),
-      { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      { status: 500, headers: baseHeaders }
     );
   }
 }

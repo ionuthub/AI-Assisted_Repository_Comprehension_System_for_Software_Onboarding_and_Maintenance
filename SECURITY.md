@@ -23,14 +23,17 @@ If you discover a security vulnerability, please email the maintainer directly r
 - ✅ Type checking on all inputs
 
 ### Security Headers
-- ✅ `X-Content-Type-Options: nosniff`
-- ✅ `X-Frame-Options: SAMEORIGIN`
-- ✅ `X-XSS-Protection: 1; mode=block`
-- ✅ `Referrer-Policy: strict-origin-when-cross-origin`
+- ✅ `X-Content-Type-Options: nosniff` - Prevents MIME type sniffing
+- ✅ `X-Frame-Options: SAMEORIGIN` - Prevents clickjacking
+- ✅ `X-XSS-Protection: 1; mode=block` - XSS protection
+- ✅ `Referrer-Policy: strict-origin-when-cross-origin` - Controls referrer information
+- ✅ `Content-Security-Policy: default-src 'self'` - Restricts resource loading
 
 ### CORS Configuration
-- ✅ Configured for production domains
-- ✅ Proper preflight handling
+- ✅ Restricted to configured origins via `ALLOWED_ORIGINS` environment variable
+- ✅ Validates request origin before allowing cross-origin requests
+- ✅ Proper preflight handling (OPTIONS method)
+- ✅ Default origins: `http://localhost:5173`, `http://localhost:3000`
 
 ## Known Issues
 
@@ -76,16 +79,24 @@ VITE_GEMINI_API_KEY=your_key_here  # Only for local testing
 - [x] API keys not in client bundle
 - [x] Rate limiting implemented
 - [x] Input validation in place
-- [x] Security headers configured
-- [x] CORS properly configured
+- [x] Security headers configured and implemented
+- [x] CORS properly configured with origin validation
 - [x] Error messages don't leak sensitive info
 - [x] Git history cleaned of secrets
 - [x] Environment variables documented
+- [ ] Persistent rate limiting (requires Redis/KV store for production)
+- [ ] Request logging/monitoring (future enhancement)
+- [ ] IP-based blocking for abuse (future enhancement)
 - [ ] Dependency vulnerabilities addressed (requires breaking changes)
-- [ ] Consider adding request logging/monitoring
-- [ ] Consider adding IP-based blocking for abuse
 
 ## Updates
+
+- **2025-10-24**: Enhanced security implementation
+  - Implemented all security headers (X-Content-Type-Options, X-Frame-Options, X-XSS-Protection, Referrer-Policy, CSP)
+  - Added CORS origin validation via `ALLOWED_ORIGINS` environment variable
+  - Restricted CORS from wildcard (`*`) to specific allowed origins
+  - Added rate limit headers to all responses
+  - Improved error handling with consistent security headers
 
 - **2025-10-23**: Initial security implementation
   - Moved API calls to serverless functions

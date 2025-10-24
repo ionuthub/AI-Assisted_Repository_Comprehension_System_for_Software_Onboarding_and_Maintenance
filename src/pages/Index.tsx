@@ -154,69 +154,85 @@ const fetchAIExplanation = async (
   code: string,
   skillLevel: SkillLevel
 ): Promise<string> => {
-  try {
-    // Call our secure serverless function
-    const response = await fetch('/api/explain-code', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({
-        code,
-        skillLevel
-      })
-    });
+  // In development, try serverless function first (for Vercel preview)
+  // In production, serverless function will be used
+  if (!import.meta.env.DEV) {
+    try {
+      const response = await fetch('/api/explain-code', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          code,
+          skillLevel
+        })
+      });
 
-    // Check if response has content
-    const contentType = response.headers.get('content-type');
-    const isJson = contentType?.includes('application/json');
-
-    if (!response.ok) {
-      console.error("API error status:", response.status);
-      
-      // Handle rate limiting specifically
-      if (response.status === 429) {
-        throw new Error("Too many requests. Please wait a minute and try again.");
-      }
-      
-      // Try to parse error response
-      if (isJson) {
-        try {
-          const errorData = await response.json();
-          throw new Error(errorData.error || "AI API request failed");
-        } catch (e) {
-          throw new Error(`API error: ${response.status} ${response.statusText}`);
+      if (response.ok) {
+        const data = await response.json();
+        if (data.explanation) {
+          return data.explanation;
         }
       }
-      
-      throw new Error(`API error: ${response.status} ${response.statusText}`);
+    } catch (error) {
+      console.warn("Serverless function failed, trying direct API");
     }
+  }
 
-    // Parse response
-    if (!isJson) {
-      console.warn("Response is not JSON, using fallback");
-      throw new Error("Invalid response format");
-    }
-
-    const data = await response.json();
-    const explanation = data.explanation;
-    
-    if (!explanation) {
-      throw new Error("No explanation generated");
-    }
-    
-    return explanation;
-  } catch (error) {
-    console.error("AI explanation error:", error);
-    // Fall back to mock API if serverless function fails
-    console.log("Falling back to mock API");
+  // Try direct Gemini API call (for local development)
+  const geminiKey = import.meta.env.VITE_GEMINI_API_KEY;
+  if (geminiKey) {
     try {
-      const { mockExplainCode } = await import('@/lib/mockApi');
-      return mockExplainCode(code, skillLevel);
-    } catch (mockError) {
-      console.error("Mock API also failed:", mockError);
-      throw error;
+      console.log("Calling Gemini API directly");
+      
+      const skillPrompts: Record<string, string> = {
+        beginner: "Explain this code in simple terms that a beginner can understand. Use everyday analogies and avoid jargon. Focus on WHAT it does and WHY it's useful.",
+        intermediate: "Explain this code for someone with programming experience. Use proper technical terms, discuss patterns, and mention best practices.",
+        advanced: "Provide an in-depth technical analysis. Discuss architectural decisions, performance implications, trade-offs, and potential improvements."
+      };
+
+      const prompt = `${skillPrompts[skillLevel] || skillPrompts.beginner}\n\nCode to explain:\n\`\`\`\n${code}\n\`\`\``;
+
+      const response = await fetch(
+        `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-exp:generateContent?key=${geminiKey}`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            contents: [{ parts: [{ text: prompt }] }],
+            generationConfig: {
+              temperature: 0.7,
+              maxOutputTokens: 500,
+            }
+          })
+        }
+      );
+
+      if (response.ok) {
+        const data = await response.json();
+        const explanation = data.candidates?.[0]?.content?.parts?.[0]?.text;
+        if (explanation) {
+          console.log("✅ Gemini API success");
+          return explanation;
+        }
+      } else {
+        const error = await response.text();
+        console.error("Gemini API error:", response.status, error);
+      }
+    } catch (error) {
+      console.error("Direct Gemini API failed:", error);
     }
+  }
+
+  // Fall back to mock API
+  console.log("Using mock API fallback");
+  try {
+    const { mockExplainCode } = await import('@/lib/mockApi');
+    return mockExplainCode(code, skillLevel);
+  } catch (mockError) {
+    console.error("Mock API also failed:", mockError);
+    throw new Error("Unable to generate explanation");
   }
 };
 

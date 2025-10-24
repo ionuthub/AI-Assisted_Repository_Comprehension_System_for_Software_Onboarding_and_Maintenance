@@ -14,6 +14,102 @@ interface ExplanationPanelProps {
   fileExplanation?: string | null;
 }
 
+const parseExplanationText = (text: string) => {
+  const sections = [];
+  let currentSection = { title: "", content: [] as string[] };
+  const lines = text.split("\n");
+
+  for (const line of lines) {
+    // Detect bold headers like **What it is:**
+    if (line.match(/^\*\*[^*]+:\*\*/)) {
+      if (currentSection.content.length > 0) {
+        sections.push(currentSection);
+      }
+      currentSection = {
+        title: line.replace(/\*\*/g, ""),
+        content: []
+      };
+    }
+    // Detect bullet points
+    else if (line.trim().startsWith("*") || line.trim().startsWith("-")) {
+      currentSection.content.push(line.trim());
+    }
+    // Regular content
+    else if (line.trim()) {
+      currentSection.content.push(line.trim());
+    }
+  }
+
+  if (currentSection.content.length > 0) {
+    sections.push(currentSection);
+  }
+
+  return sections;
+};
+
+const renderExplanationSection = (section: { title: string; content: string[] }) => {
+  return (
+    <div key={section.title} className="space-y-2">
+      {section.title && (
+        <h4 className="font-semibold text-foreground text-sm md:text-base">
+          {section.title}
+        </h4>
+      )}
+      <div className="space-y-2">
+        {section.content.map((line, idx) => {
+          // Handle bullet points
+          if (line.startsWith("*") || line.startsWith("-")) {
+            const content = line.replace(/^[*-]\s*/, "");
+            // Parse inline bold and code
+            const parts = content.split(/(`[^`]+`|\*\*[^*]+\*\*)/g);
+            return (
+              <div key={idx} className="flex gap-3 text-sm md:text-base text-muted-foreground">
+                <span className="text-primary font-bold flex-shrink-0 mt-0.5">•</span>
+                <span className="leading-relaxed">
+                  {parts.map((part, i) => {
+                    if (part.startsWith("`")) {
+                      return (
+                        <code key={i} className="bg-code text-primary/90 px-2 py-0.5 rounded text-xs md:text-sm font-mono">
+                          {part.replace(/`/g, "")}
+                        </code>
+                      );
+                    } else if (part.startsWith("**")) {
+                      return (
+                        <strong key={i}>{part.replace(/\*\*/g, "")}</strong>
+                      );
+                    }
+                    return part;
+                  })}
+                </span>
+              </div>
+            );
+          }
+          // Regular paragraph
+          const parts = line.split(/(`[^`]+`|\*\*[^*]+\*\*)/g);
+          return (
+            <p key={idx} className="text-sm md:text-base text-muted-foreground leading-relaxed">
+              {parts.map((part, i) => {
+                if (part.startsWith("`")) {
+                  return (
+                    <code key={i} className="bg-code text-primary/90 px-2 py-0.5 rounded text-xs md:text-sm font-mono">
+                      {part.replace(/`/g, "")}
+                    </code>
+                  );
+                } else if (part.startsWith("**")) {
+                  return (
+                    <strong key={i}>{part.replace(/\*\*/g, "")}</strong>
+                  );
+                }
+                return part;
+              })}
+            </p>
+          );
+        })}
+      </div>
+    </div>
+  );
+};
+
 const defaultMessages: Record<"beginner" | "intermediate" | "advanced", string[]> = {
   beginner: [
     "Select a line of code to see a friendly explanation.",
@@ -65,11 +161,11 @@ const ExplanationPanel = ({
             <h3 className="text-base md:text-xl font-bold text-foreground">
               {selectedFile}
             </h3>
-            <div className="text-xs md:text-sm text-muted-foreground">Line {selectedLine}</div>
-            <div className="space-y-2.5 md:space-y-3">
-              <p className="text-sm md:text-base text-muted-foreground leading-relaxed pl-3 md:pl-4 border-l-2 border-primary/30">
-                {lineExplanation}
-              </p>
+            <div className="text-xs md:text-sm text-muted-foreground mb-4">Line {selectedLine}</div>
+            <div className="space-y-4 md:space-y-5">
+              {parseExplanationText(lineExplanation).map((section) => (
+                renderExplanationSection(section)
+              ))}
             </div>
 
             {/* Related Concepts */}

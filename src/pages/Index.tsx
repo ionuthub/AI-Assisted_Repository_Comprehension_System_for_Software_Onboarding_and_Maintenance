@@ -12,7 +12,7 @@ import FileNavigator from "@/components/FileNavigator";
 import ProjectOverviewComponent from "@/components/ProjectOverview";
 import type { Project, ProjectFile } from "@/types/project";
 import { fetchRepositoryProject, fetchFileContent } from "@/lib/github";
-import { generateProject } from "@/lib/generation";
+import { generateProject, generateFileExplanation } from "@/lib/generation";
 import { analyzeProject } from "@/lib/projectAnalyzer";
 import { useToast } from "@/hooks/use-toast";
 
@@ -212,6 +212,7 @@ const Index = () => {
   const [selectedFile, setSelectedFile] = useState<string | null>(null);
   const [selectedLine, setSelectedLine] = useState<number | null>(null);
   const [lineExplanation, setLineExplanation] = useState<string | null>(null);
+  const [fileExplanation, setFileExplanation] = useState<string | null>(null);
   const [isExplaining, setIsExplaining] = useState(false);
 
   const displayedFiles = useMemo(() => {
@@ -311,6 +312,12 @@ const Index = () => {
     setSelectedFile(path);
 
     if (fileCache[path]?.content) {
+      // Generate file explanation for cached content
+      const cachedFile = fileCache[path];
+      if (cachedFile.content) {
+        const explanation = generateFileExplanation(path, cachedFile.content, skillLevel);
+        setFileExplanation(explanation);
+      }
       return;
     }
 
@@ -350,6 +357,12 @@ const Index = () => {
         [path]: fetched
       }));
 
+      // Generate file explanation
+      if (fetched.content) {
+        const explanation = generateFileExplanation(path, fetched.content, skillLevel);
+        setFileExplanation(explanation);
+      }
+
       setProject((prev) =>
         prev
           ? {
@@ -376,6 +389,12 @@ const Index = () => {
   const handleSkillLevelChange = (nextLevel: SkillLevel) => {
     setSkillLevel(nextLevel);
     resetInteractionState();
+    
+    // Regenerate file explanation with new skill level
+    if (selectedFile && currentFileContent) {
+      const explanation = generateFileExplanation(selectedFile, currentFileContent, nextLevel);
+      setFileExplanation(explanation);
+    }
   };
 
   const handleLineSelect = async (lineNumber: number) => {
@@ -606,6 +625,7 @@ const Index = () => {
                 selectedFile={selectedFile}
                 selectedLine={selectedLine}
                 lineExplanation={lineExplanation}
+                fileExplanation={fileExplanation}
               />
             </motion.div>
             </motion.section>

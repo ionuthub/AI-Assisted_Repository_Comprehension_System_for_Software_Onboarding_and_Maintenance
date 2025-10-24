@@ -11,6 +11,7 @@ interface ExplanationPanelProps {
   selectedFile: string | null;
   selectedLine: number | null;
   lineExplanation: string | null;
+  fileExplanation?: string | null;
 }
 
 const defaultMessages: Record<"beginner" | "intermediate" | "advanced", string[]> = {
@@ -37,6 +38,7 @@ const ExplanationPanel = ({
   selectedFile,
   selectedLine,
   lineExplanation,
+  fileExplanation,
 }: ExplanationPanelProps) => {
   const defaultItems = defaultMessages[skillLevel];
 
@@ -106,6 +108,53 @@ const ExplanationPanel = ({
                 <Sparkles className="w-3.5 h-3.5 md:w-4 md:h-4 text-primary mt-0.5 flex-shrink-0" />
                 <span>
                   Click on any other line to generate a fresh explanation tailored to the {skillLevel} perspective.
+                </span>
+              </p>
+            </div>
+          </>
+        ) : fileExplanation && selectedFile && !selectedLine ? (
+          <>
+            <div className="prose prose-sm dark:prose-invert max-w-none">
+              <div className="text-sm md:text-base text-foreground leading-relaxed space-y-3 md:space-y-4">
+                {fileExplanation.split("\n").map((line, idx) => {
+                  if (line.startsWith("##")) {
+                    return (
+                      <h2 key={idx} className="text-lg md:text-xl font-bold text-foreground mt-4 mb-2">
+                        {line.replace(/^##\s*/, "")}
+                      </h2>
+                    );
+                  }
+                  if (line.startsWith("**") && line.endsWith("**")) {
+                    return (
+                      <p key={idx} className="font-semibold text-foreground">
+                        {line.replace(/\*\*/g, "")}
+                      </p>
+                    );
+                  }
+                  if (line.startsWith("•")) {
+                    return (
+                      <p key={idx} className="text-sm md:text-base text-muted-foreground ml-4">
+                        {line}
+                      </p>
+                    );
+                  }
+                  if (line.trim()) {
+                    return (
+                      <p key={idx} className="text-sm md:text-base text-muted-foreground leading-relaxed">
+                        {line}
+                      </p>
+                    );
+                  }
+                  return null;
+                })}
+              </div>
+            </div>
+
+            <div className="mt-4 md:mt-6 p-3 md:p-4 bg-primary/5 border border-primary/20 rounded-lg">
+              <p className="text-xs md:text-sm text-muted-foreground flex items-start gap-2">
+                <Sparkles className="w-3.5 h-3.5 md:w-4 md:h-4 text-primary mt-0.5 flex-shrink-0" />
+                <span>
+                  Click on a specific line to dive deeper into the code.
                 </span>
               </p>
             </div>

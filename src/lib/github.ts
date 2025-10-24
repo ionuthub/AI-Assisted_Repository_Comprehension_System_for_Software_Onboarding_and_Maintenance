@@ -2,6 +2,25 @@ import type { Project, ProjectFile, ProjectSummary } from "@/types/project";
 
 const GITHUB_API = "https://api.github.com";
 
+// Get GitHub token from environment
+const getGitHubToken = (): string | null => {
+  return import.meta.env.VITE_GITHUB_TOKEN || null;
+};
+
+// Build headers with authentication if token is available
+const getGitHubHeaders = (): HeadersInit => {
+  const token = getGitHubToken();
+  const headers: HeadersInit = {
+    'Accept': 'application/vnd.github.v3+json',
+  };
+  
+  if (token) {
+    headers['Authorization'] = `token ${token}`;
+  }
+  
+  return headers;
+};
+
 // Security limits
 const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
 const MAX_FILES_TO_ANALYZE = 50;
@@ -153,11 +172,13 @@ const buildProjectFiles = (items: GitHubTreeItem[]): ProjectFile[] => {
 
 export const fetchRepositoryProject = async (repoUrl: string): Promise<Project> => {
   const { owner, repo } = parseGitHubUrl(repoUrl);
-  const repoResponse = await fetch(`${GITHUB_API}/repos/${owner}/${repo}`);
+  const headers = getGitHubHeaders();
+  
+  const repoResponse = await fetch(`${GITHUB_API}/repos/${owner}/${repo}`, { headers });
   await handleGitHubError(repoResponse);
   const repoData = (await repoResponse.json()) as GitHubRepoResponse;
 
-  const treeResponse = await fetch(`${GITHUB_API}/repos/${owner}/${repo}/git/trees/${repoData.default_branch}?recursive=1`);
+  const treeResponse = await fetch(`${GITHUB_API}/repos/${owner}/${repo}/git/trees/${repoData.default_branch}?recursive=1`, { headers });
   await handleGitHubError(treeResponse);
   const treePayload = await treeResponse.json();
   const files = buildProjectFiles(treePayload.tree as GitHubTreeItem[]);

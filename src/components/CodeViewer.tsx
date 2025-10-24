@@ -59,9 +59,9 @@ const CodeViewer = ({
                     <TooltipTrigger asChild>
                       <div
                         onClick={() => onLineSelect(idx + 1)}
-                        className={`flex hover:bg-code-line/50 active:bg-code-line transition-colors cursor-pointer group ${
-                          selectedLine === idx + 1 ? "bg-primary/10 border-l-2 border-primary" : ""
-                        } ${getComplexityColor(complexity.complexity)}`}
+                        className={`flex hover:bg-primary/5 active:bg-primary/10 transition-colors cursor-pointer group ${
+                          selectedLine === idx + 1 ? "bg-primary/15 border-l-2 border-primary" : ""
+                        }`}
                       >
                         <span className="select-none text-code-number w-8 md:w-12 pr-2 md:pr-4 text-right flex-shrink-0 text-[10px] md:text-sm">
                           {idx + 1}

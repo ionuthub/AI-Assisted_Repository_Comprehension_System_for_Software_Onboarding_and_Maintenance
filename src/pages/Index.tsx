@@ -742,6 +742,9 @@ const Index = () => {
               <h4 className="font-semibold mb-4">Resources</h4>
               <ul className="space-y-2 text-sm text-muted-foreground">
                 <li>
+                  <a href="/faq" className="hover:text-foreground transition-colors">FAQ</a>
+                </li>
+                <li>
                   <a href="/terms" className="hover:text-foreground transition-colors">Terms of Service</a>
                 </li>
                 <li>

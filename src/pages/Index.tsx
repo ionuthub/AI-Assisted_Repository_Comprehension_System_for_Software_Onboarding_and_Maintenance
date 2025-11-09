@@ -726,7 +726,7 @@ const Index = () => {
 
       <main className="flex-1 container mx-auto px-4 py-12 md:px-8 md:py-20">
         <motion.section
-          className="mx-auto max-w-4xl text-center mb-12 md:mb-16"
+          className="mx-auto max-w-4xl text-center mb-12 md:mb-16 flex flex-col justify-center min-h-[60vh]"
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.6 }}

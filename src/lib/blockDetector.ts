@@ -110,11 +110,20 @@ const isArrayStart = (line: string): boolean => {
 // ============================================================================
 
 const findFunctionBlock = (lines: string[], startIdx: number): CodeBlock => {
-  const startLine = startIdx + 1;
+  // Find the line with the opening brace
+  let openBraceIdx = startIdx;
+  for (let i = startIdx; i < lines.length; i++) {
+    if (lines[i].includes("{")) {
+      openBraceIdx = i;
+      break;
+    }
+  }
+
+  const startLine = openBraceIdx + 1;
   let braceCount = 0;
   let foundBrace = false;
 
-  for (let i = startIdx; i < lines.length; i++) {
+  for (let i = openBraceIdx; i < lines.length; i++) {
     const line = lines[i];
     braceCount += (line.match(/{/g) || []).length;
     braceCount -= (line.match(/}/g) || []).length;
@@ -142,11 +151,20 @@ const findFunctionBlock = (lines: string[], startIdx: number): CodeBlock => {
 };
 
 const findClassBlock = (lines: string[], startIdx: number): CodeBlock => {
-  const startLine = startIdx + 1;
+  // Find the line with the opening brace
+  let openBraceIdx = startIdx;
+  for (let i = startIdx; i < lines.length; i++) {
+    if (lines[i].includes("{")) {
+      openBraceIdx = i;
+      break;
+    }
+  }
+
+  const startLine = openBraceIdx + 1;
   let braceCount = 0;
   let foundBrace = false;
 
-  for (let i = startIdx; i < lines.length; i++) {
+  for (let i = openBraceIdx; i < lines.length; i++) {
     const line = lines[i];
     braceCount += (line.match(/{/g) || []).length;
     braceCount -= (line.match(/}/g) || []).length;
@@ -174,11 +192,20 @@ const findClassBlock = (lines: string[], startIdx: number): CodeBlock => {
 };
 
 const findConditionalBlock = (lines: string[], startIdx: number): CodeBlock => {
-  const startLine = startIdx + 1;
+  // Find the line with the opening brace
+  let openBraceIdx = startIdx;
+  for (let i = startIdx; i < lines.length; i++) {
+    if (lines[i].includes("{")) {
+      openBraceIdx = i;
+      break;
+    }
+  }
+
+  const startLine = openBraceIdx + 1;
   let braceCount = 0;
   let foundBrace = false;
 
-  for (let i = startIdx; i < lines.length; i++) {
+  for (let i = openBraceIdx; i < lines.length; i++) {
     const line = lines[i];
     braceCount += (line.match(/{/g) || []).length;
     braceCount -= (line.match(/}/g) || []).length;
@@ -221,11 +248,20 @@ const findConditionalBlock = (lines: string[], startIdx: number): CodeBlock => {
 };
 
 const findLoopBlock = (lines: string[], startIdx: number): CodeBlock => {
-  const startLine = startIdx + 1;
+  // Find the line with the opening brace
+  let openBraceIdx = startIdx;
+  for (let i = startIdx; i < lines.length; i++) {
+    if (lines[i].includes("{")) {
+      openBraceIdx = i;
+      break;
+    }
+  }
+
+  const startLine = openBraceIdx + 1;
   let braceCount = 0;
   let foundBrace = false;
 
-  for (let i = startIdx; i < lines.length; i++) {
+  for (let i = openBraceIdx; i < lines.length; i++) {
     const line = lines[i];
     braceCount += (line.match(/{/g) || []).length;
     braceCount -= (line.match(/}/g) || []).length;
@@ -253,13 +289,22 @@ const findLoopBlock = (lines: string[], startIdx: number): CodeBlock => {
 };
 
 const findTryCatchBlock = (lines: string[], startIdx: number): CodeBlock => {
-  const startLine = startIdx + 1;
+  // Find the line with the opening brace
+  let openBraceIdx = startIdx;
+  for (let i = startIdx; i < lines.length; i++) {
+    if (lines[i].includes("{")) {
+      openBraceIdx = i;
+      break;
+    }
+  }
+
+  const startLine = openBraceIdx + 1;
   let braceCount = 0;
   let foundBrace = false;
-  let endIdx = startIdx;
+  let endIdx = openBraceIdx;
 
   // Find the try block
-  for (let i = startIdx; i < lines.length; i++) {
+  for (let i = openBraceIdx; i < lines.length; i++) {
     const line = lines[i];
     braceCount += (line.match(/{/g) || []).length;
     braceCount -= (line.match(/}/g) || []).length;
@@ -297,11 +342,20 @@ const findTryCatchBlock = (lines: string[], startIdx: number): CodeBlock => {
 };
 
 const findObjectBlock = (lines: string[], startIdx: number): CodeBlock => {
-  const startLine = startIdx + 1;
+  // Find the line with the opening brace
+  let openBraceIdx = startIdx;
+  for (let i = startIdx; i < lines.length; i++) {
+    if (lines[i].includes("{")) {
+      openBraceIdx = i;
+      break;
+    }
+  }
+
+  const startLine = openBraceIdx + 1;
   let braceCount = 0;
   let foundBrace = false;
 
-  for (let i = startIdx; i < lines.length; i++) {
+  for (let i = openBraceIdx; i < lines.length; i++) {
     const line = lines[i];
     braceCount += (line.match(/{/g) || []).length;
     braceCount -= (line.match(/}/g) || []).length;
@@ -329,11 +383,20 @@ const findObjectBlock = (lines: string[], startIdx: number): CodeBlock => {
 };
 
 const findArrayBlock = (lines: string[], startIdx: number): CodeBlock => {
-  const startLine = startIdx + 1;
+  // Find the line with the opening bracket
+  let openBracketIdx = startIdx;
+  for (let i = startIdx; i < lines.length; i++) {
+    if (lines[i].includes("[")) {
+      openBracketIdx = i;
+      break;
+    }
+  }
+
+  const startLine = openBracketIdx + 1;
   let bracketCount = 0;
   let foundBracket = false;
 
-  for (let i = startIdx; i < lines.length; i++) {
+  for (let i = openBracketIdx; i < lines.length; i++) {
     const line = lines[i];
     bracketCount += (line.match(/\[/g) || []).length;
     bracketCount -= (line.match(/\]/g) || []).length;

@@ -1,9 +1,8 @@
 import { useMemo, useRef, useState } from "react";
 import type { ChangeEvent } from "react";
 import { motion } from "framer-motion";
-import { Code2, Sparkles, Github, Wand2, ExternalLink, Heart, FileCode } from "lucide-react";
+import { Code2, ExternalLink, Heart } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import SkillSelector from "@/components/SkillSelector";
@@ -11,15 +10,20 @@ import CodeViewer from "@/components/CodeViewer";
 import ExplanationPanel from "@/components/ExplanationPanel";
 import FileNavigator from "@/components/FileNavigator";
 import ProjectOverviewComponent from "@/components/ProjectOverview";
+import ErrorBoundary from "@/components/ErrorBoundary";
+import GitHubTab from "@/components/tabs/GitHubTab";
+import GenerateTab from "@/components/tabs/GenerateTab";
+import UploadTab from "@/components/tabs/UploadTab";
 import type { Project, ProjectFile } from "@/types/project";
 import { fetchRepositoryProject, fetchFileContent } from "@/lib/github";
-import { generateProject, generateFileExplanation } from "@/lib/generation";
+import { generateProject } from "@/lib/generation";
 import { generateW3SchoolsExplanation, generateW3SchoolsFileExplanation, generateBlockExplanation } from "@/lib/w3schoolsExplainer";
 import { detectCodeBlock } from "@/lib/blockDetector";
 import { analyzeProject } from "@/lib/projectAnalyzer";
 import { useToast } from "@/hooks/use-toast";
-
-type SkillLevel = "beginner" | "intermediate" | "advanced";
+import { useKeyboardShortcuts } from "@/hooks/useKeyboardShortcuts";
+import { TAB_MODES, SKILL_LEVELS, ERROR_MESSAGES, SUCCESS_MESSAGES } from "@/constants/appConstants";
+import type { SkillLevel, TabMode } from "@/constants/appConstants";
 
 const inferLanguageFromFilename = (fileName: string): string | null => {
   const extension = fileName.split(".").pop()?.toLowerCase();
@@ -234,8 +238,8 @@ const fetchAIExplanation = async (
 
 const Index = () => {
   const { toast } = useToast();
-  const [mode, setMode] = useState<"github" | "generate" | "upload">("github");
-  const [skillLevel, setSkillLevel] = useState<SkillLevel>("beginner");
+  const [mode, setMode] = useState<TabMode>(TAB_MODES.GITHUB);
+  const [skillLevel, setSkillLevel] = useState<SkillLevel>(SKILL_LEVELS.BEGINNER);
   const [repoUrl, setRepoUrl] = useState("");
   const [projectIdea, setProjectIdea] = useState("");
   const [uploadedFolderName, setUploadedFolderName] = useState<string | null>(null);
@@ -666,14 +670,31 @@ const Index = () => {
   ];
 
   const handleNavClick = (id: string) => {
-    if (id === "analyze") setMode("github");
-    if (id === "generate") setMode("generate");
-    if (id === "upload") setMode("upload");
+    if (id === "analyze") setMode(TAB_MODES.GITHUB);
+    if (id === "generate") setMode(TAB_MODES.GENERATE);
+    if (id === "upload") setMode(TAB_MODES.UPLOAD);
   };
 
+  // Register keyboard shortcuts
+  useKeyboardShortcuts([
+    {
+      key: "k",
+      ctrl: true,
+      meta: true,
+      callback: () => {
+        // Focus on the input field for the current mode
+        const input = document.querySelector(
+          `input[placeholder*="${mode === TAB_MODES.GITHUB ? "github" : mode === TAB_MODES.GENERATE ? "flashcard" : "Select"}"]`
+        ) as HTMLInputElement;
+        input?.focus();
+      }
+    }
+  ]);
+
   return (
-    <div className="min-h-screen bg-background flex flex-col">
-      <header className="sticky top-0 z-20 border-b border-border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/70">
+    <ErrorBoundary>
+      <div className="min-h-screen bg-background flex flex-col">
+        <header className="sticky top-0 z-20 border-b border-border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/70">
         <div className="container mx-auto flex h-16 items-center justify-between px-4 md:h-20 md:px-8">
           <motion.div
             className="flex items-center gap-3"
@@ -727,105 +748,50 @@ const Index = () => {
           <Card className="p-8 md:p-12">
           <Tabs
             value={mode}
-            onValueChange={(value) => setMode(value as "github" | "generate" | "upload")}
+            onValueChange={(value) => setMode(value as TabMode)}
           >
             <TabsList className="grid w-full grid-cols-3 bg-secondary/50">
-              <TabsTrigger value="github" className="gap-2 data-[state=active]:bg-sky-600 data-[state=active]:text-white data-[state=inactive]:text-muted-foreground hover:text-foreground transition-colors">
-                <Github className="h-4 w-4" />
+              <TabsTrigger value={TAB_MODES.GITHUB} className="gap-2 data-[state=active]:bg-sky-600 data-[state=active]:text-white data-[state=inactive]:text-muted-foreground hover:text-foreground transition-colors">
                 GitHub Repo
               </TabsTrigger>
-              <TabsTrigger value="generate" className="gap-2 data-[state=active]:bg-sky-600 data-[state=active]:text-white data-[state=inactive]:text-muted-foreground hover:text-foreground transition-colors">
-                <Wand2 className="h-4 w-4" />
+              <TabsTrigger value={TAB_MODES.GENERATE} className="gap-2 data-[state=active]:bg-sky-600 data-[state=active]:text-white data-[state=inactive]:text-muted-foreground hover:text-foreground transition-colors">
                 Generate Idea
               </TabsTrigger>
-              <TabsTrigger value="upload" className="gap-2 data-[state=active]:bg-sky-600 data-[state=active]:text-white data-[state=inactive]:text-muted-foreground hover:text-foreground transition-colors">
-                <FileCode className="h-4 w-4" />
+              <TabsTrigger value={TAB_MODES.UPLOAD} className="gap-2 data-[state=active]:bg-sky-600 data-[state=active]:text-white data-[state=inactive]:text-muted-foreground hover:text-foreground transition-colors">
                 Upload Folder
               </TabsTrigger>
             </TabsList>
 
-            <TabsContent value="github" className="mt-6 space-y-4">
-              <Input
-                placeholder="https://github.com/facebook/react"
-                value={repoUrl}
-                onChange={(event) => setRepoUrl(event.target.value)}
-                disabled={isLoading}
+            <TabsContent value={TAB_MODES.GITHUB}>
+              <GitHubTab
+                isLoading={isLoading}
+                onAnalyze={(url) => {
+                  setRepoUrl(url);
+                  handleAnalyze();
+                }}
               />
-              <Button onClick={handleAnalyze} disabled={isLoading} className="w-full md:w-auto bg-sky-600 hover:bg-sky-700 text-white">
-                {isLoading ? (
-                  <>
-                    <Sparkles className="mr-2 h-4 w-4 animate-spin" />
-                    Loading repository...
-                  </>
-                ) : (
-                  <>
-                    <Github className="mr-2 h-4 w-4" />
-                    Analyze repository
-                  </>
-                )}
-              </Button>
             </TabsContent>
 
-            <TabsContent value="generate" className="mt-6 space-y-4">
-              <Input
-                placeholder="A flashcard app with spaced repetition"
-                value={projectIdea}
-                onChange={(event) => setProjectIdea(event.target.value)}
-                disabled={isLoading}
+            <TabsContent value={TAB_MODES.GENERATE}>
+              <GenerateTab
+                isLoading={isLoading}
+                onGenerate={(idea) => {
+                  setProjectIdea(idea);
+                  handleAnalyze();
+                }}
               />
-              <Button onClick={handleAnalyze} disabled={isLoading} className="w-full md:w-auto bg-sky-600 hover:bg-sky-700 text-white">
-                {isLoading ? (
-                  <>
-                    <Sparkles className="mr-2 h-4 w-4 animate-spin" />
-                    Drafting project...
-                  </>
-                ) : (
-                  <>
-                    <Wand2 className="mr-2 h-4 w-4" />
-                    Generate project
-                  </>
-                )}
-              </Button>
             </TabsContent>
 
-            <TabsContent value="upload" className="mt-6 space-y-4">
-              <div className="flex flex-col items-start gap-3">
-                <label className="text-sm font-medium text-foreground">Upload a local project folder</label>
-                <Button asChild variant="outline" className="bg-secondary/40 hover:bg-secondary/60 text-foreground">
-                  <label className="cursor-pointer">
-                    <input
-                      type="file"
-                      multiple
-                      className="hidden"
-                      ref={(input) => {
-                        folderInputRef.current = input;
-                        if (input) {
-                          input.setAttribute("webkitdirectory", "true");
-                          input.setAttribute("directory", "true");
-                        }
-                      }}
-                      onChange={handleFolderInputChange}
-                    />
-                    <span>Select folder…</span>
-                  </label>
-                </Button>
-                {uploadedFolderName && (
-                  <p className="text-sm text-muted-foreground">Selected: {uploadedFolderName}</p>
-                )}
-              </div>
-              <Button onClick={handleAnalyze} disabled={isLoading || !project} className="w-full md:w-auto bg-sky-600 hover:bg-sky-700 text-white">
-                {isLoading ? (
-                  <>
-                    <Sparkles className="mr-2 h-4 w-4 animate-spin" />
-                    Processing folder...
-                  </>
-                ) : (
-                  <>
-                    <FileCode className="mr-2 h-4 w-4" />
-                    Analyze folder
-                  </>
-                )}
-              </Button>
+            <TabsContent value={TAB_MODES.UPLOAD}>
+              <UploadTab
+                isLoading={isLoading}
+                uploadedFolderName={uploadedFolderName}
+                onFolderSelect={(files) => handleFolderInputChange({
+                  target: { files }
+                } as ChangeEvent<HTMLInputElement>)}
+                onAnalyze={handleAnalyze}
+                isProjectLoaded={!!project}
+              />
             </TabsContent>
           </Tabs>
 
@@ -973,7 +939,8 @@ const Index = () => {
           </motion.div>
         </div>
       </footer>
-    </div>
+      </div>
+    </ErrorBoundary>
   );
 };
 

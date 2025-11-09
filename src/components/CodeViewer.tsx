@@ -1,7 +1,7 @@
 import { Card } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
-import { Code2, AlertCircle, CheckCircle2 } from "lucide-react";
+import { Code2 } from "lucide-react";
 import { detectLineComplexity, getComplexityBadge, getComplexityColor } from "@/lib/complexityDetector";
 import { detectCodeBlock } from "@/lib/blockDetector";
 import { useMemo, useState } from "react";

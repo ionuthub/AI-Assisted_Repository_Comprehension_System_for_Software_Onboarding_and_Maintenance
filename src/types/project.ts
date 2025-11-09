@@ -1,4 +1,4 @@
-export type ProjectType = "github" | "generated";
+export type ProjectType = "github" | "generated" | "uploaded";
 
 export interface ProjectFile {
   path: string;

@@ -1,6 +1,5 @@
 import { Card } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { FileCode, ChevronRight, FileText } from "lucide-react";
 import type { ProjectFile } from "@/types/project";
 
 interface FileNavigatorProps {
@@ -12,8 +11,7 @@ interface FileNavigatorProps {
 const FileNavigator = ({ files, selectedFile, onFileSelect }: FileNavigatorProps) => {
   return (
     <Card className="p-4 bg-card border-border h-full">
-      <h3 className="text-sm font-semibold mb-3 flex items-center gap-2">
-        <FileCode className="w-4 h-4" />
+      <h3 className="text-sm font-semibold mb-3">
         Project Files
       </h3>
       <ScrollArea className="h-[calc(100%-2rem)]">
@@ -28,12 +26,10 @@ const FileNavigator = ({ files, selectedFile, onFileSelect }: FileNavigatorProps
                   : "hover:bg-sky-600/10 text-muted-foreground hover:text-foreground dark:hover:bg-sky-600/20"
               }`}
             >
-              <ChevronRight className="w-3 h-3 flex-shrink-0" />
               <div className="flex flex-col text-left truncate">
                 <span className="truncate">{file.path}</span>
                 {(file.language || file.size) && (
-                  <span className="text-[10px] text-muted-foreground flex items-center gap-1">
-                    <FileText className="w-3 h-3" />
+                  <span className="text-[10px] text-muted-foreground">
                     {file.language ?? "Unknown"}
                     {typeof file.size === "number" && `· ${(file.size / 1024).toFixed(1)} KB`}
                   </span>

@@ -1,6 +1,7 @@
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
+import type { ChangeEvent } from "react";
 import { motion } from "framer-motion";
-import { Code2, Sparkles, Github, Wand2, ExternalLink, Heart } from "lucide-react";
+import { Code2, Sparkles, Github, Wand2, ExternalLink, Heart, FileCode } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
@@ -13,10 +14,50 @@ import ProjectOverviewComponent from "@/components/ProjectOverview";
 import type { Project, ProjectFile } from "@/types/project";
 import { fetchRepositoryProject, fetchFileContent } from "@/lib/github";
 import { generateProject, generateFileExplanation } from "@/lib/generation";
+import { generateW3SchoolsExplanation, generateW3SchoolsFileExplanation, generateBlockExplanation } from "@/lib/w3schoolsExplainer";
+import { detectCodeBlock } from "@/lib/blockDetector";
 import { analyzeProject } from "@/lib/projectAnalyzer";
 import { useToast } from "@/hooks/use-toast";
 
 type SkillLevel = "beginner" | "intermediate" | "advanced";
+
+const inferLanguageFromFilename = (fileName: string): string | null => {
+  const extension = fileName.split(".").pop()?.toLowerCase();
+  if (!extension) {
+    return null;
+  }
+
+  const map: Record<string, string> = {
+    ts: "TypeScript",
+    tsx: "TypeScript",
+    js: "JavaScript",
+    jsx: "JavaScript",
+    py: "Python",
+    rs: "Rust",
+    rb: "Ruby",
+    go: "Go",
+    java: "Java",
+    cs: "C#",
+    php: "PHP",
+    swift: "Swift",
+    kt: "Kotlin",
+    m: "Objective-C",
+    cpp: "C++",
+    c: "C",
+    h: "C",
+    hs: "Haskell",
+    scala: "Scala",
+    sql: "SQL",
+    md: "Markdown",
+    json: "JSON",
+    yml: "YAML",
+    yaml: "YAML",
+    html: "HTML",
+    css: "CSS"
+  };
+
+  return map[extension] ?? null;
+};
 
 const detectCodePattern = (line: string): { type: string; description: string } => {
   const trimmed = line.trim();
@@ -80,59 +121,11 @@ const detectCodePattern = (line: string): { type: string; description: string } 
 const buildLineExplanation = (
   content: string,
   lineNumber: number,
-  skillLevel: SkillLevel
+  skillLevel: SkillLevel,
+  fileName: string = "code.js"
 ): string => {
-  const lines = content.split(/\r?\n/);
-  const target = lines[lineNumber - 1]?.trim();
-
-  if (!target) {
-    return "This line is empty or just has whitespace. Try selecting a line with actual code.";
-  }
-
-  const pattern = detectCodePattern(target);
-
-  if (skillLevel === "beginner") {
-    const explanations: Record<string, string> = {
-      assignment: `This line is like creating a labeled box and putting something inside it. The name of the box is shown, and whatever is after the "=" sign goes into the box. Later, you can use that box's name to get what's inside.`,
-      function_call: `This line is like calling someone's name to ask them to do a job. The word before the parentheses ( ) is the name of the helper, and what's inside the parentheses ( ) are the instructions for what to do.`,
-      condition: `This line asks a yes-or-no question. If the answer is "yes" (true), the computer does one thing. If the answer is "no" (false), it might do something else or skip ahead.`,
-      loop: `This line tells the computer to repeat something multiple times. It keeps doing the same action until a condition says to stop.`,
-      return: `This line is like saying "I'm done, here's my answer!" It sends back a result so the code that asked for help can use it.`,
-      array_operation: `This line does the same action to every item in a list, one by one. It's like saying "do this to each toy in the toy box."`,
-      unknown: `This line executes code. Look at the actual code to see what specific action it's performing.`
-    };
-
-    return `**${pattern.type === "unknown" ? "Code Execution" : pattern.type.replace(/_/g, " ").toUpperCase()}**\n\n${explanations[pattern.type] || explanations.unknown}\n\n**The actual code:** \`${target}\``;
-  }
-
-  if (skillLevel === "intermediate") {
-    const contextBefore = lines
-      .slice(Math.max(0, lineNumber - 2), lineNumber - 1)
-      .map((line) => line.trim())
-      .filter(Boolean);
-    const contextAfter = lines
-      .slice(lineNumber + 1, lineNumber + 2)
-      .map((line) => line.trim())
-      .filter(Boolean);
-
-    return `**Line ${lineNumber}: ${pattern.type.replace(/_/g, " ").toUpperCase()}**\n\nThis line executes: \`${target}\`\n\nContext: ${contextBefore.length > 0 ? contextBefore.join(" → ") + " → " : ""}**[THIS LINE]**${contextAfter.length > 0 ? " → " + contextAfter.join(" → ") : ""}\n\nConsider how data flows into this line and where the result is used next.`;
-  }
-
-  // Advanced level - keep original detailed analysis
-  const contextBefore = lines
-    .slice(Math.max(0, lineNumber - 3), lineNumber - 1)
-    .map((line) => line.trim())
-    .filter(Boolean);
-  const contextAfter = lines
-    .slice(lineNumber, lineNumber + 2)
-    .map((line) => line.trim())
-    .filter(Boolean);
-
-  const contextSummary = [...contextBefore, target, ...contextAfter]
-    .filter(Boolean)
-    .join(" → ");
-
-  return `**Line ${lineNumber}: ${pattern.type.replace(/_/g, " ").toUpperCase()}**\n\nCode: \`${target}\`\n\nContext: ${contextSummary}\n\nAnalyze the architectural implications, potential side effects, and opportunities for optimization or refactoring.`;
+  // Use W3Schools-style explanations
+  return generateW3SchoolsExplanation(content, lineNumber, skillLevel, fileName);
 };
 
 const estimateCodeComplexity = (line: string): "simple" | "complex" => {
@@ -241,19 +234,22 @@ const fetchAIExplanation = async (
 
 const Index = () => {
   const { toast } = useToast();
-  const [mode, setMode] = useState<"github" | "generate">("github");
+  const [mode, setMode] = useState<"github" | "generate" | "upload">("github");
   const [skillLevel, setSkillLevel] = useState<SkillLevel>("beginner");
   const [repoUrl, setRepoUrl] = useState("");
   const [projectIdea, setProjectIdea] = useState("");
+  const [uploadedFolderName, setUploadedFolderName] = useState<string | null>(null);
   const [project, setProject] = useState<Project | null>(null);
   const [fileCache, setFileCache] = useState<Record<string, ProjectFile>>({});
   const [isLoading, setIsLoading] = useState(false);
   const [isFileLoading, setIsFileLoading] = useState(false);
   const [selectedFile, setSelectedFile] = useState<string | null>(null);
   const [selectedLine, setSelectedLine] = useState<number | null>(null);
+  const [selectedLines, setSelectedLines] = useState<Set<number>>(new Set());
   const [lineExplanation, setLineExplanation] = useState<string | null>(null);
   const [fileExplanation, setFileExplanation] = useState<string | null>(null);
   const [isExplaining, setIsExplaining] = useState(false);
+  const folderInputRef = useRef<HTMLInputElement | null>(null);
 
   const displayedFiles = useMemo(() => {
     if (!project) return [];
@@ -271,7 +267,101 @@ const Index = () => {
 
   const resetInteractionState = () => {
     setSelectedLine(null);
+    setSelectedLines(new Set());
     setLineExplanation(null);
+  };
+
+  const handleFolderInputChange = async (event: ChangeEvent<HTMLInputElement>) => {
+    const files = event.target.files;
+
+    if (!files || files.length === 0) {
+      setProject(null);
+      setUploadedFolderName(null);
+      setFileCache({});
+      setSelectedFile(null);
+      setFileExplanation(null);
+      toast({
+        title: "No files selected",
+        description: "Pick a folder to analyze.",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    resetInteractionState();
+    setIsFileLoading(true);
+
+    try {
+      const fileArray = Array.from(files);
+      const firstFile = fileArray[0] as File & { webkitRelativePath?: string };
+      const folderName = firstFile.webkitRelativePath?.split("/")?.[0] ?? "Uploaded Folder";
+
+      const folderFiles: ProjectFile[] = await Promise.all(
+        fileArray.map(async (file) => {
+          const extendedFile = file as File & { webkitRelativePath?: string };
+          const relativePath = extendedFile.webkitRelativePath ?? file.name;
+          const content = await file.text();
+
+          return {
+            path: relativePath,
+            language: inferLanguageFromFilename(file.name),
+            size: file.size ?? null,
+            content
+          };
+        })
+      );
+
+      const cache: Record<string, ProjectFile> = {};
+      folderFiles.forEach((file) => {
+        if (file.content) {
+          cache[file.path] = file;
+        }
+      });
+
+      setUploadedFolderName(folderName);
+      setProject({
+        summary: {
+          name: folderName,
+          description: `Local folder upload: ${folderName}`,
+          source: "uploaded",
+          language: null
+        },
+        files: folderFiles
+      });
+      setFileCache(cache);
+
+      const firstFileWithContent = folderFiles.find((file) => file.content);
+      if (firstFileWithContent) {
+        setSelectedFile(firstFileWithContent.path);
+        const explanation = generateW3SchoolsFileExplanation(
+          firstFileWithContent.path,
+          firstFileWithContent.content ?? "",
+          skillLevel
+        );
+        setFileExplanation(explanation);
+      } else {
+        setSelectedFile(null);
+        setFileExplanation(null);
+      }
+    } catch (error) {
+      console.error("Error processing uploaded folder:", error);
+      setProject(null);
+      setUploadedFolderName(null);
+      setFileCache({});
+      setSelectedFile(null);
+      setFileExplanation(null);
+      const message = error instanceof Error ? error.message : "Failed to process folder.";
+      toast({
+        title: "Upload failed",
+        description: message,
+        variant: "destructive"
+      });
+    } finally {
+      setIsFileLoading(false);
+      if (folderInputRef.current) {
+        folderInputRef.current.value = "";
+      }
+    }
   };
 
   const handleAnalyze = async () => {
@@ -295,6 +385,47 @@ const Index = () => {
       return;
     }
 
+    if (mode === "upload" && !project) {
+      toast({
+        title: "Folder required",
+        description: "Upload a folder to continue.",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    if (mode === "upload") {
+      if (!project || project.files.length === 0) {
+        toast({
+          title: "No files found",
+          description: "Upload a folder with supported files to analyze.",
+          variant: "destructive"
+        });
+        return;
+      }
+
+      if (!selectedFile && project.files.length > 0) {
+        setSelectedFile(project.files[0].path);
+      }
+
+      const fileToExplain = selectedFile
+        ? project.files.find((file) => file.path === selectedFile)
+        : project.files.find((file) => file.content);
+
+      if (fileToExplain?.content) {
+        const explanation = generateW3SchoolsFileExplanation(fileToExplain.path, fileToExplain.content, skillLevel);
+        setFileExplanation(explanation);
+      }
+
+      toast({
+        title: "Folder ready",
+        description: uploadedFolderName
+          ? `${uploadedFolderName} is uploaded and ready to explore.`
+          : "Uploaded folder processed successfully."
+      });
+      return;
+    }
+
     setIsLoading(true);
     setIsFileLoading(false);
     setProject(null);
@@ -312,7 +443,7 @@ const Index = () => {
           title: "Repository loaded",
           description: `${nextProject.summary.owner}/${nextProject.summary.name} is ready to explore.`
         });
-      } else {
+      } else if (mode === "generate") {
         console.log("Generating project with idea:", projectIdea.trim(), "skill level:", skillLevel);
         const nextProject = generateProject(projectIdea.trim(), skillLevel);
         console.log("Generated project:", nextProject);
@@ -355,7 +486,7 @@ const Index = () => {
       // Generate file explanation for cached content
       const cachedFile = fileCache[path];
       if (cachedFile.content) {
-        const explanation = generateFileExplanation(path, cachedFile.content, skillLevel);
+        const explanation = generateW3SchoolsFileExplanation(path, cachedFile.content, skillLevel);
         setFileExplanation(explanation);
       }
       return;
@@ -399,7 +530,7 @@ const Index = () => {
 
       // Generate file explanation
       if (fetched.content) {
-        const explanation = generateFileExplanation(path, fetched.content, skillLevel);
+        const explanation = generateW3SchoolsFileExplanation(path, fetched.content, skillLevel);
         setFileExplanation(explanation);
       }
 
@@ -432,12 +563,12 @@ const Index = () => {
     
     // Regenerate file explanation with new skill level
     if (selectedFile && currentFileContent) {
-      const explanation = generateFileExplanation(selectedFile, currentFileContent, nextLevel);
+      const explanation = generateW3SchoolsFileExplanation(selectedFile, currentFileContent, nextLevel);
       setFileExplanation(explanation);
     }
   };
 
-  const handleLineSelect = async (lineNumber: number) => {
+  const handleLineSelect = async (lineNumber: number, isMultiSelect?: boolean) => {
     if (!currentFileContent) {
       toast({
         title: "No content yet",
@@ -447,17 +578,55 @@ const Index = () => {
       return;
     }
 
+    // Handle multi-line selection
+    let newSelectedLines: Set<number>;
+    
+    if (isMultiSelect) {
+      // Custom multi-select: add/remove individual lines
+      newSelectedLines = new Set(selectedLines);
+      if (newSelectedLines.has(lineNumber)) {
+        newSelectedLines.delete(lineNumber);
+      } else {
+        newSelectedLines.add(lineNumber);
+      }
+    } else {
+      // Smart block selection: select entire code block
+      const block = detectCodeBlock(currentFileContent, lineNumber);
+      newSelectedLines = new Set<number>();
+      for (let i = block.startLine; i <= block.endLine; i++) {
+        newSelectedLines.add(i);
+      }
+    }
+
     setSelectedLine(lineNumber);
+    setSelectedLines(newSelectedLines);
     setIsExplaining(true);
 
     try {
       const lines = currentFileContent.split(/\r?\n/);
-      const targetLine = lines[lineNumber - 1]?.trim() || "";
+      const sortedLines = Array.from(newSelectedLines).sort((a, b) => a - b);
+      
+      // If multiple lines selected, use block explanation
+      if (sortedLines.length > 1) {
+        const blockExplanation = generateBlockExplanation(
+          currentFileContent,
+          sortedLines[0],
+          sortedLines[sortedLines.length - 1],
+          skillLevel,
+          selectedFile || "code.js"
+        );
+        setLineExplanation(blockExplanation);
+        setIsExplaining(false);
+        return;
+      }
+
+      // Single line explanation
+      const targetLine = lines[sortedLines[0] - 1]?.trim() || "";
       const complexity = estimateCodeComplexity(targetLine);
 
       // Use pattern-based explanation for simple code
       if (complexity === "simple") {
-        setLineExplanation(buildLineExplanation(currentFileContent, lineNumber, skillLevel));
+        setLineExplanation(buildLineExplanation(currentFileContent, sortedLines[0], skillLevel, selectedFile || "code.js"));
         setIsExplaining(false);
         return;
       }
@@ -469,7 +638,7 @@ const Index = () => {
       } catch (aiError) {
         console.warn("AI explanation failed, using pattern-based fallback:", aiError);
         // Fallback to pattern-based explanation
-        setLineExplanation(buildLineExplanation(currentFileContent, lineNumber, skillLevel));
+        setLineExplanation(buildLineExplanation(currentFileContent, sortedLines[0], skillLevel, selectedFile || "code.js"));
         toast({
           title: "Using offline explanation",
           description: "AI service unavailable. Showing pattern-based explanation instead.",
@@ -479,7 +648,7 @@ const Index = () => {
     } catch (error) {
       console.error("Error generating explanation:", error);
       // Fallback to pattern-based explanation
-      setLineExplanation(buildLineExplanation(currentFileContent, lineNumber, skillLevel));
+      setLineExplanation(buildLineExplanation(currentFileContent, lineNumber, skillLevel, selectedFile || "code.js"));
       toast({
         title: "Error",
         description: "Could not generate explanation",
@@ -493,12 +662,13 @@ const Index = () => {
   const navItems = [
     { label: "Analyze", id: "analyze" },
     { label: "Generate", id: "generate" },
-    { label: "Learn", id: "learn" }
+    { label: "Upload", id: "upload" }
   ];
 
   const handleNavClick = (id: string) => {
     if (id === "analyze") setMode("github");
     if (id === "generate") setMode("generate");
+    if (id === "upload") setMode("upload");
   };
 
   return (
@@ -511,7 +681,6 @@ const Index = () => {
             animate={{ opacity: 1, x: 0 }}
             transition={{ duration: 0.5 }}
           >
-            <Code2 className="h-6 w-6 text-primary md:h-7 md:w-7" />
             <span className="text-lg font-bold md:text-xl">AI Code Tutor</span>
           </motion.div>
 
@@ -531,14 +700,6 @@ const Index = () => {
               </motion.button>
             ))}
           </nav>
-
-          <motion.div
-            initial={{ opacity: 0, x: 20 }}
-            animate={{ opacity: 1, x: 0 }}
-            transition={{ duration: 0.5 }}
-          >
-            <Sparkles className="h-6 w-6 text-primary md:h-7 md:w-7" />
-          </motion.div>
         </div>
       </header>
 
@@ -564,8 +725,11 @@ const Index = () => {
           transition={{ duration: 0.6, delay: 0.2 }}
         >
           <Card className="p-8 md:p-12">
-          <Tabs value={mode} onValueChange={(value) => setMode(value as "github" | "generate")}>
-            <TabsList className="grid w-full grid-cols-2 bg-secondary/50">
+          <Tabs
+            value={mode}
+            onValueChange={(value) => setMode(value as "github" | "generate" | "upload")}
+          >
+            <TabsList className="grid w-full grid-cols-3 bg-secondary/50">
               <TabsTrigger value="github" className="gap-2 data-[state=active]:bg-sky-600 data-[state=active]:text-white data-[state=inactive]:text-muted-foreground hover:text-foreground transition-colors">
                 <Github className="h-4 w-4" />
                 GitHub Repo
@@ -573,6 +737,10 @@ const Index = () => {
               <TabsTrigger value="generate" className="gap-2 data-[state=active]:bg-sky-600 data-[state=active]:text-white data-[state=inactive]:text-muted-foreground hover:text-foreground transition-colors">
                 <Wand2 className="h-4 w-4" />
                 Generate Idea
+              </TabsTrigger>
+              <TabsTrigger value="upload" className="gap-2 data-[state=active]:bg-sky-600 data-[state=active]:text-white data-[state=inactive]:text-muted-foreground hover:text-foreground transition-colors">
+                <FileCode className="h-4 w-4" />
+                Upload Folder
               </TabsTrigger>
             </TabsList>
 
@@ -615,6 +783,46 @@ const Index = () => {
                   <>
                     <Wand2 className="mr-2 h-4 w-4" />
                     Generate project
+                  </>
+                )}
+              </Button>
+            </TabsContent>
+
+            <TabsContent value="upload" className="mt-6 space-y-4">
+              <div className="flex flex-col items-start gap-3">
+                <label className="text-sm font-medium text-foreground">Upload a local project folder</label>
+                <Button asChild variant="outline" className="bg-secondary/40 hover:bg-secondary/60 text-foreground">
+                  <label className="cursor-pointer">
+                    <input
+                      type="file"
+                      multiple
+                      className="hidden"
+                      ref={(input) => {
+                        folderInputRef.current = input;
+                        if (input) {
+                          input.setAttribute("webkitdirectory", "true");
+                          input.setAttribute("directory", "true");
+                        }
+                      }}
+                      onChange={handleFolderInputChange}
+                    />
+                    <span>Select folder…</span>
+                  </label>
+                </Button>
+                {uploadedFolderName && (
+                  <p className="text-sm text-muted-foreground">Selected: {uploadedFolderName}</p>
+                )}
+              </div>
+              <Button onClick={handleAnalyze} disabled={isLoading || !project} className="w-full md:w-auto bg-sky-600 hover:bg-sky-700 text-white">
+                {isLoading ? (
+                  <>
+                    <Sparkles className="mr-2 h-4 w-4 animate-spin" />
+                    Processing folder...
+                  </>
+                ) : (
+                  <>
+                    <FileCode className="mr-2 h-4 w-4" />
+                    Analyze folder
                   </>
                 )}
               </Button>
@@ -668,6 +876,7 @@ const Index = () => {
                 fileContent={currentFileContent}
                 onLineSelect={handleLineSelect}
                 selectedLine={selectedLine}
+                selectedLines={selectedLines}
               />
             </motion.div>
             <motion.div
@@ -698,8 +907,7 @@ const Index = () => {
               transition={{ duration: 0.5 }}
               viewport={{ once: true }}
             >
-              <div className="flex items-center gap-2 mb-4">
-                <Code2 className="h-5 w-5 text-primary" />
+              <div className="mb-4">
                 <span className="font-bold">AI Code Tutor</span>
               </div>
               <p className="text-sm text-muted-foreground">
@@ -725,11 +933,6 @@ const Index = () => {
                     Generate Projects <ExternalLink className="h-3 w-3" />
                   </button>
                 </li>
-                <li>
-                  <button className="hover:text-foreground transition-colors flex items-center gap-1">
-                    Learn Faster <ExternalLink className="h-3 w-3" />
-                  </button>
-                </li>
               </ul>
             </motion.div>
 
@@ -749,9 +952,6 @@ const Index = () => {
                 </li>
                 <li>
                   <a href="/privacy" className="hover:text-foreground transition-colors">Privacy Policy</a>
-                </li>
-                <li>
-                  <a href="https://github.com/ionuthub/unravel-code-ai" target="_blank" rel="noopener noreferrer" className="hover:text-foreground transition-colors">GitHub</a>
                 </li>
               </ul>
             </motion.div>

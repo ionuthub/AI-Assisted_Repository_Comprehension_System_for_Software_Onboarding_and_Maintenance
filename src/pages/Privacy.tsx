@@ -1,4 +1,3 @@
-import { Code2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useNavigate } from "react-router-dom";
 
@@ -11,12 +10,11 @@ const Privacy = () => {
         <div className="container mx-auto flex h-16 items-center justify-between px-4 md:h-20 md:px-8">
           <button
             onClick={() => navigate("/")}
-            className="flex items-center gap-2 hover:opacity-80 transition-opacity"
+            className="hover:opacity-80 transition-opacity"
           >
-            <Code2 className="h-6 w-6 text-primary" />
             <span className="text-lg font-bold">AI Code Tutor</span>
           </button>
-          <Button variant="outline" onClick={() => navigate("/")}>
+          <Button className="bg-sky-600 hover:bg-sky-700 text-white" onClick={() => navigate("/")}>
             Back to Home
           </Button>
         </div>
@@ -149,12 +147,6 @@ const Privacy = () => {
             </p>
           </section>
 
-          <section>
-            <h2 className="text-2xl font-semibold text-foreground mb-4">10. Contact</h2>
-            <p>
-              For privacy concerns, contact us through GitHub: https://github.com/ionuthub/unravel-code-ai
-            </p>
-          </section>
 
           <div className="bg-primary/5 border border-primary/20 rounded-lg p-6 mt-8">
             <p className="text-sm">

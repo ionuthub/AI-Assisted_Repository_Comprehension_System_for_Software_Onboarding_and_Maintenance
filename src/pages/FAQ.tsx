@@ -1,4 +1,4 @@
-import { Code2, ChevronDown } from "lucide-react";
+import { ChevronDown } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useNavigate } from "react-router-dom";
 import { useState } from "react";
@@ -212,9 +212,8 @@ const FAQ = () => {
         <div className="container mx-auto flex h-16 items-center justify-between px-4 md:h-20 md:px-8">
           <button
             onClick={() => navigate("/")}
-            className="flex items-center gap-2 hover:opacity-80 transition-opacity"
+            className="hover:opacity-80 transition-opacity"
           >
-            <Code2 className="h-6 w-6 text-primary" />
             <span className="text-lg font-bold">AI Code Tutor</span>
           </button>
           <Button variant="outline" onClick={() => navigate("/")}>
@@ -232,16 +231,7 @@ const FAQ = () => {
         >
           <h1 className="text-4xl font-bold mb-4">Frequently Asked Questions</h1>
           <p className="text-lg text-muted-foreground">
-            Find answers to common questions about AI Code Tutor. Can't find what you're looking for?{" "}
-            <a
-              href="https://github.com/ionuthub/unravel-code-ai/issues"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-primary hover:underline"
-            >
-              Open an issue on GitHub
-            </a>
-            .
+            Find answers to common questions about AI Code Tutor.
           </p>
         </motion.div>
 
@@ -283,25 +273,13 @@ const FAQ = () => {
           className="bg-primary/10 border border-primary/20 rounded-lg p-8 text-center"
         >
           <h2 className="text-2xl font-bold mb-4">Still have questions?</h2>
-          <p className="text-muted-foreground mb-6">
-            Check out our GitHub repository or open an issue if you need help.
-          </p>
           <div className="flex gap-4 justify-center flex-wrap">
             <Button
               onClick={() => navigate("/")}
-              variant="default"
+              className="bg-sky-600 hover:bg-sky-700 text-white"
             >
               Back to Home
             </Button>
-            <a
-              href="https://github.com/ionuthub/unravel-code-ai"
-              target="_blank"
-              rel="noopener noreferrer"
-            >
-              <Button variant="outline">
-                Visit GitHub
-              </Button>
-            </a>
           </div>
         </motion.div>
 

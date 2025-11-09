@@ -2,7 +2,7 @@
 
 ## Overview
 
-This guide explains how to deploy **Unravel Code AI** to Vercel with proper environment variable configuration.
+This guide explains how to deploy **AI Code Tutor** to Vercel with proper environment variable configuration.
 
 ## Prerequisites
 

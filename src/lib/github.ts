@@ -8,16 +8,16 @@ const getGitHubToken = (): string | null => {
 };
 
 // Build headers with authentication if token is available
-const getGitHubHeaders = (): HeadersInit => {
-  const token = getGitHubToken();
+const getGitHubHeaders = (token?: string | null): HeadersInit => {
+  const finalToken = token || getGitHubToken();
   const headers: HeadersInit = {
     'Accept': 'application/vnd.github.v3+json',
   };
-  
-  if (token) {
-    headers['Authorization'] = `token ${token}`;
+
+  if (finalToken) {
+    headers['Authorization'] = `token ${finalToken}`;
   }
-  
+
   return headers;
 };
 
@@ -105,10 +105,10 @@ const parseGitHubUrl = (url: string) => {
     if (segments.length < 2) {
       throw new Error("GitHub URL must include owner and repository");
     }
-    
+
     const owner = validateGitHubIdentifier(segments[0], MAX_OWNER_NAME_LENGTH, "Owner");
     const repo = validateGitHubIdentifier(segments[1], MAX_REPO_NAME_LENGTH, "Repository");
-    
+
     return { owner, repo };
   } catch (error) {
     const message = error instanceof Error ? error.message : "Invalid GitHub URL";
@@ -154,8 +154,8 @@ const validateFilePath = (path: string): boolean => {
 
 const buildProjectFiles = (items: GitHubTreeItem[]): ProjectFile[] => {
   return items
-    .filter((item) => 
-      item.type === "blob" && 
+    .filter((item) =>
+      item.type === "blob" &&
       CODE_FILE_PATTERN.test(item.path) &&
       validateFilePath(item.path) &&
       (item.size ?? 0) <= MAX_FILE_SIZE
@@ -170,10 +170,10 @@ const buildProjectFiles = (items: GitHubTreeItem[]): ProjectFile[] => {
     }));
 };
 
-export const fetchRepositoryProject = async (repoUrl: string): Promise<Project> => {
+export const fetchRepositoryProject = async (repoUrl: string, token?: string | null): Promise<Project> => {
   const { owner, repo } = parseGitHubUrl(repoUrl);
-  const headers = getGitHubHeaders();
-  
+  const headers = getGitHubHeaders(token);
+
   const repoResponse = await fetch(`${GITHUB_API}/repos/${owner}/${repo}`, { headers });
   await handleGitHubError(repoResponse);
   const repoData = (await repoResponse.json()) as GitHubRepoResponse;
@@ -189,43 +189,75 @@ export const fetchRepositoryProject = async (repoUrl: string): Promise<Project> 
   };
 };
 
-export const fetchFileContent = async (owner: string, repo: string, branch: string, path: string): Promise<ProjectFile> => {
+export const fetchFileContent = async (owner: string, repo: string, branch: string, path: string, token?: string | null): Promise<ProjectFile> => {
   // Validate inputs
   if (!validateFilePath(path)) {
     throw new Error("Invalid file path");
   }
-  
+
   const rawUrl = `https://raw.githubusercontent.com/${owner}/${repo}/${branch}/${path}`;
-  
+
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), REQUEST_TIMEOUT);
-  
+
   try {
-    const response = await fetch(rawUrl, { signal: controller.signal });
-    
-    if (!response.ok) {
-      if (response.status === 404) {
-        throw new Error(`File not found: ${path}`);
+    let content: string;
+    let size: number;
+
+    // If we have a token, use the API to fetch content (works for private repos)
+    if (token) {
+      const headers = getGitHubHeaders(token);
+      const response = await fetch(`${GITHUB_API}/repos/${owner}/${repo}/contents/${path}?ref=${branch}`, {
+        headers,
+        signal: controller.signal
+      });
+
+      if (!response.ok) {
+        if (response.status === 404) throw new Error(`File not found: ${path}`);
+        throw new Error(`Unable to load ${path}`);
       }
-      throw new Error(`Unable to load ${path}`);
+
+      const data = await response.json();
+      if (Array.isArray(data)) throw new Error("Path is a directory, not a file");
+
+      if (data.size > MAX_FILE_SIZE) throw new Error("File exceeds maximum size of 5MB");
+
+      // GitHub API returns base64 encoded content
+      // Use a more robust base64 decode that handles unicode
+      try {
+        content = decodeURIComponent(escape(atob(data.content.replace(/\n/g, ""))));
+      } catch (e) {
+        // Fallback for standard ascii
+        content = atob(data.content.replace(/\n/g, ""));
+      }
+      size = data.size;
+    } else {
+      // Fallback to raw URL for public repos (no token needed)
+      const response = await fetch(rawUrl, { signal: controller.signal });
+
+      if (!response.ok) {
+        if (response.status === 404) throw new Error(`File not found: ${path}`);
+        throw new Error(`Unable to load ${path}`);
+      }
+
+      const contentLength = response.headers.get("content-length");
+      if (contentLength && parseInt(contentLength) > MAX_FILE_SIZE) {
+        throw new Error(`File exceeds maximum size of 5MB`);
+      }
+
+      content = await response.text();
+      size = content.length;
     }
-    
-    const contentLength = response.headers.get("content-length");
-    if (contentLength && parseInt(contentLength) > MAX_FILE_SIZE) {
-      throw new Error(`File exceeds maximum size of 5MB`);
-    }
-    
-    const content = await response.text();
-    
+
     if (content.length > MAX_FILE_SIZE) {
       throw new Error(`File content exceeds maximum size`);
     }
-    
+
     return {
       path,
       language: inferLanguageFromPath(path),
-      rawUrl,
-      size: content.length,
+      rawUrl: token ? null : rawUrl, // Don't expose raw URL for private repos
+      size,
       content
     };
   } catch (error) {

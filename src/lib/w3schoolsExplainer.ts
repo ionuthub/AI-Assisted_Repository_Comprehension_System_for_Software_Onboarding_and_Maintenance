@@ -584,6 +584,39 @@ export const generateW3SchoolsFileExplanation = (
       "Each test describes what it's testing. Read the test description first. Then look at the assertions to see what's being verified.";
   }
 
+  // Framework detection
+  let frameworkContext = "";
+  if (fileName.endsWith(".tsx") || fileName.endsWith(".jsx") || content.includes("react")) {
+    frameworkContext = `
+### ⚛️ Why React?
+This file uses **React**, a popular library for building websites. React lets you build "components" (like Lego blocks) that you can reuse. It makes building interactive UIs much easier than using plain JavaScript.
+    `.trim();
+  } else if (fileName.endsWith(".vue")) {
+    frameworkContext = `
+### 💚 Why Vue?
+This file uses **Vue.js**, a framework that's famous for being easy to learn. It splits your code into three clear parts: HTML (template), JavaScript (logic), and CSS (styles).
+    `.trim();
+  }
+
+  // Entry point detection
+  let startupInstructions = "";
+  if (fileName === "package.json") {
+    startupInstructions = `
+### 🚀 How to Start This Project
+Since this is the **package.json** file, it tells you how to run the project!
+1. Open your terminal
+2. Run \`npm install\` to get the tools listed here
+3. Look at the "scripts" section - usually you run \`npm run dev\` or \`npm start\` to launch the app.
+    `.trim();
+  } else if (fileName.includes("main") || fileName.includes("index") || fileName.includes("App")) {
+    startupInstructions = `
+### 🏁 Is This The Start?
+Yes! Files like **${fileName}** are often the "entry point" of the application.
+- This is likely the very first code that runs when the app starts.
+- It usually sets up the main structure and loads the rest of the app.
+    `.trim();
+  }
+
   if (skillLevel === "beginner") {
     return `
 ## 📄 ${fileType}: ${fileName}
@@ -592,9 +625,13 @@ export const generateW3SchoolsFileExplanation = (
 
 ${overview}
 
+${frameworkContext ? `\n${frameworkContext}\n` : ""}
+
 ### What You'll Find Here
 
 ${whatToExpect}
+
+${startupInstructions ? `\n${startupInstructions}\n` : ""}
 
 ### How to Read This File
 
@@ -1074,7 +1111,7 @@ const generateLineByLineBreakdown = (blockLines: string[], skillLevel: string): 
     .map((line, idx) => {
       const trimmed = line.trim();
       if (!trimmed || trimmed.startsWith("//")) return null;
-      
+
       const lineNum = idx + 1;
       const description = describeLineSimple(trimmed);
       return `**Line ${lineNum}**: \`${trimmed}\`\n${description}`;
@@ -1089,7 +1126,7 @@ const generateDataFlowAnalysis = (blockLines: string[]): string => {
 
   blockLines.forEach((line) => {
     const trimmed = line.trim();
-    
+
     // Extract variable assignments
     const assignMatch = trimmed.match(/(?:const|let|var)\s+(\w+)/);
     if (assignMatch) {
@@ -1110,7 +1147,7 @@ const generateDataFlowAnalysis = (blockLines: string[]): string => {
   });
 
   let analysis = "**Variables used**: " + (variables.size > 0 ? Array.from(variables).join(", ") : "none");
-  
+
   if (operations.length > 0) {
     analysis += "\n\n**Operations**:\n" + operations.map((op) => `- ${op}`).join("\n");
   }

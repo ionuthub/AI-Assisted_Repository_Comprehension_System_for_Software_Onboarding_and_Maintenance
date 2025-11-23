@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from "react";
+import { useMemo, useRef, useState, useEffect } from "react";
 import type { ChangeEvent } from "react";
 import { motion } from "framer-motion";
 import { Code2, ExternalLink, Heart } from "lucide-react";
@@ -281,6 +281,8 @@ Suggest specific refactoring or enhancement opportunities.`
   }
 };
 
+import { supabase } from "@/integrations/supabase/client";
+
 const Index = () => {
   const { toast } = useToast();
   const [mode, setMode] = useState<TabMode>(TAB_MODES.GITHUB);
@@ -299,6 +301,41 @@ const Index = () => {
   const [fileExplanation, setFileExplanation] = useState<string | null>(null);
   const [isExplaining, setIsExplaining] = useState(false);
   const folderInputRef = useRef<HTMLInputElement | null>(null);
+  const [githubToken, setGithubToken] = useState<string | null>(null);
+  const [manualGithubToken, setManualGithubToken] = useState<string | null>(null);
+  const [session, setSession] = useState<any>(null);
+
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setSession(session);
+    });
+
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((_event, session) => {
+      setSession(session);
+    });
+
+    return () => subscription.unsubscribe();
+  }, []);
+
+  useEffect(() => {
+    const getGithubToken = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session?.user) {
+        const { data } = await supabase
+          .from('profiles')
+          .select('github_access_token')
+          .eq('id', session.user.id)
+          .single();
+
+        if (data?.github_access_token) {
+          setGithubToken(data.github_access_token);
+        }
+      }
+    };
+    getGithubToken();
+  }, []);
 
   const displayedFiles = useMemo(() => {
     if (!project) return [];
@@ -483,7 +520,7 @@ const Index = () => {
 
     try {
       if (mode === "github") {
-        const nextProject = await fetchRepositoryProject(repoUrl.trim());
+        const nextProject = await fetchRepositoryProject(repoUrl.trim(), manualGithubToken || githubToken);
         setProject(nextProject);
         if (nextProject.files.length > 0) {
           setSelectedFile(nextProject.files[0].path);
@@ -569,7 +606,8 @@ const Index = () => {
         project.summary.owner,
         project.summary.repo,
         project.summary.branch ?? "main",
-        path
+        path,
+        manualGithubToken || githubToken
       );
 
       setFileCache((prev) => ({
@@ -765,6 +803,23 @@ const Index = () => {
                   {item.label}
                 </motion.button>
               ))}
+              {session ? (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => supabase.auth.signOut()}
+                >
+                  Sign Out
+                </Button>
+              ) : (
+                <Button
+                  variant="default"
+                  size="sm"
+                  onClick={() => window.location.href = "/auth"}
+                >
+                  Sign In
+                </Button>
+              )}
             </nav>
           </div>
         </header>
@@ -810,8 +865,9 @@ const Index = () => {
                 <TabsContent value={TAB_MODES.GITHUB}>
                   <GitHubTab
                     isLoading={isLoading}
-                    onAnalyze={(url) => {
+                    onAnalyze={(url, token) => {
                       setRepoUrl(url);
+                      if (token) setManualGithubToken(token);
                       handleAnalyze();
                     }}
                   />

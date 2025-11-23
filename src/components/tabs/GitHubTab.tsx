@@ -6,7 +6,7 @@ import { TAB_CONFIG, TAB_MODES } from "@/constants/appConstants";
 
 interface GitHubTabProps {
   isLoading: boolean;
-  onAnalyze: (url: string) => void;
+  onAnalyze: (url: string, token?: string) => void;
 }
 
 /**
@@ -15,10 +15,12 @@ interface GitHubTabProps {
  */
 export const GitHubTab = ({ isLoading, onAnalyze }: GitHubTabProps) => {
   const [repoUrl, setRepoUrl] = useState("");
+  const [token, setToken] = useState("");
+  const [showTokenInput, setShowTokenInput] = useState(false);
 
   const handleAnalyze = () => {
     if (repoUrl.trim()) {
-      onAnalyze(repoUrl.trim());
+      onAnalyze(repoUrl.trim(), token.trim());
     }
   };
 
@@ -37,6 +39,27 @@ export const GitHubTab = ({ isLoading, onAnalyze }: GitHubTabProps) => {
           }
         }}
       />
+
+      <div className="flex flex-col gap-2">
+        <button
+          onClick={() => setShowTokenInput(!showTokenInput)}
+          className="text-xs text-muted-foreground hover:text-primary text-left w-fit flex items-center gap-1"
+        >
+          {showTokenInput ? "Hide" : "Add"} Private Repo Token (Optional)
+        </button>
+
+        {showTokenInput && (
+          <Input
+            type="password"
+            placeholder="ghp_..."
+            value={token}
+            onChange={(e) => setToken(e.target.value)}
+            disabled={isLoading}
+            className="text-sm"
+          />
+        )}
+      </div>
+
       <Button
         onClick={handleAnalyze}
         disabled={isLoading || !repoUrl.trim()}

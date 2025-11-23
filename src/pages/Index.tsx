@@ -185,14 +185,59 @@ const fetchAIExplanation = async (
   if (geminiKey) {
     try {
       console.log("Calling Gemini API directly");
-      
+
+      // Enhanced skill-based prompts with structured output
       const skillPrompts: Record<string, string> = {
-        beginner: "Explain this code in simple terms that a beginner can understand. Use everyday analogies and avoid jargon. Focus on WHAT it does and WHY it's useful.",
-        intermediate: "Explain this code for someone with programming experience. Use proper technical terms, discuss patterns, and mention best practices.",
-        advanced: "Provide an in-depth technical analysis. Discuss architectural decisions, performance implications, trade-offs, and potential improvements."
+        beginner: `You are a friendly coding tutor explaining code to a beginner. Structure your explanation as follows:
+
+**What it does:**
+Explain in simple, everyday language what this code accomplishes.
+
+**How it works:**
+Break down the logic step-by-step using analogies (like recipes, instructions, or everyday tasks).
+
+**Key concepts:**
+List 2-3 programming concepts used here (like variables, functions, loops) with brief, jargon-free explanations.
+
+**Real-world example:**
+Give a relatable example of where this pattern is used in real applications.`,
+
+        intermediate: `You are an experienced developer explaining code to an intermediate programmer. Structure your explanation as follows:
+
+**Purpose:**
+Clearly state what this code does and its role in the larger system.
+
+**Implementation:**
+Explain the approach, patterns, and techniques used.
+
+**Best practices:**
+Highlight any design patterns, coding standards, or best practices demonstrated.
+
+**Things to note:**
+Point out important details, edge cases, or potential gotchas.
+
+**Related concepts:**
+Mention related programming concepts or patterns they should know.`,
+
+        advanced: `You are a senior architect reviewing code. Provide a technical analysis structured as follows:
+
+**Architecture & Design:**
+Analyze the design decisions, patterns, and architectural implications.
+
+**Performance & Optimization:**
+Discuss time/space complexity, performance characteristics, and optimization opportunities.
+
+**Trade-offs:**
+Explain the trade-offs made in this implementation and alternative approaches.
+
+**Production considerations:**
+Cover scalability, maintainability, testing, and potential issues in production.
+
+**Improvements:**
+Suggest specific refactoring or enhancement opportunities.`
       };
 
-      const prompt = `${skillPrompts[skillLevel] || skillPrompts.beginner}\n\nCode to explain:\n\`\`\`\n${code}\n\`\`\``;
+      const prompt = `${skillPrompts[skillLevel] || skillPrompts.beginner}\n\nCode to explain:\n\`\`\`\n${code}\n\`\`\`\n\nProvide a clear, well-structured explanation following the format above.`;
 
       const response = await fetch(
         `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-exp:generateContent?key=${geminiKey}`,
@@ -203,7 +248,7 @@ const fetchAIExplanation = async (
             contents: [{ parts: [{ text: prompt }] }],
             generationConfig: {
               temperature: 0.7,
-              maxOutputTokens: 500,
+              maxOutputTokens: 1200,
             }
           })
         }
@@ -541,11 +586,11 @@ const Index = () => {
       setProject((prev) =>
         prev
           ? {
-              ...prev,
-              files: prev.files.map((file) =>
-                file.path === path ? { ...file, ...fetched } : file
-              )
-            }
+            ...prev,
+            files: prev.files.map((file) =>
+              file.path === path ? { ...file, ...fetched } : file
+            )
+          }
           : prev
       );
     } catch (error) {
@@ -564,7 +609,7 @@ const Index = () => {
   const handleSkillLevelChange = (nextLevel: SkillLevel) => {
     setSkillLevel(nextLevel);
     resetInteractionState();
-    
+
     // Regenerate file explanation with new skill level
     if (selectedFile && currentFileContent) {
       const explanation = generateW3SchoolsFileExplanation(selectedFile, currentFileContent, nextLevel);
@@ -584,7 +629,7 @@ const Index = () => {
 
     // Handle multi-line selection
     let newSelectedLines: Set<number>;
-    
+
     if (isMultiSelect) {
       // Custom multi-select: add/remove individual lines
       newSelectedLines = new Set(selectedLines);
@@ -609,7 +654,7 @@ const Index = () => {
     try {
       const lines = currentFileContent.split(/\r?\n/);
       const sortedLines = Array.from(newSelectedLines).sort((a, b) => a - b);
-      
+
       // If multiple lines selected, use block explanation
       if (sortedLines.length > 1) {
         const blockExplanation = generateBlockExplanation(
@@ -695,250 +740,250 @@ const Index = () => {
     <ErrorBoundary>
       <div className="min-h-screen bg-background flex flex-col">
         <header className="sticky top-0 z-20 border-b border-border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/70">
-        <div className="container mx-auto flex h-16 items-center justify-between px-4 md:h-20 md:px-8">
-          <motion.div
-            className="flex items-center gap-3"
-            initial={{ opacity: 0, x: -20 }}
-            animate={{ opacity: 1, x: 0 }}
-            transition={{ duration: 0.5 }}
-          >
-            <span className="text-lg font-bold md:text-xl">AI Code Tutor</span>
-          </motion.div>
+          <div className="container mx-auto flex h-16 items-center justify-between px-4 md:h-20 md:px-8">
+            <motion.div
+              className="flex items-center gap-3"
+              initial={{ opacity: 0, x: -20 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ duration: 0.5 }}
+            >
+              <span className="text-lg font-bold md:text-xl">AI Code Tutor</span>
+            </motion.div>
 
-          <nav className="hidden items-center gap-8 md:flex">
-            {navItems.map((item, idx) => (
-              <motion.button
-                key={item.id}
-                onClick={() => handleNavClick(item.id)}
-                className="text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
-                initial={{ opacity: 0, y: -10 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.5, delay: idx * 0.1 }}
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.95 }}
+            <nav className="hidden items-center gap-8 md:flex">
+              {navItems.map((item, idx) => (
+                <motion.button
+                  key={item.id}
+                  onClick={() => handleNavClick(item.id)}
+                  className="text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
+                  initial={{ opacity: 0, y: -10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.5, delay: idx * 0.1 }}
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
+                >
+                  {item.label}
+                </motion.button>
+              ))}
+            </nav>
+          </div>
+        </header>
+
+        <main className="flex-1 container mx-auto px-4 py-12 md:px-8 md:py-20">
+          <motion.section
+            className="mx-auto max-w-4xl text-center mb-12 md:mb-16 flex flex-col justify-center min-h-[60vh]"
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6 }}
+          >
+            <h1 className="text-4xl font-bold tracking-tight md:text-6xl mb-6">
+              Understand unfamiliar code in minutes
+            </h1>
+            <p className="text-lg text-muted-foreground md:text-xl leading-relaxed">
+              Paste a GitHub repository or describe an idea. We will fetch the files, highlight the structure,
+              and help you reason about each line without managing any accounts.
+            </p>
+          </motion.section>
+
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6, delay: 0.2 }}
+          >
+            <Card className="p-8 md:p-12">
+              <Tabs
+                value={mode}
+                onValueChange={(value) => setMode(value as TabMode)}
               >
-                {item.label}
-              </motion.button>
-            ))}
-          </nav>
-        </div>
-      </header>
+                <TabsList className="grid w-full grid-cols-3 bg-secondary/50">
+                  <TabsTrigger value={TAB_MODES.GITHUB} className="gap-2 data-[state=active]:bg-sky-600 data-[state=active]:text-white data-[state=inactive]:text-muted-foreground hover:text-foreground transition-colors">
+                    GitHub Repo
+                  </TabsTrigger>
+                  <TabsTrigger value={TAB_MODES.GENERATE} className="gap-2 data-[state=active]:bg-sky-600 data-[state=active]:text-white data-[state=inactive]:text-muted-foreground hover:text-foreground transition-colors">
+                    Generate Idea
+                  </TabsTrigger>
+                  <TabsTrigger value={TAB_MODES.UPLOAD} className="gap-2 data-[state=active]:bg-sky-600 data-[state=active]:text-white data-[state=inactive]:text-muted-foreground hover:text-foreground transition-colors">
+                    Upload Folder
+                  </TabsTrigger>
+                </TabsList>
 
-      <main className="flex-1 container mx-auto px-4 py-12 md:px-8 md:py-20">
-        <motion.section
-          className="mx-auto max-w-4xl text-center mb-12 md:mb-16 flex flex-col justify-center min-h-[60vh]"
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.6 }}
-        >
-          <h1 className="text-4xl font-bold tracking-tight md:text-6xl mb-6">
-            Understand unfamiliar code in minutes
-          </h1>
-          <p className="text-lg text-muted-foreground md:text-xl leading-relaxed">
-            Paste a GitHub repository or describe an idea. We will fetch the files, highlight the structure,
-            and help you reason about each line without managing any accounts.
-          </p>
-        </motion.section>
+                <TabsContent value={TAB_MODES.GITHUB}>
+                  <GitHubTab
+                    isLoading={isLoading}
+                    onAnalyze={(url) => {
+                      setRepoUrl(url);
+                      handleAnalyze();
+                    }}
+                  />
+                </TabsContent>
 
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.6, delay: 0.2 }}
-        >
-          <Card className="p-8 md:p-12">
-          <Tabs
-            value={mode}
-            onValueChange={(value) => setMode(value as TabMode)}
-          >
-            <TabsList className="grid w-full grid-cols-3 bg-secondary/50">
-              <TabsTrigger value={TAB_MODES.GITHUB} className="gap-2 data-[state=active]:bg-sky-600 data-[state=active]:text-white data-[state=inactive]:text-muted-foreground hover:text-foreground transition-colors">
-                GitHub Repo
-              </TabsTrigger>
-              <TabsTrigger value={TAB_MODES.GENERATE} className="gap-2 data-[state=active]:bg-sky-600 data-[state=active]:text-white data-[state=inactive]:text-muted-foreground hover:text-foreground transition-colors">
-                Generate Idea
-              </TabsTrigger>
-              <TabsTrigger value={TAB_MODES.UPLOAD} className="gap-2 data-[state=active]:bg-sky-600 data-[state=active]:text-white data-[state=inactive]:text-muted-foreground hover:text-foreground transition-colors">
-                Upload Folder
-              </TabsTrigger>
-            </TabsList>
+                <TabsContent value={TAB_MODES.GENERATE}>
+                  <GenerateTab
+                    isLoading={isLoading}
+                    onGenerate={(idea) => {
+                      setProjectIdea(idea);
+                      handleAnalyze();
+                    }}
+                  />
+                </TabsContent>
 
-            <TabsContent value={TAB_MODES.GITHUB}>
-              <GitHubTab
-                isLoading={isLoading}
-                onAnalyze={(url) => {
-                  setRepoUrl(url);
-                  handleAnalyze();
-                }}
-              />
-            </TabsContent>
+                <TabsContent value={TAB_MODES.UPLOAD}>
+                  <UploadTab
+                    isLoading={isLoading}
+                    uploadedFolderName={uploadedFolderName}
+                    onFolderSelect={(files) => handleFolderInputChange({
+                      target: { files }
+                    } as ChangeEvent<HTMLInputElement>)}
+                    onAnalyze={handleAnalyze}
+                    isProjectLoaded={!!project}
+                  />
+                </TabsContent>
+              </Tabs>
 
-            <TabsContent value={TAB_MODES.GENERATE}>
-              <GenerateTab
-                isLoading={isLoading}
-                onGenerate={(idea) => {
-                  setProjectIdea(idea);
-                  handleAnalyze();
-                }}
-              />
-            </TabsContent>
-
-            <TabsContent value={TAB_MODES.UPLOAD}>
-              <UploadTab
-                isLoading={isLoading}
-                uploadedFolderName={uploadedFolderName}
-                onFolderSelect={(files) => handleFolderInputChange({
-                  target: { files }
-                } as ChangeEvent<HTMLInputElement>)}
-                onAnalyze={handleAnalyze}
-                isProjectLoaded={!!project}
-              />
-            </TabsContent>
-          </Tabs>
-
-          <div className="mt-8">
-            <SkillSelector
-              selectedLevel={skillLevel}
-              onLevelChange={handleSkillLevelChange}
-              disabled={isLoading || isFileLoading}
-            />
-          </div>
-          </Card>
-        </motion.div>
-
-        {project && (
-          <>
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.5 }}
-            >
-              <ProjectOverviewComponent overview={analyzeProject(project)} />
-            </motion.div>
-            <motion.section
-              className="mt-16 grid gap-6 grid-cols-1 md:grid-cols-[260px_1fr_400px] lg:grid-cols-[300px_1fr_450px]"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              transition={{ duration: 0.6, staggerChildren: 0.1 }}
-            >
-            <motion.div
-              initial={{ opacity: 0, x: -30 }}
-              animate={{ opacity: 1, x: 0 }}
-              transition={{ duration: 0.5 }}
-            >
-              <FileNavigator
-                files={displayedFiles}
-                selectedFile={selectedFile}
-                onFileSelect={handleFileSelect}
-              />
-            </motion.div>
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.5, delay: 0.1 }}
-            >
-              <CodeViewer
-                isLoading={isFileLoading}
-                fileName={selectedFile}
-                fileContent={currentFileContent}
-                onLineSelect={handleLineSelect}
-                selectedLine={selectedLine}
-                selectedLines={selectedLines}
-              />
-            </motion.div>
-            <motion.div
-              initial={{ opacity: 0, x: 30 }}
-              animate={{ opacity: 1, x: 0 }}
-              transition={{ duration: 0.5, delay: 0.2 }}
-            >
-              <ExplanationPanel
-                isLoading={isFileLoading}
-                skillLevel={skillLevel}
-                selectedFile={selectedFile}
-                selectedLine={selectedLine}
-                lineExplanation={lineExplanation}
-                fileExplanation={fileExplanation}
-              />
-            </motion.div>
-            </motion.section>
-          </>
-        )}
-      </main>
-
-      <footer className="border-t border-border bg-secondary/30 mt-20">
-        <div className="container mx-auto px-4 py-12 md:px-8">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-8">
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.5 }}
-              viewport={{ once: true }}
-            >
-              <div className="mb-4">
-                <span className="font-bold">AI Code Tutor</span>
+              <div className="mt-8">
+                <SkillSelector
+                  selectedLevel={skillLevel}
+                  onLevelChange={handleSkillLevelChange}
+                  disabled={isLoading || isFileLoading}
+                />
               </div>
-              <p className="text-sm text-muted-foreground">
-                Learn code faster with AI-powered explanations tailored to your skill level.
-              </p>
-            </motion.div>
+            </Card>
+          </motion.div>
+
+          {project && (
+            <>
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.5 }}
+              >
+                <ProjectOverviewComponent overview={analyzeProject(project)} />
+              </motion.div>
+              <motion.section
+                className="mt-16 grid gap-6 grid-cols-1 md:grid-cols-[260px_1fr_400px] lg:grid-cols-[300px_1fr_450px]"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ duration: 0.6, staggerChildren: 0.1 }}
+              >
+                <motion.div
+                  initial={{ opacity: 0, x: -30 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={{ duration: 0.5 }}
+                >
+                  <FileNavigator
+                    files={displayedFiles}
+                    selectedFile={selectedFile}
+                    onFileSelect={handleFileSelect}
+                  />
+                </motion.div>
+                <motion.div
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.5, delay: 0.1 }}
+                >
+                  <CodeViewer
+                    isLoading={isFileLoading}
+                    fileName={selectedFile}
+                    fileContent={currentFileContent}
+                    onLineSelect={handleLineSelect}
+                    selectedLine={selectedLine}
+                    selectedLines={selectedLines}
+                  />
+                </motion.div>
+                <motion.div
+                  initial={{ opacity: 0, x: 30 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={{ duration: 0.5, delay: 0.2 }}
+                >
+                  <ExplanationPanel
+                    isLoading={isFileLoading}
+                    skillLevel={skillLevel}
+                    selectedFile={selectedFile}
+                    selectedLine={selectedLine}
+                    lineExplanation={lineExplanation}
+                    fileExplanation={fileExplanation}
+                  />
+                </motion.div>
+              </motion.section>
+            </>
+          )}
+        </main>
+
+        <footer className="border-t border-border bg-secondary/30 mt-20">
+          <div className="container mx-auto px-4 py-12 md:px-8">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-8">
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.5 }}
+                viewport={{ once: true }}
+              >
+                <div className="mb-4">
+                  <span className="font-bold">AI Code Tutor</span>
+                </div>
+                <p className="text-sm text-muted-foreground">
+                  Learn code faster with AI-powered explanations tailored to your skill level.
+                </p>
+              </motion.div>
+
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.5, delay: 0.1 }}
+                viewport={{ once: true }}
+              >
+                <h4 className="font-semibold mb-4">Features</h4>
+                <ul className="space-y-2 text-sm text-muted-foreground">
+                  <li>
+                    <button className="hover:text-foreground transition-colors flex items-center gap-1">
+                      Analyze Repos <ExternalLink className="h-3 w-3" />
+                    </button>
+                  </li>
+                  <li>
+                    <button className="hover:text-foreground transition-colors flex items-center gap-1">
+                      Generate Projects <ExternalLink className="h-3 w-3" />
+                    </button>
+                  </li>
+                </ul>
+              </motion.div>
+
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.5, delay: 0.2 }}
+                viewport={{ once: true }}
+              >
+                <h4 className="font-semibold mb-4">Resources</h4>
+                <ul className="space-y-2 text-sm text-muted-foreground">
+                  <li>
+                    <a href="/faq" className="hover:text-foreground transition-colors">FAQ</a>
+                  </li>
+                  <li>
+                    <a href="/terms" className="hover:text-foreground transition-colors">Terms of Service</a>
+                  </li>
+                  <li>
+                    <a href="/privacy" className="hover:text-foreground transition-colors">Privacy Policy</a>
+                  </li>
+                </ul>
+              </motion.div>
+            </div>
 
             <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.5, delay: 0.1 }}
+              className="border-t border-border pt-8 flex flex-col md:flex-row items-center justify-between text-sm text-muted-foreground"
+              initial={{ opacity: 0 }}
+              whileInView={{ opacity: 1 }}
+              transition={{ duration: 0.5, delay: 0.3 }}
               viewport={{ once: true }}
             >
-              <h4 className="font-semibold mb-4">Features</h4>
-              <ul className="space-y-2 text-sm text-muted-foreground">
-                <li>
-                  <button className="hover:text-foreground transition-colors flex items-center gap-1">
-                    Analyze Repos <ExternalLink className="h-3 w-3" />
-                  </button>
-                </li>
-                <li>
-                  <button className="hover:text-foreground transition-colors flex items-center gap-1">
-                    Generate Projects <ExternalLink className="h-3 w-3" />
-                  </button>
-                </li>
-              </ul>
-            </motion.div>
-
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.5, delay: 0.2 }}
-              viewport={{ once: true }}
-            >
-              <h4 className="font-semibold mb-4">Resources</h4>
-              <ul className="space-y-2 text-sm text-muted-foreground">
-                <li>
-                  <a href="/faq" className="hover:text-foreground transition-colors">FAQ</a>
-                </li>
-                <li>
-                  <a href="/terms" className="hover:text-foreground transition-colors">Terms of Service</a>
-                </li>
-                <li>
-                  <a href="/privacy" className="hover:text-foreground transition-colors">Privacy Policy</a>
-                </li>
-              </ul>
+              <p>© 2025 AI Code Tutor. All rights reserved.</p>
+              <div className="flex items-center gap-2 mt-4 md:mt-0">
+                <span>Made with</span>
+                <Heart className="h-4 w-4 text-red-500 fill-red-500" />
+                <span>for developers</span>
+              </div>
             </motion.div>
           </div>
-
-          <motion.div
-            className="border-t border-border pt-8 flex flex-col md:flex-row items-center justify-between text-sm text-muted-foreground"
-            initial={{ opacity: 0 }}
-            whileInView={{ opacity: 1 }}
-            transition={{ duration: 0.5, delay: 0.3 }}
-            viewport={{ once: true }}
-          >
-            <p>© 2025 AI Code Tutor. All rights reserved.</p>
-            <div className="flex items-center gap-2 mt-4 md:mt-0">
-              <span>Made with</span>
-              <Heart className="h-4 w-4 text-red-500 fill-red-500" />
-              <span>for developers</span>
-            </div>
-          </motion.div>
-        </div>
-      </footer>
+        </footer>
       </div>
     </ErrorBoundary>
   );

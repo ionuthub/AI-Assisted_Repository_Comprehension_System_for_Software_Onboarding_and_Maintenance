@@ -1,9 +1,12 @@
 import { Card } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Sparkles, BookOpen, Link2 } from "lucide-react";
+import { Sparkles, BookOpen, Link2, Copy, CheckCircle2 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { getRelatedConcepts } from "@/lib/relatedConcepts";
 import { getComplexityBadge } from "@/lib/complexityDetector";
+import { useToast } from "@/hooks/use-toast";
+import { useState } from "react";
 
 interface ExplanationPanelProps {
   isLoading: boolean;
@@ -137,6 +140,28 @@ const ExplanationPanel = ({
   fileExplanation,
 }: ExplanationPanelProps) => {
   const defaultItems = defaultMessages[skillLevel];
+  const { toast } = useToast();
+  const [copied, setCopied] = useState(false);
+
+  const handleCopyExplanation = () => {
+    const textToCopy = lineExplanation || fileExplanation || "";
+    if (!textToCopy) return;
+
+    navigator.clipboard.writeText(textToCopy).then(() => {
+      setCopied(true);
+      toast({
+        title: "Copied!",
+        description: "Explanation copied to clipboard",
+      });
+      setTimeout(() => setCopied(false), 2000);
+    }).catch(() => {
+      toast({
+        title: "Failed to copy",
+        description: "Please try again",
+        variant: "destructive",
+      });
+    });
+  };
 
   return (
     <Card className="h-full bg-card border-border">
@@ -146,6 +171,20 @@ const ExplanationPanel = ({
         <span className="text-[10px] md:text-xs text-muted-foreground ml-auto capitalize">
           {skillLevel}
         </span>
+        {(lineExplanation || fileExplanation) && (
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={handleCopyExplanation}
+            className="h-7 px-2 ml-2"
+          >
+            {copied ? (
+              <CheckCircle2 className="w-3.5 h-3.5 text-green-500" />
+            ) : (
+              <Copy className="w-3.5 h-3.5" />
+            )}
+          </Button>
+        )}
       </div>
 
       <div className="p-4 md:p-6 space-y-3 md:space-y-4 max-h-[400px] md:max-h-[600px] overflow-auto">
@@ -247,7 +286,7 @@ const ExplanationPanel = ({
                     const parts = line.split(/(`[^`]+`)/);
                     return (
                       <p key={idx} className="text-sm md:text-base text-muted-foreground leading-relaxed">
-                        {parts.map((part, i) => 
+                        {parts.map((part, i) =>
                           part.startsWith("`") ? (
                             <code key={i} className="bg-code text-primary/90 px-2 py-0.5 rounded text-xs md:text-sm font-mono">
                               {part.replace(/`/g, "")}

@@ -110,16 +110,60 @@ export default async function handler(req: Request): Promise<Response> {
     
     console.log('GEMINI_API_KEY is set, making request to Gemini API');
 
-    // Skill-based prompts
+    // Enhanced skill-based prompts with structured output
     const skillPrompts: Record<string, string> = {
-      beginner: "Explain this code in simple terms that a beginner can understand. Use everyday analogies and avoid jargon. Focus on WHAT it does and WHY it's useful.",
-      intermediate: "Explain this code for someone with programming experience. Use proper technical terms, discuss patterns, and mention best practices.",
-      advanced: "Provide an in-depth technical analysis. Discuss architectural decisions, performance implications, trade-offs, and potential improvements."
+      beginner: `You are a friendly coding tutor explaining code to a beginner. Structure your explanation as follows:
+
+**What it does:**
+Explain in simple, everyday language what this code accomplishes.
+
+**How it works:**
+Break down the logic step-by-step using analogies (like recipes, instructions, or everyday tasks).
+
+**Key concepts:**
+List 2-3 programming concepts used here (like variables, functions, loops) with brief, jargon-free explanations.
+
+**Real-world example:**
+Give a relatable example of where this pattern is used in real applications.`,
+
+      intermediate: `You are an experienced developer explaining code to an intermediate programmer. Structure your explanation as follows:
+
+**Purpose:**
+Clearly state what this code does and its role in the larger system.
+
+**Implementation:**
+Explain the approach, patterns, and techniques used.
+
+**Best practices:**
+Highlight any design patterns, coding standards, or best practices demonstrated.
+
+**Things to note:**
+Point out important details, edge cases, or potential gotchas.
+
+**Related concepts:**
+Mention related programming concepts or patterns they should know.`,
+
+      advanced: `You are a senior architect reviewing code. Provide a technical analysis structured as follows:
+
+**Architecture & Design:**
+Analyze the design decisions, patterns, and architectural implications.
+
+**Performance & Optimization:**
+Discuss time/space complexity, performance characteristics, and optimization opportunities.
+
+**Trade-offs:**
+Explain the trade-offs made in this implementation and alternative approaches.
+
+**Production considerations:**
+Cover scalability, maintainability, testing, and potential issues in production.
+
+**Improvements:**
+Suggest specific refactoring or enhancement opportunities.`
     };
 
-    const prompt = `${skillPrompts[skillLevel] || skillPrompts.beginner}\n\nCode to explain:\n\`\`\`\n${code}\n\`\`\``;
-
-    // Call Gemini API
+    const prompt = `${skillPrompts[skillLevel] || skillPrompts.beginner}\n\nCode to explain:\n\`\`\`\n${code}\n\`\`\`\n\nProvide a clear, well-structured explanation following the format above.`;
+ 
+    // Call Gemini API with increased token limit
     const response = await fetch(
       `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-exp:generateContent?key=${GEMINI_API_KEY}`,
       {
@@ -129,7 +173,7 @@ export default async function handler(req: Request): Promise<Response> {
           contents: [{ parts: [{ text: prompt }] }],
           generationConfig: {
             temperature: 0.7,
-            maxOutputTokens: 500,
+            maxOutputTokens: 1200,
           }
         })
       }

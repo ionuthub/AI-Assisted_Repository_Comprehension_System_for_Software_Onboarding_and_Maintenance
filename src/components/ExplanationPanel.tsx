@@ -24,12 +24,12 @@ const parseExplanationText = (text: string) => {
 
   for (const line of lines) {
     // Detect bold headers like **What it is:**
-    if (line.match(/^\*\*[^*]+:\*\*/)) {
+    if (line.match(/^\*\*[^*]+:\*\*/) || line.match(/^##\s+/)) {
       if (currentSection.content.length > 0) {
         sections.push(currentSection);
       }
       currentSection = {
-        title: line.replace(/\*\*/g, ""),
+        title: line.replace(/^\*\*/, "").replace(/:\*\*$/, "").replace(/^##\s+/, "").trim(),
         content: []
       };
     }

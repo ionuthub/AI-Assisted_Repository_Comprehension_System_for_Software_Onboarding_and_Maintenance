@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Github, Sparkles } from "lucide-react";
+import { Github, Sparkles, ExternalLink } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { TAB_CONFIG, TAB_MODES } from "@/constants/appConstants";
@@ -49,14 +49,24 @@ export const GitHubTab = ({ isLoading, onAnalyze }: GitHubTabProps) => {
         </button>
 
         {showTokenInput && (
-          <Input
-            type="password"
-            placeholder="ghp_..."
-            value={token}
-            onChange={(e) => setToken(e.target.value)}
-            disabled={isLoading}
-            className="text-sm"
-          />
+          <div className="space-y-2">
+            <Input
+              type="password"
+              placeholder="ghp_..."
+              value={token}
+              onChange={(e) => setToken(e.target.value)}
+              disabled={isLoading}
+              className="text-sm"
+            />
+            <a
+              href="https://github.com/settings/tokens/new?scopes=repo&description=AI%20Code%20Tutor"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-[10px] text-sky-600 hover:underline flex items-center gap-1"
+            >
+              Generate a read-only token on GitHub <ExternalLink className="w-3 h-3" />
+            </a>
+          </div>
         )}
       </div>
 

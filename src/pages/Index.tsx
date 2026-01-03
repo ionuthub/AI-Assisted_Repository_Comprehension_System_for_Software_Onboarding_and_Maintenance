@@ -18,7 +18,8 @@ import UploadTab from "@/components/tabs/UploadTab";
 import type { Project, ProjectFile } from "@/types/project";
 import { fetchRepositoryProject, fetchFileContent } from "@/lib/github";
 import { generateProject } from "@/lib/generation";
-import { generateW3SchoolsExplanation, generateW3SchoolsFileExplanation, generateBlockExplanation } from "@/lib/w3schoolsExplainer";
+import { generateW3SchoolsExplanation, generateW3SchoolsFileExplanation } from "@/lib/w3schoolsExplainer";
+import type { ChatMessage } from "@/components/ExplanationPanel";
 import { detectCodeBlock } from "@/lib/blockDetector";
 import { analyzeProject } from "@/lib/projectAnalyzer";
 import { useToast } from "@/hooks/use-toast";
@@ -69,7 +70,7 @@ const detectCodePattern = (line: string): { type: string; description: string } 
   const trimmed = line.trim();
 
   // Assignment patterns
-  if (/^(const|let|var)\s+\w+\s*=/.test(trimmed)) {
+  if (/^(const|let|var)\s+\w+\s*=\s*/.test(trimmed)) {
     const varName = trimmed.match(/^(const|let|var)\s+(\w+)/)?.[2];
     return {
       type: "assignment",
@@ -137,9 +138,9 @@ const buildLineExplanation = (
 const estimateCodeComplexity = (line: string): "simple" | "complex" => {
   // Simple patterns: basic assignments, simple function calls, returns
   const simplePatterns = [
-    /^(const|let|var)\s+\w+\s*=\s*[^{\[\(]*$/,  // Simple assignment
-    /^return\s+[^{\[\(]*$/,                        // Simple return
-    /^\w+\s*=\s*[^{\[\(]*$/,                      // Simple reassignment
+    /^(const|let|var)\s+\w+\s*=\s*[^{\[(]*$/,  // Simple assignment
+    /^return\s+[^{\[(]*$/,                        // Simple return
+    /^\w+\s*=\s*[^{\[(]*$/,                      // Simple reassignment
     /^if\s*\([^{]*\)\s*$/,                        // Simple condition
     /^\}\s*$/,                                     // Closing brace
     /^\{\s*$/,                                     // Opening brace
@@ -150,136 +151,27 @@ const estimateCodeComplexity = (line: string): "simple" | "complex" => {
 };
 
 const fetchAIExplanation = async (
-  code: string,
-  skillLevel: SkillLevel
+  messages: ChatMessage[],
+  skillLevel: SkillLevel,
+  systemContext?: string
 ): Promise<string> => {
-  // In development, try serverless function first (for Vercel preview)
-  // In production, serverless function will be used
-  if (!import.meta.env.DEV) {
-    try {
-      const response = await fetch('/api/explain-code', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          code,
-          skillLevel
-        })
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-        if (data.explanation) {
-          return data.explanation;
-        }
-      } else {
-        const errorData = await response.json().catch(() => ({}));
-        console.warn(`Serverless function failed with status ${response.status}:`, errorData);
-      }
-    } catch (error) {
-      console.warn("Serverless function failed, trying direct API:", error);
-    }
-  }
-
-  // Try direct Gemini API call (for local development)
-  const geminiKey = import.meta.env.VITE_GEMINI_API_KEY;
-  if (geminiKey) {
-    try {
-      console.log("Calling Gemini API directly");
-
-      // Enhanced skill-based prompts with structured output
-      const skillPrompts: Record<string, string> = {
-        beginner: `You are a friendly coding tutor explaining code to a beginner. Structure your explanation as follows:
-
-**What it does:**
-Explain in simple, everyday language what this code accomplishes.
-
-**How it works:**
-Break down the logic step-by-step using analogies (like recipes, instructions, or everyday tasks).
-
-**Key concepts:**
-List 2-3 programming concepts used here (like variables, functions, loops) with brief, jargon-free explanations.
-
-**Real-world example:**
-Give a relatable example of where this pattern is used in real applications.`,
-
-        intermediate: `You are an experienced developer explaining code to an intermediate programmer. Structure your explanation as follows:
-
-**Purpose:**
-Clearly state what this code does and its role in the larger system.
-
-**Implementation:**
-Explain the approach, patterns, and techniques used.
-
-**Best practices:**
-Highlight any design patterns, coding standards, or best practices demonstrated.
-
-**Things to note:**
-Point out important details, edge cases, or potential gotchas.
-
-**Related concepts:**
-Mention related programming concepts or patterns they should know.`,
-
-        advanced: `You are a senior architect reviewing code. Provide a technical analysis structured as follows:
-
-**Architecture & Design:**
-Analyze the design decisions, patterns, and architectural implications.
-
-**Performance & Optimization:**
-Discuss time/space complexity, performance characteristics, and optimization opportunities.
-
-**Trade-offs:**
-Explain the trade-offs made in this implementation and alternative approaches.
-
-**Production considerations:**
-Cover scalability, maintainability, testing, and potential issues in production.
-
-**Improvements:**
-Suggest specific refactoring or enhancement opportunities.`
-      };
-
-      const prompt = `${skillPrompts[skillLevel] || skillPrompts.beginner}\n\nCode to explain:\n\`\`\`\n${code}\n\`\`\`\n\nProvide a clear, well-structured explanation following the format above.`;
-
-      const response = await fetch(
-        `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-exp:generateContent?key=${geminiKey}`,
-        {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            contents: [{ parts: [{ text: prompt }] }],
-            generationConfig: {
-              temperature: 0.7,
-              maxOutputTokens: 1200,
-            }
-          })
-        }
-      );
-
-      if (response.ok) {
-        const data = await response.json();
-        const explanation = data.candidates?.[0]?.content?.parts?.[0]?.text;
-        if (explanation) {
-          console.log("✅ Gemini API success");
-          return explanation;
-        }
-      } else {
-        const error = await response.text();
-        console.error("Gemini API error:", response.status, error);
-      }
-    } catch (error) {
-      console.error("Direct Gemini API failed:", error);
-    }
-  }
-
-  // Fall back to mock API
-  console.log("Using mock API fallback");
   try {
-    const { mockExplainCode } = await import('@/lib/mockApi');
-    return mockExplainCode(code, skillLevel);
-  } catch (mockError) {
-    console.error("Mock API also failed:", mockError);
-    throw new Error("Unable to generate explanation");
+    const response = await fetch('/api/explain-code', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ messages, skillLevel, systemContext })
+    });
+
+    if (response.ok) {
+      const data = await response.json();
+      return data.explanation;
+    }
+
+    // Fallback if API fails
+    throw new Error('Explainer API failed');
+  } catch (error) {
+    console.error("AI Explanation failed:", error);
+    return "I'm sorry, I'm having trouble connecting to the AI brain right now. Please try again in a moment.";
   }
 };
 
@@ -306,7 +198,8 @@ const Index = () => {
   const folderInputRef = useRef<HTMLInputElement | null>(null);
   const [githubToken, setGithubToken] = useState<string | null>(null);
   const [manualGithubToken, setManualGithubToken] = useState<string | null>(null);
-  const [session, setSession] = useState<any>(null);
+  const [session, setSession] = useState<unknown>(null);
+  const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
@@ -658,35 +551,29 @@ const Index = () => {
     }
   };
 
+  const handleChatSendMessage = async (content: string) => {
+    const newUserMessage: ChatMessage = { role: 'user', content };
+    const updatedMessages = [...chatMessages, newUserMessage];
+    setChatMessages(updatedMessages);
+    setIsExplaining(true);
+
+    try {
+      const summary = project ? analyzeProject(project).explanation.slice(0, 10).join("\n") : "";
+      const aiResponse = await fetchAIExplanation(updatedMessages, skillLevel, summary);
+      setChatMessages([...updatedMessages, { role: 'model', content: aiResponse }]);
+    } catch (error) {
+      toast({ title: "Chat failed", variant: "destructive" });
+    } finally {
+      setIsExplaining(false);
+    }
+  };
+
   const handleLineSelect = async (lineNumber: number, isMultiSelect?: boolean) => {
-    if (!currentFileContent) {
-      toast({
-        title: "No content yet",
-        description: "Select a file first to load its contents.",
-        variant: "destructive"
-      });
-      return;
-    }
+    if (!currentFileContent) return;
 
-    // Handle multi-line selection
-    let newSelectedLines: Set<number>;
-
-    if (isMultiSelect) {
-      // Custom multi-select: add/remove individual lines
-      newSelectedLines = new Set(selectedLines);
-      if (newSelectedLines.has(lineNumber)) {
-        newSelectedLines.delete(lineNumber);
-      } else {
-        newSelectedLines.add(lineNumber);
-      }
-    } else {
-      // Smart block selection: select entire code block
-      const block = detectCodeBlock(currentFileContent, lineNumber);
-      newSelectedLines = new Set<number>();
-      for (let i = block.startLine; i <= block.endLine; i++) {
-        newSelectedLines.add(i);
-      }
-    }
+    const block = detectCodeBlock(currentFileContent, lineNumber);
+    const newSelectedLines = new Set<number>();
+    for (let i = block.startLine; i <= block.endLine; i++) newSelectedLines.add(i);
 
     setSelectedLine(lineNumber);
     setSelectedLines(newSelectedLines);
@@ -694,56 +581,21 @@ const Index = () => {
 
     try {
       const lines = currentFileContent.split(/\r?\n/);
-      const sortedLines = Array.from(newSelectedLines).sort((a, b) => a - b);
+      const codeSnippet = lines.slice(block.startLine - 1, block.endLine).join("\n");
 
-      // If multiple lines selected, use block explanation
-      if (sortedLines.length > 1) {
-        const blockExplanation = generateBlockExplanation(
-          currentFileContent,
-          sortedLines[0],
-          sortedLines[sortedLines.length - 1],
-          skillLevel,
-          selectedFile || "code.js"
-        );
-        setLineExplanation(blockExplanation);
-        setIsExplaining(false);
-        return;
-      }
+      const prompt = `I'm looking at ${selectedFile} at lines ${block.startLine}-${block.endLine}. Explain this code:\n\n\`\`\`\n${codeSnippet}\n\`\`\``;
 
-      // Single line explanation
-      const targetLine = lines[sortedLines[0] - 1]?.trim() || "";
-      const complexity = estimateCodeComplexity(targetLine);
+      setChatMessages([{ role: 'user', content: prompt }]);
 
-      // Use pattern-based explanation for simple code
-      if (complexity === "simple") {
-        setLineExplanation(buildLineExplanation(currentFileContent, sortedLines[0], skillLevel, selectedFile || "code.js"));
-        setIsExplaining(false);
-        return;
-      }
+      const projectSummary = project ? analyzeProject(project).explanation.slice(0, 10).join("\n") : "";
+      const aiResponse = await fetchAIExplanation([{ role: 'user', content: prompt }], skillLevel, projectSummary);
 
-      // Use AI for complex code
-      try {
-        const aiExplanation = await fetchAIExplanation(targetLine, skillLevel);
-        setLineExplanation(aiExplanation);
-      } catch (aiError) {
-        console.warn("AI explanation failed, using pattern-based fallback:", aiError);
-        // Fallback to pattern-based explanation
-        setLineExplanation(buildLineExplanation(currentFileContent, sortedLines[0], skillLevel, selectedFile || "code.js"));
-        toast({
-          title: "Using offline explanation",
-          description: "AI service unavailable. Showing pattern-based explanation instead.",
-          variant: "default"
-        });
-      }
+      setChatMessages([
+        { role: 'user', content: prompt },
+        { role: 'model', content: aiResponse }
+      ]);
     } catch (error) {
-      console.error("Error generating explanation:", error);
-      // Fallback to pattern-based explanation
-      setLineExplanation(buildLineExplanation(currentFileContent, lineNumber, skillLevel, selectedFile || "code.js"));
-      toast({
-        title: "Error",
-        description: "Could not generate explanation",
-        variant: "destructive"
-      });
+      toast({ title: "Explanation failed", variant: "destructive" });
     } finally {
       setIsExplaining(false);
     }
@@ -912,7 +764,10 @@ const Index = () => {
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.5 }}
               >
-                <ProjectOverviewComponent overview={analyzeProject(project)} />
+                <ProjectOverviewComponent
+                  overview={analyzeProject(project)}
+                  project={project}
+                />
               </motion.div>
               <motion.section
                 className="mt-16 grid gap-6 grid-cols-1 md:grid-cols-[260px_1fr_400px] lg:grid-cols-[300px_1fr_450px]"
@@ -951,12 +806,10 @@ const Index = () => {
                   transition={{ duration: 0.5, delay: 0.2 }}
                 >
                   <ExplanationPanel
-                    isLoading={isFileLoading}
+                    isLoading={isExplaining}
+                    messages={chatMessages}
+                    onSendMessage={handleChatSendMessage}
                     skillLevel={skillLevel}
-                    selectedFile={selectedFile}
-                    selectedLine={selectedLine}
-                    lineExplanation={lineExplanation}
-                    fileExplanation={fileExplanation}
                   />
                 </motion.div>
               </motion.section>

@@ -9,6 +9,7 @@ export interface ProjectOverview {
   beginnerFriendly: boolean;
   difficulty: "easy" | "medium" | "hard";
   explanation: string[];
+  learningPath: { day: string; goal: string; focus: string[] }[];
 }
 
 const detectProjectType = (files: string[], packageJson?: any): string => {
@@ -197,6 +198,24 @@ export const analyzeProject = (project: Project): ProjectOverview => {
     `4. Try running the project locally to see it in action`
   ];
 
+  const learningPath = [
+    {
+      day: "Day 1: The Core",
+      goal: "Understand the skeleton and entry points.",
+      focus: filePaths.filter(p => p.includes("index") || p.includes("App") || p.includes("main")).slice(0, 3)
+    },
+    {
+      day: "Day 2: Logic & Data",
+      goal: "Dive into how the app handles information.",
+      focus: filePaths.filter(p => !p.includes("css") && !p.includes("index") && (p.includes("lib") || p.includes("utils") || p.includes("store"))).slice(0, 3)
+    },
+    {
+      day: "Day 3: UI & UX",
+      goal: "Explore the visual components and user flow.",
+      focus: filePaths.filter(p => p.includes("component") || p.includes("page")).slice(0, 3)
+    }
+  ];
+
   return {
     projectType,
     description,
@@ -205,7 +224,8 @@ export const analyzeProject = (project: Project): ProjectOverview => {
     whyThisFramework: whyFramework,
     beginnerFriendly: difficulty === "easy",
     difficulty,
-    explanation
+    explanation,
+    learningPath
   };
 };
 

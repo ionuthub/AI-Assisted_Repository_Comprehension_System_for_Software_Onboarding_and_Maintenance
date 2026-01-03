@@ -9,9 +9,10 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 interface ProjectOverviewProps {
   overview: ProjectOverview;
   project: Project;
+  onFileSelect?: (path: string) => void;
 }
 
-export default function ProjectOverviewComponent({ overview, project }: ProjectOverviewProps) {
+export default function ProjectOverviewComponent({ overview, project, onFileSelect }: ProjectOverviewProps) {
   return (
     <Card className="p-0 mb-6 bg-card border-border overflow-hidden shadow-xl">
       <Tabs defaultValue="overview" className="w-full">
@@ -115,7 +116,7 @@ export default function ProjectOverviewComponent({ overview, project }: ProjectO
           </TabsContent>
 
           <TabsContent value="graph" className="mt-0">
-            <DependencyGraph project={project} />
+            <DependencyGraph project={project} onFileSelect={onFileSelect} />
           </TabsContent>
         </div>
       </Tabs>

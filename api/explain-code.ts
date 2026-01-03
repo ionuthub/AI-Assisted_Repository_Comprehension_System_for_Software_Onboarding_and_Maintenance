@@ -9,10 +9,6 @@ const getSecurityHeaders = (origin?: string) => {
     'Access-Control-Allow-Origin': isAllowed ? origin : allowedOrigins[0],
     'Access-Control-Allow-Methods': 'POST, OPTIONS',
     'Access-Control-Allow-Headers': 'Content-Type',
-    'X-Content-Type-Options': 'nosniff',
-    'X-Frame-Options': 'SAMEORIGIN',
-    'X-XSS-Protection': '1; mode=block',
-    'Referrer-Policy': 'strict-origin-when-cross-origin',
   };
 };
 
@@ -40,90 +36,110 @@ export default async function handler(req: Request): Promise<Response> {
     return new Response(JSON.stringify({ error: 'Method not allowed' }), { status: 405, headers: securityHeaders });
   }
 
-  const baseHeaders: HeadersInit = {
-    ...securityHeaders,
-    'Content-Type': 'application/json',
-  };
+  // Basic IP Rate Limiting (10 requests per minute)
+  const ip = req.headers.get('x-forwarded-for') || 'anonymous';
+  if (redis) {
+    const rateLimitKey = `ratelimit:${ip}`;
+    const count = await redis.incr(rateLimitKey);
+    if (count === 1) await redis.expire(rateLimitKey, 60);
+    if (count > 15) {
+      return new Response(JSON.stringify({ error: 'Too many requests' }), { status: 429, headers: securityHeaders });
+    }
+  }
 
   try {
-    const body = await req.json();
-    const { messages, skillLevel, systemContext } = body as {
-      messages: Message[];
-      skillLevel: string;
-      systemContext?: string;
-    };
-
-    if (!messages || !Array.isArray(messages) || messages.length === 0) {
-      return new Response(JSON.stringify({ error: 'Missing messages' }), { status: 400, headers: baseHeaders });
-    }
+    const { messages, skillLevel, systemContext, stream = false } = await req.json();
 
     const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
     if (!GEMINI_API_KEY) {
-      return new Response(JSON.stringify({ error: 'API key not configured' }), { status: 500, headers: baseHeaders });
-    }
-
-    // Semantic Cache Check
-    const lastUserMessage = messages[messages.length - 1].content;
-    const cacheKey = `explanation:${skillLevel}:${Buffer.from(lastUserMessage).toString('base64').substring(0, 50)}`;
-
-    if (redis) {
-      const cached = await redis.get(cacheKey);
-      if (cached) {
-        return new Response(JSON.stringify({ explanation: cached, cached: true }), { status: 200, headers: baseHeaders });
-      }
+      return new Response(JSON.stringify({ error: 'Key not set' }), { status: 500, headers: securityHeaders });
     }
 
     const skillPrompts: Record<string, string> = {
-      beginner: "Explain like a friendly tutor for a primary student. Use analogies.",
-      intermediate: "Explain for a junior developer. Focus on patterns and 'why'.",
-      advanced: "Act as a senior architect. Focus on performance, trade-offs, and scalability."
+      beginner: "Explain like a friendly tutor using analogies.",
+      intermediate: "Focus on patterns and 'why'.",
+      advanced: "Senior architect view. Performance, trade-offs."
     };
 
     const systemPrompt = `You are a Code Tutor. Level: ${skillLevel}. 
-${skillPrompts[skillLevel] || skillPrompts.beginner}
-${systemContext ? `Project Context:\n${systemContext}` : ''}
-Always structure your first response with markdown headers.`;
+    ${skillPrompts[skillLevel] || skillPrompts.beginner}
+    ${systemContext ? `Project Context:\n${systemContext}` : ''}`;
+
+    const endpoint = stream ? 'streamGenerateContent' : 'generateContent';
+    const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-exp:${endpoint}?key=${GEMINI_API_KEY}`;
 
     const geminiPayload = {
-      contents: messages.map(m => ({
+      contents: messages.map((m: Message) => ({
         role: m.role,
         parts: [{ text: m.content }]
       })),
-      systemInstruction: {
-        parts: [{ text: systemPrompt }]
-      },
-      generationConfig: {
-        temperature: 0.7,
-        maxOutputTokens: 1500,
-      }
+      systemInstruction: { parts: [{ text: systemPrompt }] },
+      generationConfig: { temperature: 0.7, maxOutputTokens: 2000 }
     };
 
-    const response = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-exp:generateContent?key=${GEMINI_API_KEY}`,
-      {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(geminiPayload)
-      }
-    );
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(geminiPayload)
+    });
 
     if (!response.ok) {
-      const error = await response.text();
-      return new Response(JSON.stringify({ error: 'AI Error', details: error }), { status: 502, headers: baseHeaders });
+      return new Response(await response.text(), { status: response.status, headers: securityHeaders });
     }
 
-    const data = await response.json();
-    const explanation = data.candidates?.[0]?.content?.parts?.[0]?.text || 'No response generated';
-
-    // Cache the result
-    if (redis && explanation !== 'No response generated') {
-      await redis.set(cacheKey, explanation, { ex: 3600 * 24 }); // Cache for 24h
+    if (!stream) {
+      const data = await response.json();
+      const explanation = data.candidates?.[0]?.content?.parts?.[0]?.text;
+      return new Response(JSON.stringify({ explanation }), { status: 200, headers: { ...securityHeaders, 'Content-Type': 'application/json' } });
     }
 
-    return new Response(JSON.stringify({ explanation }), { status: 200, headers: baseHeaders });
+    // Handle Streaming
+    const encoder = new TextEncoder();
+    const decoder = new TextDecoder();
+    const { readable, writable } = new TransformStream();
+    const writer = writable.getWriter();
+
+    (async () => {
+      const reader = response.body?.getReader();
+      if (!reader) return writer.close();
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+
+        const chunk = decoder.decode(value);
+        // Gemini stream format is weird: objects inside a JSON array
+        // We just strip the array brackets if they exist and parse the JSON objects
+        try {
+          const sanitized = chunk.replace(/^\[/, '').replace(/\]$/, '').replace(/,$/, '');
+          const lines = sanitized.split('\r\n').filter(l => l.trim());
+
+          for (const line of lines) {
+            const data = JSON.parse(line);
+            const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
+            if (text) {
+              await writer.write(encoder.encode(text));
+            }
+          }
+        } catch (e) {
+          // Fallback if parsing fails - sometimes chunks are partial
+          console.warn("Partial chunk ignored", chunk);
+        }
+      }
+      writer.close();
+    })();
+
+    return new Response(readable, {
+      headers: {
+        ...securityHeaders,
+        'Content-Type': 'text/event-stream',
+        'Cache-Control': 'no-cache',
+        'Connection': 'keep-alive',
+      },
+    });
 
   } catch (error) {
-    return new Response(JSON.stringify({ error: 'Server Error' }), { status: 500, headers: baseHeaders });
+    return new Response(JSON.stringify({ error: 'Server Error' }), { status: 500, headers: securityHeaders });
   }
 }
 

@@ -16,14 +16,18 @@ interface ExplanationPanelProps {
   isLoading: boolean;
   messages: ChatMessage[];
   onSendMessage: (content: string) => void;
+  onRefactor?: () => void;
   skillLevel: string;
+  hasSelection: boolean;
 }
 
 const ExplanationPanel = ({
   isLoading,
   messages,
   onSendMessage,
+  onRefactor,
   skillLevel,
+  hasSelection
 }: ExplanationPanelProps) => {
   const [inputValue, setInputValue] = useState("");
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -67,9 +71,21 @@ const ExplanationPanel = ({
       <div className="bg-secondary/50 px-4 py-3 border-b border-border flex items-center justify-between">
         <div className="flex items-center gap-2">
           <Sparkles className="w-4 h-4 text-primary" />
-          <span className="text-sm font-semibold">Tutor Chat</span>
+          <span className="text-sm font-semibold">Tutor AI</span>
         </div>
-        <Badge variant="outline" className="text-[10px] capitalize">{skillLevel}</Badge>
+        <div className="flex items-center gap-2">
+          {hasSelection && (
+            <Button
+              variant="outline"
+              size="sm"
+              className="h-7 text-[10px] gap-1 bg-primary/5 border-primary/20 hover:bg-primary/10"
+              onClick={onRefactor}
+            >
+              <Sparkles className="w-3 h-3" /> Refactor
+            </Button>
+          )}
+          <Badge variant="outline" className="text-[10px] capitalize bg-background">{skillLevel}</Badge>
+        </div>
       </div>
 
       <div
@@ -77,9 +93,29 @@ const ExplanationPanel = ({
         className="flex-1 p-4 overflow-y-auto space-y-6 scroll-smooth"
       >
         {messages.length === 0 && !isLoading && (
-          <div className="h-full flex flex-col items-center justify-center text-center p-8 opacity-40">
-            <Bot className="w-12 h-12 mb-4" />
-            <p className="text-sm font-medium">Select code to start a conversation with the AI Tutor.</p>
+          <div className="h-full flex flex-col items-center justify-center text-center p-8">
+            <div className="w-16 h-16 bg-primary/5 rounded-full flex items-center justify-center mb-6 animate-pulse">
+              <Bot className="w-8 h-8 text-primary" />
+            </div>
+            {!hasSelection ? (
+              <>
+                <h5 className="font-bold text-sm mb-2 text-foreground">Awaiting Input...</h5>
+                <p className="text-xs text-muted-foreground max-w-[200px]">Click any line of code to start the interactive tutorial.</p>
+              </>
+            ) : (
+              <div className="space-y-4">
+                <h5 className="font-bold text-sm text-foreground">Code Selected!</h5>
+                <p className="text-xs text-muted-foreground">The AI is ready. What would you like to do?</p>
+                <div className="flex flex-col gap-2">
+                  <Button size="sm" onClick={() => onSendMessage("Explain this code in detail and use an analogy.")} className="text-xs">
+                    Explain Selection
+                  </Button>
+                  <Button size="sm" variant="outline" onClick={onRefactor} className="text-xs">
+                    Refactor for quality
+                  </Button>
+                </div>
+              </div>
+            )}
           </div>
         )}
 

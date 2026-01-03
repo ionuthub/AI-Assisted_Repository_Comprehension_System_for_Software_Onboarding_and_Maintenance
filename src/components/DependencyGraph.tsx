@@ -15,10 +15,17 @@ import { GitBranch } from 'lucide-react';
 
 interface DependencyGraphProps {
     project: Project;
+    onFileSelect?: (path: string) => void;
 }
 
-const DependencyGraph = ({ project }: DependencyGraphProps) => {
+const DependencyGraph = ({ project, onFileSelect }: DependencyGraphProps) => {
     const { nodes: graphNodes, edges: graphEdges } = useMemo(() => generateDependencyGraph(project), [project]);
+
+    const onNodeClick = (_: React.MouseEvent, node: Node) => {
+        if (onFileSelect) {
+            onFileSelect(node.id);
+        }
+    };
 
     const nodes: Node[] = graphNodes.map((node, idx) => ({
         id: node.id,
@@ -54,6 +61,7 @@ const DependencyGraph = ({ project }: DependencyGraphProps) => {
             <ReactFlow
                 nodes={nodes}
                 edges={edges}
+                onNodeClick={onNodeClick}
                 fitView
                 className="bg-transparent"
             >

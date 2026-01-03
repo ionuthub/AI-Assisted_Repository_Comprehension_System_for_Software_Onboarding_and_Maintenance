@@ -24,8 +24,9 @@ import { detectCodeBlock } from "@/lib/blockDetector";
 import { analyzeProject } from "@/lib/projectAnalyzer";
 import { useToast } from "@/hooks/use-toast";
 import { useKeyboardShortcuts } from "@/hooks/useKeyboardShortcuts";
-import { TAB_MODES, SKILL_LEVELS, ERROR_MESSAGES, SUCCESS_MESSAGES } from "@/constants/appConstants";
+import { TAB_MODES, SKILL_LEVELS } from "@/constants/appConstants";
 import type { SkillLevel, TabMode } from "@/constants/appConstants";
+import { useProjectStore } from "@/store/useProjectStore";
 import SEO from "@/components/SEO";
 
 const inferLanguageFromFilename = (fileName: string): string | null => {
@@ -150,28 +151,33 @@ const estimateCodeComplexity = (line: string): "simple" | "complex" => {
   return isSimple ? "simple" : "complex";
 };
 
-const fetchAIExplanation = async (
+const fetchAIExplanationStream = async (
   messages: ChatMessage[],
   skillLevel: SkillLevel,
-  systemContext?: string
-): Promise<string> => {
+  systemContext: string,
+  onChunk: (text: string) => void
+): Promise<void> => {
   try {
     const response = await fetch('/api/explain-code', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ messages, skillLevel, systemContext })
+      body: JSON.stringify({ messages, skillLevel, systemContext, stream: true })
     });
 
-    if (response.ok) {
-      const data = await response.json();
-      return data.explanation;
-    }
+    if (!response.ok) throw new Error('Streaming failed');
 
-    // Fallback if API fails
-    throw new Error('Explainer API failed');
+    const reader = response.body?.getReader();
+    const decoder = new TextDecoder();
+    if (!reader) return;
+
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      onChunk(decoder.decode(value));
+    }
   } catch (error) {
-    console.error("AI Explanation failed:", error);
-    return "I'm sorry, I'm having trouble connecting to the AI brain right now. Please try again in a moment.";
+    console.error("Streaming error:", error);
+    onChunk("I'm sorry, I'm having trouble connecting to the AI brain right now.");
   }
 };
 
@@ -180,26 +186,30 @@ import { supabase } from "@/integrations/supabase/client";
 const Index = () => {
   const { toast } = useToast();
   const { t } = useTranslation();
-  const [mode, setMode] = useState<TabMode>(TAB_MODES.GITHUB);
-  const [skillLevel, setSkillLevel] = useState<SkillLevel>(SKILL_LEVELS.BEGINNER);
+
+  const {
+    mode, setMode,
+    project, setProject,
+    fileCache, setFileCache,
+    updateFileCache,
+    selectedFile, setSelectedFile,
+    selectedLine, setSelectedLine,
+    selectedLines, setSelectedLines,
+    skillLevel, setSkillLevel,
+    chatMessages, setChatMessages,
+    isExplaining, setIsExplaining,
+    isLoading, setIsLoading,
+    isFileLoading, setIsFileLoading,
+    resetSelection
+  } = useProjectStore();
+
   const [repoUrl, setRepoUrl] = useState("");
   const [projectIdea, setProjectIdea] = useState("");
   const [uploadedFolderName, setUploadedFolderName] = useState<string | null>(null);
-  const [project, setProject] = useState<Project | null>(null);
-  const [fileCache, setFileCache] = useState<Record<string, ProjectFile>>({});
-  const [isLoading, setIsLoading] = useState(false);
-  const [isFileLoading, setIsFileLoading] = useState(false);
-  const [selectedFile, setSelectedFile] = useState<string | null>(null);
-  const [selectedLine, setSelectedLine] = useState<number | null>(null);
-  const [selectedLines, setSelectedLines] = useState<Set<number>>(new Set());
-  const [lineExplanation, setLineExplanation] = useState<string | null>(null);
-  const [fileExplanation, setFileExplanation] = useState<string | null>(null);
-  const [isExplaining, setIsExplaining] = useState(false);
   const folderInputRef = useRef<HTMLInputElement | null>(null);
   const [githubToken, setGithubToken] = useState<string | null>(null);
   const [manualGithubToken, setManualGithubToken] = useState<string | null>(null);
   const [session, setSession] = useState<unknown>(null);
-  const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
@@ -247,213 +257,71 @@ const Index = () => {
 
   const currentFileContent = selectedFileEntry?.content ?? null;
 
-  const resetInteractionState = () => {
-    setSelectedLine(null);
-    setSelectedLines(new Set());
-    setLineExplanation(null);
-  };
 
   const handleFolderInputChange = async (event: ChangeEvent<HTMLInputElement>) => {
     const files = event.target.files;
+    if (!files || files.length === 0) return;
 
-    if (!files || files.length === 0) {
-      setProject(null);
-      setUploadedFolderName(null);
-      setFileCache({});
-      setSelectedFile(null);
-      setFileExplanation(null);
-      toast({
-        title: "No files selected",
-        description: "Pick a folder to analyze.",
-        variant: "destructive"
-      });
-      return;
-    }
-
-    resetInteractionState();
+    resetSelection();
     setIsFileLoading(true);
 
     try {
       const fileArray = Array.from(files);
-      const firstFile = fileArray[0] as File & { webkitRelativePath?: string };
-      const folderName = firstFile.webkitRelativePath?.split("/")?.[0] ?? "Uploaded Folder";
+      const folderName = (fileArray[0] as File & { webkitRelativePath?: string }).webkitRelativePath?.split("/")?.[0] ?? "Uploaded Folder";
 
       const folderFiles: ProjectFile[] = await Promise.all(
-        fileArray.map(async (file) => {
-          const extendedFile = file as File & { webkitRelativePath?: string };
-          const relativePath = extendedFile.webkitRelativePath ?? file.name;
-          const content = await file.text();
-
-          return {
-            path: relativePath,
-            language: inferLanguageFromFilename(file.name),
-            size: file.size ?? null,
-            content
-          };
-        })
+        fileArray.map(async (file) => ({
+          path: (file as File & { webkitRelativePath?: string }).webkitRelativePath ?? file.name,
+          language: inferLanguageFromFilename(file.name),
+          size: file.size ?? null,
+          content: await file.text()
+        }))
       );
 
       const cache: Record<string, ProjectFile> = {};
-      folderFiles.forEach((file) => {
-        if (file.content) {
-          cache[file.path] = file;
-        }
-      });
+      folderFiles.forEach(f => { if (f.content) cache[f.path] = f; });
 
-      setUploadedFolderName(folderName);
       setProject({
-        summary: {
-          name: folderName,
-          description: `Local folder upload: ${folderName}`,
-          source: "uploaded",
-          language: null
-        },
+        summary: { name: folderName, description: `Local: ${folderName}`, source: "uploaded", language: null },
         files: folderFiles
       });
       setFileCache(cache);
 
-      const firstFileWithContent = folderFiles.find((file) => file.content);
-      if (firstFileWithContent) {
-        setSelectedFile(firstFileWithContent.path);
-        const explanation = generateW3SchoolsFileExplanation(
-          firstFileWithContent.path,
-          firstFileWithContent.content ?? "",
-          skillLevel
-        );
-        setFileExplanation(explanation);
-      } else {
-        setSelectedFile(null);
-        setFileExplanation(null);
+      const first = folderFiles.find(f => f.content);
+      if (first) {
+        setSelectedFile(first.path);
+        const explanation = generateW3SchoolsFileExplanation(first.path, first.content || "", skillLevel);
+        setChatMessages([{ role: 'model', content: explanation }]);
       }
     } catch (error) {
-      console.error("Error processing uploaded folder:", error);
-      setProject(null);
-      setUploadedFolderName(null);
-      setFileCache({});
-      setSelectedFile(null);
-      setFileExplanation(null);
-      const message = error instanceof Error ? error.message : "Failed to process folder.";
-      toast({
-        title: "Upload failed",
-        description: message,
-        variant: "destructive"
-      });
+      toast({ title: "Upload failed", variant: "destructive" });
     } finally {
       setIsFileLoading(false);
-      if (folderInputRef.current) {
-        folderInputRef.current.value = "";
-      }
+      if (folderInputRef.current) folderInputRef.current.value = "";
     }
   };
 
   const handleAnalyze = async () => {
-    resetInteractionState();
-
-    if (mode === "github" && !repoUrl.trim()) {
-      toast({
-        title: "Repository required",
-        description: "Enter a public GitHub repository URL to continue.",
-        variant: "destructive"
-      });
-      return;
-    }
-
-    if (mode === "generate" && !projectIdea.trim()) {
-      toast({
-        title: "Idea required",
-        description: "Describe the project you would like to generate.",
-        variant: "destructive"
-      });
-      return;
-    }
-
-    if (mode === "upload" && !project) {
-      toast({
-        title: "Folder required",
-        description: "Upload a folder to continue.",
-        variant: "destructive"
-      });
-      return;
-    }
-
-    if (mode === "upload") {
-      if (!project || project.files.length === 0) {
-        toast({
-          title: "No files found",
-          description: "Upload a folder with supported files to analyze.",
-          variant: "destructive"
-        });
-        return;
-      }
-
-      if (!selectedFile && project.files.length > 0) {
-        setSelectedFile(project.files[0].path);
-      }
-
-      const fileToExplain = selectedFile
-        ? project.files.find((file) => file.path === selectedFile)
-        : project.files.find((file) => file.content);
-
-      if (fileToExplain?.content) {
-        const explanation = generateW3SchoolsFileExplanation(fileToExplain.path, fileToExplain.content, skillLevel);
-        setFileExplanation(explanation);
-      }
-
-      toast({
-        title: "Folder ready",
-        description: uploadedFolderName
-          ? `${uploadedFolderName} is uploaded and ready to explore.`
-          : "Uploaded folder processed successfully."
-      });
-      return;
-    }
+    resetSelection();
+    if (mode === "github" && !repoUrl.trim()) return toast({ title: "Repo URL required", variant: "destructive" });
+    if (mode === "generate" && !projectIdea.trim()) return toast({ title: "Idea required", variant: "destructive" });
 
     setIsLoading(true);
-    setIsFileLoading(false);
-    setProject(null);
-    setFileCache({});
-    setSelectedFile(null);
-
     try {
       if (mode === "github") {
-        const nextProject = await fetchRepositoryProject(repoUrl.trim(), manualGithubToken || githubToken);
-        setProject(nextProject);
-        if (nextProject.files.length > 0) {
-          setSelectedFile(nextProject.files[0].path);
-        }
-        toast({
-          title: "Repository loaded",
-          description: `${nextProject.summary.owner}/${nextProject.summary.name} is ready to explore.`
-        });
+        const next = await fetchRepositoryProject(repoUrl.trim(), manualGithubToken || githubToken);
+        setProject(next);
+        if (next.files.length > 0) setSelectedFile(next.files[0].path);
       } else if (mode === "generate") {
-        console.log("Generating project with idea:", projectIdea.trim(), "skill level:", skillLevel);
-        const nextProject = generateProject(projectIdea.trim(), skillLevel);
-        console.log("Generated project:", nextProject);
-        const initialCache: Record<string, ProjectFile> = {};
-        nextProject.files.forEach((file) => {
-          if (file.content) {
-            initialCache[file.path] = file;
-          }
-        });
-        console.log("Files generated:", nextProject.files.length);
-        setProject(nextProject);
-        setFileCache(initialCache);
-        if (nextProject.files.length > 0) {
-          setSelectedFile(nextProject.files[0].path);
-        }
-        toast({
-          title: "Project generated",
-          description: `A starter project with ${nextProject.files.length} files has been created locally for you.`
-        });
+        const next = generateProject(projectIdea.trim(), skillLevel);
+        setProject(next);
+        const cache: Record<string, ProjectFile> = {};
+        next.files.forEach(f => { if (f.content) cache[f.path] = f; });
+        setFileCache(cache);
+        if (next.files.length > 0) setSelectedFile(next.files[0].path);
       }
-    } catch (error) {
-      const message =
-        error instanceof Error ? error.message : "Failed to load project.";
-      toast({
-        title: "Something went wrong",
-        description: message,
-        variant: "destructive"
-      });
+    } catch (e) {
+      toast({ title: "Analysis failed", variant: "destructive" });
     } finally {
       setIsLoading(false);
     }
@@ -461,144 +329,95 @@ const Index = () => {
 
   const handleFileSelect = async (path: string) => {
     if (!project) return;
-    resetInteractionState();
+    resetSelection();
     setSelectedFile(path);
 
     if (fileCache[path]?.content) {
-      // Generate file explanation for cached content
-      const cachedFile = fileCache[path];
-      if (cachedFile.content) {
-        const explanation = generateW3SchoolsFileExplanation(path, cachedFile.content, skillLevel);
-        setFileExplanation(explanation);
-      }
+      const explanation = generateW3SchoolsFileExplanation(path, fileCache[path].content || "", skillLevel);
+      setChatMessages([{ role: 'model', content: explanation }]);
       return;
     }
 
-    const source = project.summary.source;
-
-    if (source !== "github") {
-      const existing = project.files.find((file) => file.path === path);
-      if (existing?.content) {
-        setFileCache((prev) => ({
-          ...prev,
-          [path]: existing
-        }));
+    if (project.summary.source === "github") {
+      setIsFileLoading(true);
+      try {
+        const fetched = await fetchFileContent(
+          project.summary.owner!,
+          project.summary.repo!,
+          project.summary.branch ?? "main",
+          path,
+          manualGithubToken || githubToken
+        );
+        updateFileCache(path, fetched);
+        const explanation = generateW3SchoolsFileExplanation(path, fetched.content || "", skillLevel);
+        setChatMessages([{ role: 'model', content: explanation }]);
+      } catch (e) {
+        toast({ title: "Fetch failed", variant: "destructive" });
+      } finally {
+        setIsFileLoading(false);
       }
-      return;
-    }
-
-    if (!project.summary.owner || !project.summary.repo) {
-      toast({
-        title: "Missing metadata",
-        description: "Unable to retrieve repository owner or name.",
-        variant: "destructive"
-      });
-      return;
-    }
-
-    setIsFileLoading(true);
-    try {
-      const fetched = await fetchFileContent(
-        project.summary.owner,
-        project.summary.repo,
-        project.summary.branch ?? "main",
-        path,
-        manualGithubToken || githubToken
-      );
-
-      setFileCache((prev) => ({
-        ...prev,
-        [path]: fetched
-      }));
-
-      // Generate file explanation
-      if (fetched.content) {
-        const explanation = generateW3SchoolsFileExplanation(path, fetched.content, skillLevel);
-        setFileExplanation(explanation);
-      }
-
-      setProject((prev) =>
-        prev
-          ? {
-            ...prev,
-            files: prev.files.map((file) =>
-              file.path === path ? { ...file, ...fetched } : file
-            )
-          }
-          : prev
-      );
-    } catch (error) {
-      const message =
-        error instanceof Error ? error.message : "Unable to load file content.";
-      toast({
-        title: "File fetch failed",
-        description: message,
-        variant: "destructive"
-      });
-    } finally {
-      setIsFileLoading(false);
     }
   };
 
   const handleSkillLevelChange = (nextLevel: SkillLevel) => {
     setSkillLevel(nextLevel);
-    resetInteractionState();
+    resetSelection();
 
-    // Regenerate file explanation with new skill level
     if (selectedFile && currentFileContent) {
       const explanation = generateW3SchoolsFileExplanation(selectedFile, currentFileContent, nextLevel);
-      setFileExplanation(explanation);
+      setChatMessages([{ role: 'model', content: explanation }]);
     }
   };
 
   const handleChatSendMessage = async (content: string) => {
-    const newUserMessage: ChatMessage = { role: 'user', content };
-    const updatedMessages = [...chatMessages, newUserMessage];
-    setChatMessages(updatedMessages);
+    const newUserMsg: ChatMessage = { role: 'user', content };
+    const updated: ChatMessage[] = [...chatMessages, newUserMsg, { role: 'model', content: '' }];
+    setChatMessages(updated);
     setIsExplaining(true);
 
-    try {
-      const summary = project ? analyzeProject(project).explanation.slice(0, 10).join("\n") : "";
-      const aiResponse = await fetchAIExplanation(updatedMessages, skillLevel, summary);
-      setChatMessages([...updatedMessages, { role: 'model', content: aiResponse }]);
-    } catch (error) {
-      toast({ title: "Chat failed", variant: "destructive" });
-    } finally {
-      setIsExplaining(false);
-    }
+    let fullText = "";
+    const summary = project ? analyzeProject(project).explanation.slice(0, 5).join("\n") : "";
+
+    await fetchAIExplanationStream(updated.slice(0, -1), skillLevel, summary, (chunk) => {
+      fullText += chunk;
+      const streamingMsgs: ChatMessage[] = [...updated.slice(0, -1), { role: 'model', content: fullText }];
+      setChatMessages(streamingMsgs);
+    });
+    setIsExplaining(false);
   };
 
-  const handleLineSelect = async (lineNumber: number, isMultiSelect?: boolean) => {
+  const handleLineSelect = async (lineNumber: number) => {
     if (!currentFileContent) return;
-
     const block = detectCodeBlock(currentFileContent, lineNumber);
-    const newSelectedLines = new Set<number>();
-    for (let i = block.startLine; i <= block.endLine; i++) newSelectedLines.add(i);
+    const lines = new Set<number>();
+    for (let i = block.startLine; i <= block.endLine; i++) lines.add(i);
 
     setSelectedLine(lineNumber);
-    setSelectedLines(newSelectedLines);
+    setSelectedLines(lines);
     setIsExplaining(true);
 
-    try {
-      const lines = currentFileContent.split(/\r?\n/);
-      const codeSnippet = lines.slice(block.startLine - 1, block.endLine).join("\n");
+    const snippet = currentFileContent.split(/\r?\n/).slice(block.startLine - 1, block.endLine).join("\n");
+    const prompt = `Explain these lines (${block.startLine}-${block.endLine}) in ${selectedFile}:\n\n\`\`\`\n${snippet}\n\`\`\``;
 
-      const prompt = `I'm looking at ${selectedFile} at lines ${block.startLine}-${block.endLine}. Explain this code:\n\n\`\`\`\n${codeSnippet}\n\`\`\``;
+    setChatMessages([{ role: 'user', content: prompt }, { role: 'model', content: '' }]);
 
-      setChatMessages([{ role: 'user', content: prompt }]);
+    let fullText = "";
+    const summary = project ? analyzeProject(project).explanation.slice(0, 5).join("\n") : "";
 
-      const projectSummary = project ? analyzeProject(project).explanation.slice(0, 10).join("\n") : "";
-      const aiResponse = await fetchAIExplanation([{ role: 'user', content: prompt }], skillLevel, projectSummary);
+    await fetchAIExplanationStream([{ role: 'user', content: prompt }], skillLevel, summary, (chunk) => {
+      fullText += chunk;
+      setChatMessages([{ role: 'user', content: prompt }, { role: 'model', content: fullText }]);
+    });
+    setIsExplaining(false);
+  };
 
-      setChatMessages([
-        { role: 'user', content: prompt },
-        { role: 'model', content: aiResponse }
-      ]);
-    } catch (error) {
-      toast({ title: "Explanation failed", variant: "destructive" });
-    } finally {
-      setIsExplaining(false);
-    }
+  const handleRefactorRequest = async () => {
+    if (!selectedLine || !currentFileContent) return;
+    const block = detectCodeBlock(currentFileContent, selectedLine);
+    const snippet = currentFileContent.split(/\r?\n/).slice(block.startLine - 1, block.endLine).join("\n");
+
+    const prompt = `Refactor this code block from ${selectedFile} for better quality/performance. Show the refactored code and explain why:\n\n\`\`\`\n${snippet}\n\`\`\``;
+    handleChatSendMessage(prompt);
   };
 
   const navItems = [
@@ -767,6 +586,7 @@ const Index = () => {
                 <ProjectOverviewComponent
                   overview={analyzeProject(project)}
                   project={project}
+                  onFileSelect={handleFileSelect}
                 />
               </motion.div>
               <motion.section
@@ -809,7 +629,9 @@ const Index = () => {
                     isLoading={isExplaining}
                     messages={chatMessages}
                     onSendMessage={handleChatSendMessage}
+                    onRefactor={handleRefactorRequest}
                     skillLevel={skillLevel}
+                    hasSelection={!!selectedLine}
                   />
                 </motion.div>
               </motion.section>

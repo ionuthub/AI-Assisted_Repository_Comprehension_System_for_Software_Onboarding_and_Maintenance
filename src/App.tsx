@@ -13,7 +13,8 @@ const Index = lazy(() => import("./pages/Index"));
 const Terms = lazy(() => import("./pages/Terms"));
 const Privacy = lazy(() => import("./pages/Privacy"));
 const FAQ = lazy(() => import("./pages/FAQ"));
-const Auth = lazy(() => import("./pages/Auth"));const AuthCallback = lazy(() => import("./pages/AuthCallback"));
+const Auth = lazy(() => import("./pages/Auth"));
+const AuthCallback = lazy(() => import("./pages/AuthCallback"));
 const NotFound = lazy(() => import("./pages/NotFound"));
 
 const PageLoader = () => (

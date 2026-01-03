@@ -7,10 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { useState, useRef, useEffect } from "react";
 import { useToast } from "@/hooks/use-toast";
 
-export interface ChatMessage {
-  role: 'user' | 'model';
-  content: string;
-}
+import { ChatMessage } from "@/types/chat";
 
 interface ExplanationPanelProps {
   isLoading: boolean;

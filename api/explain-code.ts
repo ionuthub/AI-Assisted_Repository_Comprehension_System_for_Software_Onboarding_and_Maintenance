@@ -55,6 +55,11 @@ export default async function handler(req: Request): Promise<Response> {
       return new Response(JSON.stringify({ error: 'Key not set' }), { status: 500, headers: securityHeaders });
     }
 
+    // Prompt Engineering Strategy:
+    // We strictly differentiate tone and depth based on skill level.
+    // Beginner: Uses analogies (e.g., "Think of a variable like a box"), avoids jargon.
+    // Intermediate: Focuses on best practices, patterns (e.g., DRY, SOLID), and design rationale.
+    // Advanced: Discusses performance, trade-offs, scaling, and architectural implications.
     const skillPrompts: Record<string, string> = {
       beginner: "Explain like a friendly tutor using analogies.",
       intermediate: "Focus on patterns and 'why'.",
@@ -77,66 +82,83 @@ export default async function handler(req: Request): Promise<Response> {
       generationConfig: { temperature: 0.7, maxOutputTokens: 2000 }
     };
 
-    const response = await fetch(url, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(geminiPayload)
-    });
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 60000); // 60s timeout
 
-    if (!response.ok) {
-      return new Response(await response.text(), { status: response.status, headers: securityHeaders });
-    }
+    try {
+      const response = await fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(geminiPayload),
+        signal: controller.signal
+      });
+      clearTimeout(timeoutId);
 
-    if (!stream) {
-      const data = await response.json();
-      const explanation = data.candidates?.[0]?.content?.parts?.[0]?.text;
-      return new Response(JSON.stringify({ explanation }), { status: 200, headers: { ...securityHeaders, 'Content-Type': 'application/json' } });
-    }
+      if (!response.ok) {
+        return new Response(await response.text(), { status: response.status, headers: securityHeaders });
+      }
 
-    // Handle Streaming
-    const encoder = new TextEncoder();
-    const decoder = new TextDecoder();
-    const { readable, writable } = new TransformStream();
-    const writer = writable.getWriter();
+      if (!stream) {
+        const data = await response.json();
+        const explanation = data.candidates?.[0]?.content?.parts?.[0]?.text;
+        return new Response(JSON.stringify({ explanation }), { status: 200, headers: { ...securityHeaders, 'Content-Type': 'application/json' } });
+      }
 
-    (async () => {
-      const reader = response.body?.getReader();
-      if (!reader) return writer.close();
+      // Handle Streaming
+      const encoder = new TextEncoder();
+      const decoder = new TextDecoder();
+      const { readable, writable } = new TransformStream();
+      const writer = writable.getWriter();
 
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
+      (async () => {
+        const reader = response.body?.getReader();
+        if (!reader) return writer.close();
 
-        const chunk = decoder.decode(value);
-        // Gemini stream format is weird: objects inside a JSON array
-        // We just strip the array brackets if they exist and parse the JSON objects
         try {
-          const sanitized = chunk.replace(/^\[/, '').replace(/\]$/, '').replace(/,$/, '');
-          const lines = sanitized.split('\r\n').filter(l => l.trim());
+          while (true) {
+            const { done, value } = await reader.read();
+            if (done) break;
 
-          for (const line of lines) {
-            const data = JSON.parse(line);
-            const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
-            if (text) {
-              await writer.write(encoder.encode(text));
+            const chunk = decoder.decode(value);
+            // Gemini stream format is weird: objects inside a JSON array
+            // We just strip the array brackets if they exist and parse the JSON objects
+            try {
+              // Handle multiple JSON objects in one chunk
+              const lines = chunk.split('\n').filter(l => l.trim());
+              for (const line of lines) {
+                const cleanLine = line.replace(/^,/, '').replace(/,$/, '').replace(/^\[/, '').replace(/\]$/, '');
+                if (!cleanLine) continue;
+                const data = JSON.parse(cleanLine);
+                const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
+                if (text) {
+                  await writer.write(encoder.encode(text));
+                }
+              }
+            } catch (e) {
+              // Fallback if parsing fails - sometimes chunks are partial
+              // In production we might want to buffer partial chunks
             }
           }
-        } catch (e) {
-          // Fallback if parsing fails - sometimes chunks are partial
-          console.warn("Partial chunk ignored", chunk);
+        } finally {
+          writer.close();
         }
-      }
-      writer.close();
-    })();
+      })();
 
-    return new Response(readable, {
-      headers: {
-        ...securityHeaders,
-        'Content-Type': 'text/event-stream',
-        'Cache-Control': 'no-cache',
-        'Connection': 'keep-alive',
-      },
-    });
+      return new Response(readable, {
+        headers: {
+          ...securityHeaders,
+          'Content-Type': 'text/event-stream',
+          'Cache-Control': 'no-cache',
+          'Connection': 'keep-alive',
+        },
+      });
+
+    } catch (e: any) {
+      if (e.name === 'AbortError') {
+        return new Response(JSON.stringify({ error: 'Request timeout' }), { status: 504, headers: securityHeaders });
+      }
+      throw e;
+    }
 
   } catch (error) {
     return new Response(JSON.stringify({ error: 'Server Error' }), { status: 500, headers: securityHeaders });

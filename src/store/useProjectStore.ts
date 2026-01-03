@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 import { Project, ProjectFile } from '@/types/project';
 import { SkillLevel, SKILL_LEVELS, TabMode, TAB_MODES } from '@/constants/appConstants';
-import { ChatMessage } from '@/components/ExplanationPanel';
+import { ChatMessage } from '@/types/chat';
 
 interface ProjectState {
     // Navigation & Mode
@@ -43,15 +43,41 @@ interface ProjectState {
 
 export const useProjectStore = create<ProjectState>((set) => ({
     mode: TAB_MODES.GITHUB,
+    /**
+     * Sets the current tab mode (Github, Generate, Upload).
+     * @param mode - The new mode to switch to.
+     */
     setMode: (mode) => set({ mode }),
 
     project: null,
     setProject: (project) => set({ project }),
     fileCache: {},
+    /**
+     * Sets the entire file cache.
+     * @param fileCache - The new file cache object.
+     */
     setFileCache: (fileCache) => set({ fileCache }),
-    updateFileCache: (path, file) => set((state) => ({
-        fileCache: { ...state.fileCache, [path]: file }
-    })),
+    /**
+     * Updates/Adds a single file to the cache.
+     * @param path - File path as key.
+     * @param file - File object.
+     */
+    updateFileCache: (path, file) => set((state) => {
+        // Simple size limit to prevent memory bloat
+        const MAX_FILES = 100;
+        const currentFiles = state.fileCache;
+
+        // If adding a new file and cache is full
+        if (Object.keys(currentFiles).length >= MAX_FILES && !currentFiles[path]) {
+            const [firstKey] = Object.keys(currentFiles);
+            const { [firstKey]: _, ...rest } = currentFiles;
+            return { fileCache: { ...rest, [path]: file } };
+        }
+
+        return {
+            fileCache: { ...state.fileCache, [path]: file }
+        };
+    }),
 
     selectedFile: null,
     setSelectedFile: (selectedFile) => set({ selectedFile }),
@@ -72,8 +98,17 @@ export const useProjectStore = create<ProjectState>((set) => ({
     isFileLoading: false,
     setIsFileLoading: (isFileLoading) => set({ isFileLoading }),
 
+    /**
+     * Resets the file selection state (lines).
+     */
     resetSelection: () => set({
         selectedLine: null,
         selectedLines: new Set(),
     }),
 }));
+
+export const selectSelectedFile = (state: ProjectState) => state.selectedFile;
+export const selectChatMessages = (state: ProjectState) => state.chatMessages;
+export const selectProject = (state: ProjectState) => state.project;
+export const selectIsLoading = (state: ProjectState) => state.isLoading;
+

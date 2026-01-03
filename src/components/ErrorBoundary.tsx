@@ -1,85 +1,53 @@
-import React, { ReactNode } from "react";
-import { AlertCircle } from "lucide-react";
+import React, { Component, ErrorInfo, ReactNode } from "react";
 import { Button } from "@/components/ui/button";
-import { Card } from "@/components/ui/card";
+import { AlertCircle, RefreshCw } from "lucide-react";
 
-interface ErrorBoundaryProps {
+interface Props {
   children: ReactNode;
-  fallback?: ReactNode;
 }
 
-interface ErrorBoundaryState {
+interface State {
   hasError: boolean;
   error: Error | null;
 }
 
-/**
- * ErrorBoundary Component
- * Catches React errors and displays a user-friendly error message
- * Prevents entire app from crashing
- */
-export class ErrorBoundary extends React.Component<
-  ErrorBoundaryProps,
-  ErrorBoundaryState
-> {
-  constructor(props: ErrorBoundaryProps) {
-    super(props);
-    this.state = { hasError: false, error: null };
-  }
+export class ErrorBoundary extends Component<Props, State> {
+  public state: State = {
+    hasError: false,
+    error: null,
+  };
 
-  static getDerivedStateFromError(error: Error): ErrorBoundaryState {
+  public static getDerivedStateFromError(error: Error): State {
     return { hasError: true, error };
   }
 
-  componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
-    console.error("ErrorBoundary caught an error:", error, errorInfo);
+  public componentDidCatch(error: Error, errorInfo: ErrorInfo) {
+    console.error("Uncaught error:", error, errorInfo);
   }
 
-  handleReset = () => {
-    this.setState({ hasError: false, error: null });
+  private handleReload = () => {
+    window.location.reload();
   };
 
-  render() {
+  public render() {
     if (this.state.hasError) {
       return (
-        this.props.fallback || (
-          <Card className="m-4 p-6 border-destructive/50 bg-destructive/5">
-            <div className="flex items-start gap-4">
-              <AlertCircle className="h-6 w-6 text-destructive flex-shrink-0 mt-0.5" />
-              <div className="flex-1">
-                <h2 className="text-lg font-semibold text-destructive mb-2">
-                  Something went wrong
-                </h2>
-                <p className="text-sm text-muted-foreground mb-4">
-                  {this.state.error?.message ||
-                    "An unexpected error occurred. Please try again."}
-                </p>
-                <div className="flex gap-2">
-                  <Button
-                    onClick={this.handleReset}
-                    variant="outline"
-                    size="sm"
-                    className="text-destructive hover:text-destructive"
-                  >
-                    Try again
-                  </Button>
-                  <Button
-                    onClick={() => window.location.reload()}
-                    variant="outline"
-                    size="sm"
-                  >
-                    Reload page
-                  </Button>
-                </div>
-              </div>
-            </div>
-          </Card>
-        )
+        <div className="h-screen w-full flex flex-col items-center justify-center p-4 text-center space-y-4 bg-background">
+          <div className="rounded-full bg-destructive/10 p-4">
+            <AlertCircle className="w-10 h-10 text-destructive" />
+          </div>
+          <h1 className="text-2xl font-bold tracking-tight">Something went wrong</h1>
+          <p className="text-muted-foreground max-w-[500px]">
+            {this.state.error?.message || "An unexpected error occurred. Please try reloading the page."}
+          </p>
+          <Button onClick={this.handleReload} className="gap-2">
+            <RefreshCw className="w-4 h-4" />
+            Reload Page
+          </Button>
+        </div>
       );
     }
 
     return this.props.children;
   }
 }
-
-export default ErrorBoundary;

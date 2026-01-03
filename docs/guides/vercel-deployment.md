@@ -63,7 +63,7 @@ Your application is fully optimized and ready to deploy to Vercel.
 ### Step 1: Verify Environment Variables
 ```bash
 # In Vercel Dashboard:
-# https://vercel.com/ionuthubs-projects/unravel-code-ai/settings/environment-variables
+# https://vercel.com/ionuthubs-projects/ai-code-tutor-code-ai/settings/environment-variables
 
 # Should have:
 # ✅ GEMINI_API_KEY (all environments)

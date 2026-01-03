@@ -8,7 +8,7 @@ Your Gemini API key is now **environment-based** and NOT hardcoded in the app.
 
 1. **Create `.env` file** (never commit this):
 ```bash
-VITE_GEMINI_API_KEY=AIzaSyAZ9paqurYU09c-DHiwWPU0tgKp6mHvpKc
+GEMINI_API_KEY=AIzaSyAZ9paqurYU09c-DHiwWPU0tgKp6mHvpKc
 ```
 
 2. **Verify `.gitignore` includes `.env`**:
@@ -26,7 +26,7 @@ npm run dev
 1. **Go to Vercel Dashboard** → Your Project → Settings → Environment Variables
 
 2. **Add environment variable**:
-   - **Name**: `VITE_GEMINI_API_KEY`
+   - **Name**: `GEMINI_API_KEY`
    - **Value**: `AIzaSyAZ9paqurYU09c-DHiwWPU0tgKp6mHvpKc`
    - **Environments**: Production, Preview, Development
 

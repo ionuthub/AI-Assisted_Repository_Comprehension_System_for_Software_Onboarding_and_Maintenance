@@ -11,7 +11,7 @@ By default, the GitHub API allows **unauthenticated requests** for public reposi
 2. Click **"Generate new token"** → **"Generate new token (classic)"**
 
 ### Step 2: Configure Token Permissions
-- **Token name**: `unravel-code-ai` (or any descriptive name)
+- **Token name**: `ai-code-tutor-code-ai` (or any descriptive name)
 - **Expiration**: Choose based on your security preference (90 days recommended)
 - **Scopes**: Select **`repo`** (Full control of private repositories)
   - This includes read access to private repos
@@ -66,7 +66,7 @@ VITE_GITHUB_TOKEN=ghp_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
 4. **Test with GitHub CLI** (optional):
    ```bash
    gh auth login
-   gh repo view ionuthub/unravel-code-ai
+   gh repo view ionuthub/ai-code-tutor-code-ai
    ```
 
 ## API Rate Limits

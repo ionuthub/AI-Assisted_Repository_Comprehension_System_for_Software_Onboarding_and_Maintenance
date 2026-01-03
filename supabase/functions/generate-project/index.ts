@@ -17,32 +17,27 @@ serve(async (req) => {
       throw new Error('Project idea is required');
     }
 
-    const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
-    if (!LOVABLE_API_KEY) {
-      throw new Error('LOVABLE_API_KEY is not configured');
+    const GEMINI_API_KEY = Deno.env.get('GEMINI_API_KEY') || Deno.env.get('LOVABLE_API_KEY');
+    if (!GEMINI_API_KEY) {
+      throw new Error('GEMINI_API_KEY is not configured');
     }
 
     console.log(`Generating project for idea: "${projectIdea}" at ${skillLevel} level`);
 
-    // Call Lovable AI to generate project structure and code
-    const response = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
+    // Call Google Gemini API directly
+    const response = await fetch('https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=' + GEMINI_API_KEY, {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${LOVABLE_API_KEY}`,
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: 'google/gemini-2.5-flash',
-        messages: [
-          {
-            role: 'system',
-            content: `You are a code generation assistant. Generate a simple but complete project structure with example code based on the user's idea. Include file paths and code snippets. Tailor the complexity to the ${skillLevel} skill level.`
-          },
-          {
-            role: 'user',
-            content: `Generate a project structure and sample code for: ${projectIdea}`
-          }
-        ],
+        contents: [{
+          parts: [{
+            text: `You are a code generation assistant. Generate a simple but complete project structure with example code based on the user's idea. Include file paths and code snippets. Tailor the complexity to the ${skillLevel} skill level.
+            
+User Request: Generate a project structure and sample code for: ${projectIdea}`
+          }]
+        }]
       }),
     });
 
@@ -79,7 +74,7 @@ serve(async (req) => {
     console.error('Error in generate-project function:', error);
     const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
     return new Response(
-      JSON.stringify({ error: errorMessage }), 
+      JSON.stringify({ error: errorMessage }),
       {
         status: 400,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },

@@ -35,8 +35,8 @@ const COSTS = {
 };
 
 // Local storage key
-const STORAGE_KEY = 'unravel_usage_stats';
-const LIMITS_KEY = 'unravel_usage_limits';
+const STORAGE_KEY = 'codetutor_usage_stats';
+const LIMITS_KEY = 'codetutor_usage_limits';
 
 export const getStorageKey = (userId?: string): string => {
   return userId ? `${STORAGE_KEY}_${userId}` : STORAGE_KEY;
@@ -56,13 +56,13 @@ export const initializeUsageStats = (userId?: string): UsageStats => {
 export const getUsageStats = (userId?: string): UsageStats => {
   const key = getStorageKey(userId);
   const stored = localStorage.getItem(key);
-  
+
   if (!stored) {
     const stats = initializeUsageStats(userId);
     localStorage.setItem(key, JSON.stringify(stats));
     return stats;
   }
-  
+
   return JSON.parse(stored);
 };
 
@@ -72,7 +72,7 @@ export const updateUsageStats = (
 ): UsageStats => {
   const stats = getUsageStats(userId);
   const key = getStorageKey(userId);
-  
+
   switch (type) {
     case 'lineExplanation':
       stats.lineExplanations += 1;
@@ -89,7 +89,7 @@ export const updateUsageStats = (
       stats.projectsGenerated += 1;
       break;
   }
-  
+
   localStorage.setItem(key, JSON.stringify(stats));
   return stats;
 };
@@ -120,10 +120,10 @@ export const checkUsageLimit = (
 ): UsageCheck => {
   const stats = getUsageStats(userId);
   const limits = getLimits(userId);
-  
+
   let currentUsage = 0;
   let maxLimit = 0;
-  
+
   switch (type) {
     case 'lineExplanation':
       currentUsage = stats.lineExplanations;
@@ -142,14 +142,14 @@ export const checkUsageLimit = (
       maxLimit = limits.maxProjectsPerDay;
       break;
   }
-  
+
   const percentageUsed = (currentUsage / maxLimit) * 100;
   const costExceeded = stats.estimatedCost > limits.maxDailyCost;
-  
+
   let allowed = currentUsage < maxLimit && !costExceeded;
   let reason: string | undefined;
   let warningLevel: 'safe' | 'warning' | 'exceeded' = 'safe';
-  
+
   if (costExceeded) {
     allowed = false;
     reason = `Daily cost limit of $${limits.maxDailyCost.toFixed(2)} exceeded. Current: $${stats.estimatedCost.toFixed(2)}`;
@@ -161,7 +161,7 @@ export const checkUsageLimit = (
   } else if (percentageUsed >= limits.warningThreshold) {
     warningLevel = 'warning';
   }
-  
+
   return {
     allowed,
     reason,

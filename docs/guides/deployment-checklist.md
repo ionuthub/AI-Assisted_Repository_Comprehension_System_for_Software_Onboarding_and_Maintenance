@@ -49,7 +49,7 @@ Make sure these are set in Vercel dashboard:
 1. **Set Environment Variables**
    ```bash
    # Go to Vercel dashboard
-   https://vercel.com/ionuthubs-projects/unravel-code-ai/settings/environment-variables
+   https://vercel.com/ionuthubs-projects/ai-code-tutor-code-ai/settings/environment-variables
    
    # Add GEMINI_API_KEY (without VITE_ prefix)
    # Delete VITE_GEMINI_API_KEY

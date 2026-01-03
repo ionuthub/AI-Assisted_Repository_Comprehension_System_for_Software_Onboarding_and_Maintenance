@@ -14,17 +14,17 @@ serve(async (req) => {
     const { code, skillLevel, lineNumber } = await req.json();
     console.log('Received request:', { skillLevel, lineNumber, codeLength: code?.length });
 
-    const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
-    if (!LOVABLE_API_KEY) {
-      throw new Error('LOVABLE_API_KEY is not configured');
+    const GEMINI_API_KEY = Deno.env.get('GEMINI_API_KEY') || Deno.env.get('LOVABLE_API_KEY');
+    if (!GEMINI_API_KEY) {
+      throw new Error('GEMINI_API_KEY is not configured');
     }
 
     // Define system prompts for different skill levels
     const systemPrompts = {
       beginner: `You are a friendly coding tutor explaining code to absolute beginners. Use simple language, avoid jargon, and relate concepts to everyday things. Focus on WHAT the code does and WHY it's useful. Keep explanations conversational and encouraging.`,
-      
+
       intermediate: `You are a coding mentor for developers with some experience. Explain the code with proper technical terms, discuss best practices, and mention common patterns. Focus on HOW things work and WHEN to use certain approaches. Include practical tips.`,
-      
+
       advanced: `You are a senior software architect providing in-depth technical analysis. Discuss architectural decisions, performance implications, edge cases, and potential improvements. Focus on WHY specific patterns were chosen, trade-offs, and production considerations.`
     };
 
@@ -35,34 +35,31 @@ serve(async (req) => {
       userPrompt += `\n\nFocus especially on line ${lineNumber}.`;
     }
 
-    console.log('Calling Lovable AI with model: google/gemini-2.5-flash');
+    console.log('Calling AI Service with model: google/gemini-2.5-flash');
 
-    const response = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
+    const response = await fetch('https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=' + GEMINI_API_KEY, {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${LOVABLE_API_KEY}`,
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: 'google/gemini-2.5-flash',
-        messages: [
-          { role: 'system', content: systemPrompt },
-          { role: 'user', content: userPrompt }
-        ],
+        contents: [{
+          parts: [{ text: systemPrompt + "\n\n" + userPrompt }]
+        }]
       }),
     });
 
     if (!response.ok) {
       const errorText = await response.text();
       console.error('AI Gateway error:', response.status, errorText);
-      
+
       if (response.status === 429) {
         return new Response(
           JSON.stringify({ error: 'Rate limit exceeded. Please try again in a moment.' }),
           { status: 429, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
       }
-      
+
       if (response.status === 402) {
         return new Response(
           JSON.stringify({ error: 'AI credits depleted. Please add credits to continue.' }),

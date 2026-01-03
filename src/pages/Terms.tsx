@@ -1,24 +1,16 @@
 import { Button } from "@/components/ui/button";
 import { useNavigate } from "react-router-dom";
+import SEO from "@/components/SEO";
 
 const Terms = () => {
   const navigate = useNavigate();
 
   return (
-    <div className="min-h-screen bg-background">
-      <header className="sticky top-0 z-20 border-b border-border bg-background/95 backdrop-blur">
-        <div className="container mx-auto flex h-16 items-center justify-between px-4 md:h-20 md:px-8">
-          <button
-            onClick={() => navigate("/")}
-            className="hover:opacity-80 transition-opacity"
-          >
-            <span className="text-lg font-bold">AI Code Tutor</span>
-          </button>
-          <Button className="bg-sky-600 hover:bg-sky-700 text-white" onClick={() => navigate("/")}>
-            Back to Home
-          </Button>
-        </div>
-      </header>
+    <div className="flex flex-col">
+      <SEO
+        title="Terms of Service"
+        description="Read the terms of service for AI Code Tutor. Understand our educational purpose, accuracy disclaimers, and your responsibilities while using our AI-powered tools."
+      />
 
       <main className="container mx-auto max-w-4xl px-4 py-12 md:px-8 md:py-16">
         <h1 className="text-4xl font-bold mb-8">Terms of Service</h1>

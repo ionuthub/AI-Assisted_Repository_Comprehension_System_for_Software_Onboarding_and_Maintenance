@@ -2,6 +2,7 @@ import { useMemo, useRef, useState, useEffect } from "react";
 import type { ChangeEvent } from "react";
 import { motion } from "framer-motion";
 import { Code2, ExternalLink, Heart } from "lucide-react";
+import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -24,6 +25,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useKeyboardShortcuts } from "@/hooks/useKeyboardShortcuts";
 import { TAB_MODES, SKILL_LEVELS, ERROR_MESSAGES, SUCCESS_MESSAGES } from "@/constants/appConstants";
 import type { SkillLevel, TabMode } from "@/constants/appConstants";
+import SEO from "@/components/SEO";
 
 const inferLanguageFromFilename = (fileName: string): string | null => {
   const extension = fileName.split(".").pop()?.toLowerCase();
@@ -285,6 +287,7 @@ import { supabase } from "@/integrations/supabase/client";
 
 const Index = () => {
   const { toast } = useToast();
+  const { t } = useTranslation();
   const [mode, setMode] = useState<TabMode>(TAB_MODES.GITHUB);
   const [skillLevel, setSkillLevel] = useState<SkillLevel>(SKILL_LEVELS.BEGINNER);
   const [repoUrl, setRepoUrl] = useState("");
@@ -776,75 +779,71 @@ const Index = () => {
 
   return (
     <ErrorBoundary>
-      <div className="min-h-screen bg-background flex flex-col">
-        <header className="sticky top-0 z-20 border-b border-border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/70">
-          <div className="container mx-auto flex h-16 items-center justify-between px-4 md:h-20 md:px-8">
+      <SEO
+        title="Analyze & Understand Code"
+        description="Understand unfamiliar code in minutes. Paste a GitHub repository or describe an idea and let AI explain it to you."
+      />
+      <div className="flex flex-col relative overflow-hidden">
+        {/* Abstract Background Orbs */}
+        <div className="absolute top-0 left-1/4 w-96 h-96 bg-sky-500/10 rounded-full blur-3xl -z-10 animate-pulse" />
+        <div className="absolute bottom-1/4 right-1/4 w-64 h-64 bg-purple-500/10 rounded-full blur-3xl -z-10 animate-bounce [animation-duration:10s]" />
+
+        <main className="flex-1 container mx-auto px-4 py-12 md:px-8 md:py-24">
+          <motion.section
+            className="mx-auto max-w-5xl text-center mb-16 md:mb-24 flex flex-col justify-center min-h-[50vh]"
+            initial={{ opacity: 0, y: 30 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.8, ease: "easeOut" }}
+          >
             <motion.div
-              className="flex items-center gap-3"
-              initial={{ opacity: 0, x: -20 }}
-              animate={{ opacity: 1, x: 0 }}
-              transition={{ duration: 0.5 }}
+              initial={{ opacity: 0, scale: 0.9 }}
+              animate={{ opacity: 1, scale: 1 }}
+              transition={{ delay: 0.2, duration: 0.5 }}
+              className="inline-block px-4 py-1.5 mb-6 text-sm font-medium tracking-wide uppercase bg-sky-100 dark:bg-sky-900/30 text-sky-600 dark:text-sky-400 rounded-full w-fit mx-auto"
             >
-              <span className="text-lg font-bold md:text-xl">AI Code Tutor</span>
+              {t('hero.badge')}
             </motion.div>
 
-            <nav className="hidden items-center gap-8 md:flex">
-              {navItems.map((item, idx) => (
-                <motion.button
-                  key={item.id}
-                  onClick={() => handleNavClick(item.id)}
-                  className="text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
-                  initial={{ opacity: 0, y: -10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.5, delay: idx * 0.1 }}
-                  whileHover={{ scale: 1.05 }}
-                  whileTap={{ scale: 0.95 }}
-                >
-                  {item.label}
-                </motion.button>
-              ))}
-              {session ? (
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => supabase.auth.signOut()}
-                >
-                  Sign Out
-                </Button>
-              ) : (
-                <Button
-                  variant="default"
-                  size="sm"
-                  onClick={() => window.location.href = "/auth"}
-                >
-                  Sign In
-                </Button>
-              )}
-            </nav>
-          </div>
-        </header>
-
-        <main className="flex-1 container mx-auto px-4 py-12 md:px-8 md:py-20">
-          <motion.section
-            className="mx-auto max-w-4xl text-center mb-12 md:mb-16 flex flex-col justify-center min-h-[60vh]"
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6 }}
-          >
-            <h1 className="text-4xl font-bold tracking-tight md:text-6xl mb-6">
-              Understand unfamiliar code in minutes
+            <h1 className="text-5xl font-extrabold tracking-tight md:text-7xl mb-8 leading-[1.1]">
+              {t('hero.titleMain')} <br />
+              <span className="bg-clip-text text-transparent bg-gradient-to-r from-sky-600 via-blue-500 to-indigo-600 dark:from-sky-400 dark:to-indigo-400">
+                {t('hero.titleSub')}
+              </span>
             </h1>
-            <p className="text-lg text-muted-foreground md:text-xl leading-relaxed">
-              Paste a GitHub repository or describe an idea. We will fetch the files, highlight the structure,
-              and help you reason about each line without managing any accounts.
+
+            <p className="text-xl text-muted-foreground md:text-2xl leading-relaxed max-w-3xl mx-auto mb-10">
+              {t('hero.description')}
             </p>
+
+            <div className="flex flex-wrap justify-center gap-4">
+              <Button
+                size="lg"
+                className="h-14 px-8 text-lg font-semibold bg-sky-600 hover:bg-sky-700 text-white shadow-lg shadow-sky-500/20"
+                onClick={() => {
+                  const tabsElement = document.getElementById("main-tabs");
+                  tabsElement?.scrollIntoView({ behavior: "smooth" });
+                }}
+              >
+                {t('hero.getStarted')}
+              </Button>
+              <Button
+                size="lg"
+                variant="outline"
+                className="h-14 px-8 text-lg font-semibold"
+                asChild
+              >
+                <a href="/faq">{t('hero.howItWorks')}</a>
+              </Button>
+            </div>
           </motion.section>
 
           <motion.div
-            initial={{ opacity: 0, y: 20 }}
+            id="main-tabs"
+            initial={{ opacity: 0, y: 40 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6, delay: 0.2 }}
+            transition={{ duration: 0.8, delay: 0.4 }}
           >
+
             <Card className="p-8 md:p-12">
               <Tabs
                 value={mode}
@@ -964,85 +963,10 @@ const Index = () => {
             </>
           )}
         </main>
-
-        <footer className="border-t border-border bg-secondary/30 mt-20">
-          <div className="container mx-auto px-4 py-12 md:px-8">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-8">
-              <motion.div
-                initial={{ opacity: 0, y: 20 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.5 }}
-                viewport={{ once: true }}
-              >
-                <div className="mb-4">
-                  <span className="font-bold">AI Code Tutor</span>
-                </div>
-                <p className="text-sm text-muted-foreground">
-                  Learn code faster with AI-powered explanations tailored to your skill level.
-                </p>
-              </motion.div>
-
-              <motion.div
-                initial={{ opacity: 0, y: 20 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.5, delay: 0.1 }}
-                viewport={{ once: true }}
-              >
-                <h4 className="font-semibold mb-4">Features</h4>
-                <ul className="space-y-2 text-sm text-muted-foreground">
-                  <li>
-                    <button className="hover:text-foreground transition-colors flex items-center gap-1">
-                      Analyze Repos <ExternalLink className="h-3 w-3" />
-                    </button>
-                  </li>
-                  <li>
-                    <button className="hover:text-foreground transition-colors flex items-center gap-1">
-                      Generate Projects <ExternalLink className="h-3 w-3" />
-                    </button>
-                  </li>
-                </ul>
-              </motion.div>
-
-              <motion.div
-                initial={{ opacity: 0, y: 20 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.5, delay: 0.2 }}
-                viewport={{ once: true }}
-              >
-                <h4 className="font-semibold mb-4">Resources</h4>
-                <ul className="space-y-2 text-sm text-muted-foreground">
-                  <li>
-                    <a href="/faq" className="hover:text-foreground transition-colors">FAQ</a>
-                  </li>
-                  <li>
-                    <a href="/terms" className="hover:text-foreground transition-colors">Terms of Service</a>
-                  </li>
-                  <li>
-                    <a href="/privacy" className="hover:text-foreground transition-colors">Privacy Policy</a>
-                  </li>
-                </ul>
-              </motion.div>
-            </div>
-
-            <motion.div
-              className="border-t border-border pt-8 flex flex-col md:flex-row items-center justify-between text-sm text-muted-foreground"
-              initial={{ opacity: 0 }}
-              whileInView={{ opacity: 1 }}
-              transition={{ duration: 0.5, delay: 0.3 }}
-              viewport={{ once: true }}
-            >
-              <p>© 2025 AI Code Tutor. All rights reserved.</p>
-              <div className="flex items-center gap-2 mt-4 md:mt-0">
-                <span>Made with</span>
-                <Heart className="h-4 w-4 text-red-500 fill-red-500" />
-                <span>for developers</span>
-              </div>
-            </motion.div>
-          </div>
-        </footer>
       </div>
     </ErrorBoundary>
   );
 };
+
 
 export default Index;

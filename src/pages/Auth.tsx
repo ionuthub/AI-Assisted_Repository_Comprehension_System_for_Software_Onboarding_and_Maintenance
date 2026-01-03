@@ -7,6 +7,7 @@ import { Card } from "@/components/ui/card";
 import { Code2, Github } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { Session } from "@supabase/supabase-js";
+import SEO from "@/components/SEO";
 
 const Auth = () => {
   const navigate = useNavigate();
@@ -137,7 +138,12 @@ const Auth = () => {
   }
 
   return (
-    <div className="min-h-screen bg-background flex items-center justify-center p-4">
+    <div className="flex items-center justify-center p-4">
+      <SEO
+        title={isLogin ? "Sign In" : "Sign Up"}
+        description="Connect with your GitHub account to start analyzing repositories and generating code explanations."
+      />
+
       <Card className="w-full max-w-md p-8">
         <div className="flex items-center justify-center gap-2 mb-8">
           <Code2 className="w-8 h-8 text-primary" />

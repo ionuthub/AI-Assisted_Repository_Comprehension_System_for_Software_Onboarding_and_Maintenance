@@ -3,6 +3,7 @@ import { Button } from "@/components/ui/button";
 import { useNavigate } from "react-router-dom";
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
+import SEO from "@/components/SEO";
 
 interface FAQItem {
   question: string;
@@ -165,9 +166,8 @@ const FAQAccordion = ({ item }: { item: FAQItem }) => {
       >
         <span className="font-semibold text-foreground">{item.question}</span>
         <ChevronDown
-          className={`h-5 w-5 text-primary transition-transform ${
-            isOpen ? "rotate-180" : ""
-          }`}
+          className={`h-5 w-5 text-primary transition-transform ${isOpen ? "rotate-180" : ""
+            }`}
         />
       </button>
       <AnimatePresence>
@@ -207,20 +207,12 @@ const FAQ = () => {
       : faqItems.filter((item) => item.category === activeCategory);
 
   return (
-    <div className="min-h-screen bg-background">
-      <header className="sticky top-0 z-20 border-b border-border bg-background/95 backdrop-blur">
-        <div className="container mx-auto flex h-16 items-center justify-between px-4 md:h-20 md:px-8">
-          <button
-            onClick={() => navigate("/")}
-            className="hover:opacity-80 transition-opacity"
-          >
-            <span className="text-lg font-bold">AI Code Tutor</span>
-          </button>
-          <Button variant="outline" onClick={() => navigate("/")}>
-            Back to Home
-          </Button>
-        </div>
-      </header>
+    <div className="flex flex-col">
+
+      <SEO
+        title="Frequently Asked Questions"
+        description="Find answers to common questions about AI Code Tutor, our features, and how to get the most out of our AI-powered learning tools."
+      />
 
       <main className="container mx-auto max-w-4xl px-4 py-12 md:px-8 md:py-16">
         <motion.div
@@ -246,11 +238,10 @@ const FAQ = () => {
             <button
               key={category.id}
               onClick={() => setActiveCategory(category.id)}
-              className={`px-4 py-2 rounded-lg font-medium transition-all ${
-                activeCategory === category.id
-                  ? "bg-primary text-primary-foreground"
-                  : "bg-secondary text-foreground hover:bg-secondary/80"
-              }`}
+              className={`px-4 py-2 rounded-lg font-medium transition-all ${activeCategory === category.id
+                ? "bg-primary text-primary-foreground"
+                : "bg-secondary text-foreground hover:bg-secondary/80"
+                }`}
             >
               {category.label}
             </button>

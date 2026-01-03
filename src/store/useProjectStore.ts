@@ -58,7 +58,7 @@ export const useProjectStore = create<ProjectState>((set) => ({
 
     updateFileCache: (path, file) => set((state) => {
         const MAX_FILES = 100;
-        let newCache = { ...state.fileCache };
+        const newCache = { ...state.fileCache };
         let newOrder = [...state.fileCacheOrder];
 
         // If file exists, remove from order (will re-add at end)

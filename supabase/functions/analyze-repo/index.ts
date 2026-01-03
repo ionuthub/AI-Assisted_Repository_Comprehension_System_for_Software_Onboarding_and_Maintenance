@@ -18,7 +18,7 @@ serve(async (req) => {
     }
 
     // Extract owner and repo from GitHub URL
-    const match = repoUrl.match(/github\.com\/([^\/]+)\/([^\/]+)/);
+    const match = repoUrl.match(new RegExp('github\\.com/([^/]+)/([^/]+)'));
     if (!match) {
       throw new Error('Invalid GitHub repository URL');
     }
@@ -74,8 +74,8 @@ serve(async (req) => {
 
     // Find interesting files (limit to code files)
     const codeFiles = treeData.tree
-      .filter((item: any) => 
-        item.type === 'blob' && 
+      .filter((item: any) =>
+        item.type === 'blob' &&
         /\.(js|ts|tsx|jsx|py|java|cpp|c|go|rs|rb)$/.test(item.path)
       )
       .slice(0, 10); // Limit to first 10 files
@@ -105,7 +105,7 @@ serve(async (req) => {
     console.error('Error in analyze-repo function:', error);
     const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
     return new Response(
-      JSON.stringify({ error: errorMessage }), 
+      JSON.stringify({ error: errorMessage }),
       {
         status: 400,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },

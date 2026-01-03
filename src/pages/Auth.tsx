@@ -8,6 +8,7 @@ import { Code2, Github } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { Session } from "@supabase/supabase-js";
 import SEO from "@/components/SEO";
+import { useSupabaseOAuth } from "@/hooks/useSupabaseOAuth";
 
 const Auth = () => {
   const navigate = useNavigate();
@@ -18,46 +19,21 @@ const Auth = () => {
   const [loading, setLoading] = useState(false);
   const [session, setSession] = useState<Session | null>(null);
 
+  const { signInWithGitHub, isLoading: isGitHubLoading } = useSupabaseOAuth();
+
   useEffect(() => {
-    const persistGitHubToken = async (authSession: Session) => {
-      const { provider_token: providerToken } = authSession as Session & { provider_token?: string };
-      if (!providerToken) {
-        return;
-      }
-
-      const { error } = await supabase
-        .from('profiles')
-        .upsert({
-          id: authSession.user.id,
-          email: authSession.user.email,
-          github_access_token: providerToken,
-        }, { onConflict: 'id' })
-        .select()
-        .single();
-
-      if (error) {
-        console.error('Error saving GitHub token:', error);
-        toast({
-          title: "GitHub Sync Failed",
-          description: "We could not store your GitHub connection. Please try reconnecting.",
-          variant: "destructive",
-        });
-      }
-    };
-
+    // Only listen for auth state changes for navigation
+    // Token persistence is now handled in AuthCallback path
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, nextSession) => {
       setSession(nextSession);
-
       if (nextSession) {
-        await persistGitHubToken(nextSession);
         navigate("/");
       }
     });
 
-    supabase.auth.getSession().then(async ({ data: { session } }) => {
+    supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session);
       if (session) {
-        await persistGitHubToken(session);
         navigate("/");
       }
     });
@@ -65,7 +41,7 @@ const Auth = () => {
     return () => {
       subscription.unsubscribe();
     };
-  }, [navigate, toast]);
+  }, [navigate]);
 
   const handleEmailAuth = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -111,26 +87,8 @@ const Auth = () => {
     }
   };
 
-  const handleGitHubAuth = async () => {
-    setLoading(true);
-    try {
-      const { error } = await supabase.auth.signInWithOAuth({
-        provider: 'github',
-        options: {
-          redirectTo: `${window.location.origin}/`,
-          scopes: 'repo read:user',
-        },
-      });
-
-      if (error) throw error;
-    } catch (error: any) {
-      toast({
-        title: "Error",
-        description: error.message,
-        variant: "destructive",
-      });
-      setLoading(false);
-    }
+  const handleGitHubAuth = () => {
+    signInWithGitHub();
   };
 
   if (session) {
@@ -166,7 +124,7 @@ const Auth = () => {
             variant="outline"
             className="w-full"
             onClick={handleGitHubAuth}
-            disabled={loading}
+            disabled={loading || isGitHubLoading}
           >
             <Github className="w-4 h-4 mr-2" />
             Continue with GitHub

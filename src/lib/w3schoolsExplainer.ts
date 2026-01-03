@@ -225,7 +225,6 @@ const intermediateExplanation = (context: CodeContext): string => {
 
   let explanation = "";
   let purpose = "";
-  let context_flow = "";
   let pattern_info = "";
   let best_practice = "";
 

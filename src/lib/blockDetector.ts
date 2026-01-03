@@ -90,7 +90,7 @@ const isConditionalStart = (line: string): boolean => {
 };
 
 const isLoopStart = (line: string): boolean => {
-  return /^(for|while|do)\s*[\({]/.test(line) || /^for\s+\(/.test(line);
+  return /^(for|while|do)\s*[({]/.test(line) || /^for\s+\(/.test(line);
 };
 
 const isTryStart = (line: string): boolean => {

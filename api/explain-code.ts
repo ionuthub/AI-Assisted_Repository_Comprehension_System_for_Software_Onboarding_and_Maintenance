@@ -153,8 +153,8 @@ export default async function handler(req: Request): Promise<Response> {
         },
       });
 
-    } catch (e: any) {
-      if (e.name === 'AbortError') {
+    } catch (e: unknown) {
+      if (e instanceof Error && e.name === 'AbortError') {
         return new Response(JSON.stringify({ error: 'Request timeout' }), { status: 504, headers: securityHeaders });
       }
       throw e;

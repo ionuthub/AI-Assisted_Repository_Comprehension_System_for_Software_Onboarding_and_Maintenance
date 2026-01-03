@@ -25,7 +25,6 @@ const PageLoader = () => (
       <Skeleton className="h-[400px]" />
       <Skeleton className="h-[400px] md:col-span-2" />
     </div>
-                        <Route path="/auth/callback" element={<AuthCallback />} />
   </div>
 );
 
@@ -41,6 +40,7 @@ const App = () => (
               <Routes>
                 <Route path="/" element={<Index />} />
                 <Route path="/auth" element={<Auth />} />
+                <Route path="/auth/callback" element={<AuthCallback />} />
                 <Route path="/terms" element={<Terms />} />
                 <Route path="/privacy" element={<Privacy />} />
                 <Route path="/faq" element={<FAQ />} />

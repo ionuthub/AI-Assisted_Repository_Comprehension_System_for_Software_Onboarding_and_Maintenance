@@ -64,9 +64,9 @@ export const detectCodePattern = (line: string): { type: string; description: st
 export const estimateCodeComplexity = (line: string): "simple" | "complex" => {
     // Simple patterns: basic assignments, simple function calls, returns
     const simplePatterns = [
-        /^(const|let|var)\s+\w+\s*=\s*[^{\[(]*$/,  // Simple assignment
-        /^return\s+[^{\[(]*$/,                        // Simple return
-        /^\w+\s*=\s*[^{\[(]*$/,                      // Simple reassignment
+        /^(const|let|var)\s+\w+\s*=\s*[^{[(]*$/,  // Simple assignment
+        /^return\s+[^{[(]*$/,                        // Simple return
+        /^\w+\s*=\s*[^{[(]*$/,                      // Simple reassignment
         /^if\s*\([^{]*\)\s*$/,                        // Simple condition
         /^\}\s*$/,                                     // Closing brace
         /^\{\s*$/,                                     // Opening brace

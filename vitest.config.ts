@@ -9,7 +9,7 @@ export default defineConfig({
             '@': path.resolve(__dirname, './src'),
         },
     },
-    // @ts-ignore
+    // @ts-expect-error - vitest test config type mismatch
     test: {
         globals: true,
         environment: 'jsdom',

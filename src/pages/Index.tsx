@@ -1,7 +1,5 @@
-import { useMemo, useRef, useState, useEffect } from "react";
-import type { ChangeEvent } from "react";
+import { useMemo, useState } from "react";
 import { motion } from "framer-motion";
-import { Code2, ExternalLink, Heart } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -15,233 +13,50 @@ import { ErrorBoundary } from "@/components/ErrorBoundary";
 import GitHubTab from "@/components/tabs/GitHubTab";
 import GenerateTab from "@/components/tabs/GenerateTab";
 import UploadTab from "@/components/tabs/UploadTab";
-import type { Project, ProjectFile } from "@/types/project";
-import { fetchRepositoryProject, fetchFileContent } from "@/lib/github";
-import { generateProject } from "@/lib/generation";
-import { generateW3SchoolsExplanation, generateW3SchoolsFileExplanation } from "@/lib/w3schoolsExplainer";
-import type { ChatMessage } from "@/types/chat";
-import { detectCodeBlock } from "@/lib/blockDetector";
 import { analyzeProject } from "@/lib/projectAnalyzer";
-import { useToast } from "@/hooks/use-toast";
 import { useKeyboardShortcuts } from "@/hooks/useKeyboardShortcuts";
-import { TAB_MODES, SKILL_LEVELS } from "@/constants/appConstants";
-import type { SkillLevel, TabMode } from "@/constants/appConstants";
+import { TAB_MODES } from "@/constants/appConstants";
+import type { TabMode } from "@/constants/appConstants";
 import { useProjectStore } from "@/store/useProjectStore";
 import SEO from "@/components/SEO";
-
-const inferLanguageFromFilename = (fileName: string): string | null => {
-  const extension = fileName.split(".").pop()?.toLowerCase();
-  if (!extension) {
-    return null;
-  }
-
-  const map: Record<string, string> = {
-    ts: "TypeScript",
-    tsx: "TypeScript",
-    js: "JavaScript",
-    jsx: "JavaScript",
-    py: "Python",
-    rs: "Rust",
-    rb: "Ruby",
-    go: "Go",
-    java: "Java",
-    cs: "C#",
-    php: "PHP",
-    swift: "Swift",
-    kt: "Kotlin",
-    m: "Objective-C",
-    cpp: "C++",
-    c: "C",
-    h: "C",
-    hs: "Haskell",
-    scala: "Scala",
-    sql: "SQL",
-    md: "Markdown",
-    json: "JSON",
-    yml: "YAML",
-    yaml: "YAML",
-    html: "HTML",
-    css: "CSS"
-  };
-
-  return map[extension] ?? null;
-};
-
-const detectCodePattern = (line: string): { type: string; description: string } => {
-  const trimmed = line.trim();
-
-  // Assignment patterns
-  if (/^(const|let|var)\s+\w+\s*=\s*/.test(trimmed)) {
-    const varName = trimmed.match(/^(const|let|var)\s+(\w+)/)?.[2];
-    return {
-      type: "assignment",
-      description: `Creating a box called "${varName}" and putting something inside it`
-    };
-  }
-
-  // Function calls
-  if (/\w+\s*\(.*\)/.test(trimmed) && !trimmed.startsWith("function") && !trimmed.startsWith("const")) {
-    const funcName = trimmed.match(/(\w+)\s*\(/)?.[1];
-    return {
-      type: "function_call",
-      description: `Asking "${funcName}" to do something`
-    };
-  }
-
-  // If/else conditions
-  if (/^if\s*\(/.test(trimmed)) {
-    return {
-      type: "condition",
-      description: "Making a decision based on a question"
-    };
-  }
-
-  // Loops
-  if (/^(for|while)\s*\(/.test(trimmed)) {
-    return {
-      type: "loop",
-      description: "Repeating something over and over"
-    };
-  }
-
-  // Return statement
-  if (/^return\s/.test(trimmed)) {
-    return {
-      type: "return",
-      description: "Giving back an answer"
-    };
-  }
-
-  // Array/Object operations
-  if (/\.map\(|.filter\(|.forEach\(/.test(trimmed)) {
-    return {
-      type: "array_operation",
-      description: "Doing something to each item in a list"
-    };
-  }
-
-  return {
-    type: "unknown",
-    description: "Executing code"
-  };
-};
-
-const buildLineExplanation = (
-  content: string,
-  lineNumber: number,
-  skillLevel: SkillLevel,
-  fileName: string = "code.js"
-): string => {
-  // Use W3Schools-style explanations
-  return generateW3SchoolsExplanation(content, lineNumber, skillLevel, fileName);
-};
-
-const estimateCodeComplexity = (line: string): "simple" | "complex" => {
-  // Simple patterns: basic assignments, simple function calls, returns
-  const simplePatterns = [
-    /^(const|let|var)\s+\w+\s*=\s*[^{\[(]*$/,  // Simple assignment
-    /^return\s+[^{\[(]*$/,                        // Simple return
-    /^\w+\s*=\s*[^{\[(]*$/,                      // Simple reassignment
-    /^if\s*\([^{]*\)\s*$/,                        // Simple condition
-    /^\}\s*$/,                                     // Closing brace
-    /^\{\s*$/,                                     // Opening brace
-  ];
-
-  const isSimple = simplePatterns.some(pattern => pattern.test(line));
-  return isSimple ? "simple" : "complex";
-};
-
-const fetchAIExplanationStream = async (
-  messages: ChatMessage[],
-  skillLevel: SkillLevel,
-  systemContext: string,
-  onChunk: (text: string) => void
-): Promise<void> => {
-  try {
-    const response = await fetch('/api/explain-code', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ messages, skillLevel, systemContext, stream: true })
-    });
-
-    if (!response.ok) throw new Error('Streaming failed');
-
-    const reader = response.body?.getReader();
-    const decoder = new TextDecoder();
-    if (!reader) return;
-
-    while (true) {
-      const { done, value } = await reader.read();
-      if (done) break;
-      onChunk(decoder.decode(value));
-    }
-  } catch (error) {
-    console.error("Streaming error:", error);
-    onChunk("I'm sorry, I'm having trouble connecting to the AI brain right now.");
-  }
-};
-
-import { supabase } from "@/integrations/supabase/client";
+import { useGitHubAuth } from "@/hooks/useGitHubAuth";
+import { useProjectManagement } from "@/hooks/useProjectManagement";
+import { useCodeExplanation } from "@/hooks/useCodeExplanation";
 
 const Index = () => {
-  const { toast } = useToast();
   const { t } = useTranslation();
-
   const {
     mode, setMode,
-    project, setProject,
-    fileCache, setFileCache,
-    updateFileCache,
-    selectedFile, setSelectedFile,
-    selectedLine, setSelectedLine,
-    selectedLines, setSelectedLines,
-    skillLevel, setSkillLevel,
-    chatMessages, setChatMessages,
-    isExplaining, setIsExplaining,
-    isLoading, setIsLoading,
-    isFileLoading, setIsFileLoading,
-    resetSelection
+    project,
+    fileCache,
+    selectedFile,
+    selectedLine,
+    selectedLines,
+    skillLevel,
+    chatMessages,
+    isExplaining,
+    isLoading,
+    isFileLoading,
   } = useProjectStore();
+
+  const { githubToken, manualGithubToken, setManualGithubToken } = useGitHubAuth();
 
   const [repoUrl, setRepoUrl] = useState("");
   const [projectIdea, setProjectIdea] = useState("");
-  const [uploadedFolderName, setUploadedFolderName] = useState<string | null>(null);
-  const folderInputRef = useRef<HTMLInputElement | null>(null);
-  const [githubToken, setGithubToken] = useState<string | null>(null);
-  const [manualGithubToken, setManualGithubToken] = useState<string | null>(null);
-  const [session, setSession] = useState<unknown>(null);
 
-  useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setSession(session);
-    });
+  const {
+    uploadedFolderName,
+    handleFolderInputChange,
+    handleAnalyze,
+    handleFileSelect
+  } = useProjectManagement();
 
-    const {
-      data: { subscription },
-    } = supabase.auth.onAuthStateChange((_event, session) => {
-      setSession(session);
-    });
-
-    return () => subscription.unsubscribe();
-  }, []);
-
-  useEffect(() => {
-    const getGithubToken = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (session?.user) {
-        const { data } = await supabase
-          .from('profiles')
-          .select('github_access_token')
-          .eq('id', session.user.id)
-          .single();
-
-        if (data?.github_access_token) {
-          setGithubToken(data.github_access_token);
-        }
-      }
-    };
-    getGithubToken();
-  }, []);
+  const {
+    handleChatSendMessage,
+    handleLineSelect,
+    handleRefactorRequest,
+    handleSkillLevelChange
+  } = useCodeExplanation();
 
   const displayedFiles = useMemo(() => {
     if (!project) return [];
@@ -256,181 +71,6 @@ const Index = () => {
     : null;
 
   const currentFileContent = selectedFileEntry?.content ?? null;
-
-
-  const handleFolderInputChange = async (event: ChangeEvent<HTMLInputElement>) => {
-    const files = event.target.files;
-    if (!files || files.length === 0) return;
-
-    resetSelection();
-    setIsFileLoading(true);
-
-    try {
-      const fileArray = Array.from(files);
-      const folderName = (fileArray[0] as File & { webkitRelativePath?: string }).webkitRelativePath?.split("/")?.[0] ?? "Uploaded Folder";
-
-      const folderFiles: ProjectFile[] = await Promise.all(
-        fileArray.map(async (file) => ({
-          path: (file as File & { webkitRelativePath?: string }).webkitRelativePath ?? file.name,
-          language: inferLanguageFromFilename(file.name),
-          size: file.size ?? null,
-          content: await file.text()
-        }))
-      );
-
-      const cache: Record<string, ProjectFile> = {};
-      folderFiles.forEach(f => { if (f.content) cache[f.path] = f; });
-
-      setProject({
-        summary: { name: folderName, description: `Local: ${folderName}`, source: "uploaded", language: null },
-        files: folderFiles
-      });
-      setFileCache(cache);
-
-      const first = folderFiles.find(f => f.content);
-      if (first) {
-        setSelectedFile(first.path);
-        const explanation = generateW3SchoolsFileExplanation(first.path, first.content || "", skillLevel);
-        setChatMessages([{ role: 'model', content: explanation }]);
-      }
-    } catch (error) {
-      toast({ title: "Upload failed", variant: "destructive" });
-    } finally {
-      setIsFileLoading(false);
-      if (folderInputRef.current) folderInputRef.current.value = "";
-    }
-  };
-
-  const handleAnalyze = async () => {
-    resetSelection();
-    if (mode === "github" && !repoUrl.trim()) return toast({ title: "Repo URL required", variant: "destructive" });
-    if (mode === "generate" && !projectIdea.trim()) return toast({ title: "Idea required", variant: "destructive" });
-
-    setIsLoading(true);
-    try {
-      if (mode === "github") {
-        const next = await fetchRepositoryProject(repoUrl.trim(), manualGithubToken || githubToken);
-        setProject(next);
-        if (next.files.length > 0) setSelectedFile(next.files[0].path);
-      } else if (mode === "generate") {
-        const next = generateProject(projectIdea.trim(), skillLevel);
-        setProject(next);
-        const cache: Record<string, ProjectFile> = {};
-        next.files.forEach(f => { if (f.content) cache[f.path] = f; });
-        setFileCache(cache);
-        if (next.files.length > 0) setSelectedFile(next.files[0].path);
-      }
-    } catch (e) {
-      toast({ title: "Analysis failed", variant: "destructive" });
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const handleFileSelect = async (path: string) => {
-    if (!project) return;
-    resetSelection();
-    setSelectedFile(path);
-
-    if (fileCache[path]?.content) {
-      const explanation = generateW3SchoolsFileExplanation(path, fileCache[path].content || "", skillLevel);
-      setChatMessages([{ role: 'model', content: explanation }]);
-      return;
-    }
-
-    if (project.summary.source === "github") {
-      setIsFileLoading(true);
-      try {
-        const fetched = await fetchFileContent(
-          project.summary.owner!,
-          project.summary.repo!,
-          project.summary.branch ?? "main",
-          path,
-          manualGithubToken || githubToken
-        );
-        updateFileCache(path, fetched);
-        const explanation = generateW3SchoolsFileExplanation(path, fetched.content || "", skillLevel);
-        setChatMessages([{ role: 'model', content: explanation }]);
-      } catch (e) {
-        toast({ title: "Fetch failed", variant: "destructive" });
-      } finally {
-        setIsFileLoading(false);
-      }
-    }
-  };
-
-  const handleSkillLevelChange = (nextLevel: SkillLevel) => {
-    setSkillLevel(nextLevel);
-    resetSelection();
-
-    if (selectedFile && currentFileContent) {
-      const explanation = generateW3SchoolsFileExplanation(selectedFile, currentFileContent, nextLevel);
-      setChatMessages([{ role: 'model', content: explanation }]);
-    }
-  };
-
-  const handleChatSendMessage = async (content: string) => {
-    const newUserMsg: ChatMessage = { role: 'user', content };
-    const updated: ChatMessage[] = [...chatMessages, newUserMsg, { role: 'model', content: '' }];
-    setChatMessages(updated);
-    setIsExplaining(true);
-
-    let fullText = "";
-    const summary = project ? analyzeProject(project).explanation.slice(0, 5).join("\n") : "";
-
-    await fetchAIExplanationStream(updated.slice(0, -1), skillLevel, summary, (chunk) => {
-      fullText += chunk;
-      const streamingMsgs: ChatMessage[] = [...updated.slice(0, -1), { role: 'model', content: fullText }];
-      setChatMessages(streamingMsgs);
-    });
-    setIsExplaining(false);
-  };
-
-  const handleLineSelect = async (lineNumber: number) => {
-    if (!currentFileContent) return;
-    const block = detectCodeBlock(currentFileContent, lineNumber);
-    const lines = new Set<number>();
-    for (let i = block.startLine; i <= block.endLine; i++) lines.add(i);
-
-    setSelectedLine(lineNumber);
-    setSelectedLines(lines);
-    setIsExplaining(true);
-
-    const snippet = currentFileContent.split(/\r?\n/).slice(block.startLine - 1, block.endLine).join("\n");
-    const prompt = `Explain these lines (${block.startLine}-${block.endLine}) in ${selectedFile}:\n\n\`\`\`\n${snippet}\n\`\`\``;
-
-    setChatMessages([{ role: 'user', content: prompt }, { role: 'model', content: '' }]);
-
-    let fullText = "";
-    const summary = project ? analyzeProject(project).explanation.slice(0, 5).join("\n") : "";
-
-    await fetchAIExplanationStream([{ role: 'user', content: prompt }], skillLevel, summary, (chunk) => {
-      fullText += chunk;
-      setChatMessages([{ role: 'user', content: prompt }, { role: 'model', content: fullText }]);
-    });
-    setIsExplaining(false);
-  };
-
-  const handleRefactorRequest = async () => {
-    if (!selectedLine || !currentFileContent) return;
-    const block = detectCodeBlock(currentFileContent, selectedLine);
-    const snippet = currentFileContent.split(/\r?\n/).slice(block.startLine - 1, block.endLine).join("\n");
-
-    const prompt = `Refactor this code block from ${selectedFile} for better quality/performance. Show the refactored code and explain why:\n\n\`\`\`\n${snippet}\n\`\`\``;
-    handleChatSendMessage(prompt);
-  };
-
-  const navItems = [
-    { label: "Analyze", id: "analyze" },
-    { label: "Generate", id: "generate" },
-    { label: "Upload", id: "upload" }
-  ];
-
-  const handleNavClick = (id: string) => {
-    if (id === "analyze") setMode(TAB_MODES.GITHUB);
-    if (id === "generate") setMode(TAB_MODES.GENERATE);
-    if (id === "upload") setMode(TAB_MODES.UPLOAD);
-  };
 
   // Register keyboard shortcuts
   useKeyboardShortcuts([
@@ -538,7 +178,7 @@ const Index = () => {
                     onAnalyze={(url, token) => {
                       setRepoUrl(url);
                       if (token) setManualGithubToken(token);
-                      handleAnalyze();
+                      handleAnalyze(url, "", token || githubToken);
                     }}
                   />
                 </TabsContent>
@@ -548,7 +188,7 @@ const Index = () => {
                     isLoading={isLoading}
                     onGenerate={(idea) => {
                       setProjectIdea(idea);
-                      handleAnalyze();
+                      handleAnalyze("", idea, null);
                     }}
                   />
                 </TabsContent>
@@ -559,8 +199,8 @@ const Index = () => {
                     uploadedFolderName={uploadedFolderName}
                     onFolderSelect={(files) => handleFolderInputChange({
                       target: { files }
-                    } as ChangeEvent<HTMLInputElement>)}
-                    onAnalyze={handleAnalyze}
+                    } as any)}
+                    onAnalyze={() => handleAnalyze("", "", null)}
                     isProjectLoaded={!!project}
                   />
                 </TabsContent>
@@ -569,7 +209,7 @@ const Index = () => {
               <div className="mt-8">
                 <SkillSelector
                   selectedLevel={skillLevel}
-                  onLevelChange={handleSkillLevelChange}
+                  onLevelChange={(level) => handleSkillLevelChange(level, currentFileContent)}
                   disabled={isLoading || isFileLoading}
                 />
               </div>
@@ -586,7 +226,7 @@ const Index = () => {
                 <ProjectOverviewComponent
                   overview={analyzeProject(project)}
                   project={project}
-                  onFileSelect={handleFileSelect}
+                  onFileSelect={(path) => handleFileSelect(path, manualGithubToken || githubToken)}
                 />
               </motion.div>
               <motion.section
@@ -603,7 +243,7 @@ const Index = () => {
                   <FileNavigator
                     files={displayedFiles}
                     selectedFile={selectedFile}
-                    onFileSelect={handleFileSelect}
+                    onFileSelect={(path) => handleFileSelect(path, manualGithubToken || githubToken)}
                   />
                 </motion.div>
                 <motion.div
@@ -615,7 +255,7 @@ const Index = () => {
                     isLoading={isFileLoading}
                     fileName={selectedFile}
                     fileContent={currentFileContent}
-                    onLineSelect={handleLineSelect}
+                    onLineSelect={(line) => handleLineSelect(line, currentFileContent || '')}
                     selectedLine={selectedLine}
                     selectedLines={selectedLines}
                   />
@@ -629,7 +269,7 @@ const Index = () => {
                     isLoading={isExplaining}
                     messages={chatMessages}
                     onSendMessage={handleChatSendMessage}
-                    onRefactor={handleRefactorRequest}
+                    onRefactor={() => handleRefactorRequest(selectedLine, currentFileContent)}
                     skillLevel={skillLevel}
                     hasSelection={!!selectedLine}
                   />
@@ -642,6 +282,5 @@ const Index = () => {
     </ErrorBoundary>
   );
 };
-
 
 export default Index;

@@ -1,12 +1,11 @@
-import { useState, useEffect } from "react";
-import type { Session } from "@supabase/supabase-js";
+import { useState, useEffect, useMemo } from "react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Search, Star, GitFork, Github } from "lucide-react";
-import { supabase } from "@/integrations/supabase/client";
+import { Search, Star, GitFork, Github, FolderOpen, ChevronDown } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { useGitHubAuth } from "@/hooks/useGitHubAuth";
 
 interface Repository {
   id: number;
@@ -23,92 +22,39 @@ interface RepoSelectorProps {
   onRepoSelect: (repoUrl: string) => void;
 }
 
+const REPOS_PER_PAGE = 50;
+
 const RepoSelector = ({ onRepoSelect }: RepoSelectorProps) => {
   const { toast } = useToast();
+  const { hasGitHubToken, githubToken, isLoadingAuth } = useGitHubAuth();
+
   const [repos, setRepos] = useState<Repository[]>([]);
-  const [filteredRepos, setFilteredRepos] = useState<Repository[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
-  const [hasGitHubToken, setHasGitHubToken] = useState(false);
+  const [page, setPage] = useState(1);
+  const [hasMore, setHasMore] = useState(true);
 
   useEffect(() => {
-    fetchUserRepos();
-  }, []);
-
-  useEffect(() => {
-    if (searchQuery.trim() === "") {
-      setFilteredRepos(repos);
-    } else {
-      const filtered = repos.filter(repo =>
-        repo.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        repo.description?.toLowerCase().includes(searchQuery.toLowerCase())
-      );
-      setFilteredRepos(filtered);
+    if (githubToken) {
+      // Reset when token is newly available
+      setRepos([]);
+      setPage(1);
+      setHasMore(true);
+      fetchUserRepos(1, githubToken);
     }
-  }, [searchQuery, repos]);
+  }, [githubToken]);
 
-  const fetchUserRepos = async () => {
+  const fetchUserRepos = async (pageToFetch: number, token: string) => {
     try {
       setIsLoading(true);
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) {
-        setHasGitHubToken(false);
-        setRepos([]);
-        setFilteredRepos([]);
-        return;
-      }
-
-      const { data: profile, error: profileError } = await supabase
-        .from('profiles')
-        .select('github_access_token')
-        .eq('id', session.user.id)
-        .maybeSingle();
-
-      if (profileError) {
-        throw profileError;
-      }
-
-      let githubToken = profile?.github_access_token ?? null;
-
-      if (!githubToken) {
-        const { provider_token: providerToken } = session as Session & { provider_token?: string };
-        if (providerToken) {
-          const { data: updatedProfile, error: upsertError } = await supabase
-            .from('profiles')
-            .upsert({
-              id: session.user.id,
-              email: session.user.email,
-              github_access_token: providerToken,
-            }, { onConflict: 'id' })
-            .select('github_access_token')
-            .single();
-
-          if (upsertError) {
-            throw upsertError;
-          }
-
-          githubToken = updatedProfile?.github_access_token ?? providerToken;
-        }
-      }
-
-      if (!githubToken) {
-        setHasGitHubToken(false);
-        setRepos([]);
-        setFilteredRepos([]);
-        return;
-      }
-
-      setHasGitHubToken(true);
-
-      const response = await fetch('https://api.github.com/user/repos?sort=updated&per_page=100', {
+      const response = await fetch(`https://api.github.com/user/repos?sort=updated&per_page=${REPOS_PER_PAGE}&page=${pageToFetch}`, {
         headers: {
-          'Authorization': `token ${githubToken}`,
+          'Authorization': `token ${token}`,
           'Accept': 'application/vnd.github.v3+json',
         },
       });
 
       if (response.status === 401) {
-        setHasGitHubToken(false);
         throw new Error('GitHub authorization expired. Please reconnect your account.');
       }
 
@@ -121,8 +67,11 @@ const RepoSelector = ({ onRepoSelect }: RepoSelectorProps) => {
         throw new Error('Unexpected response from GitHub');
       }
 
-      setRepos(data);
-      setFilteredRepos(data);
+      if (data.length < REPOS_PER_PAGE) {
+        setHasMore(false);
+      }
+
+      setRepos(prev => pageToFetch === 1 ? data : [...prev, ...data]);
     } catch (error: any) {
       console.error('Error fetching repos:', error);
       toast({
@@ -135,9 +84,29 @@ const RepoSelector = ({ onRepoSelect }: RepoSelectorProps) => {
     }
   };
 
+  const handleLoadMore = () => {
+    if (!hasMore || isLoading || !githubToken) return;
+    const nextPage = page + 1;
+    setPage(nextPage);
+    fetchUserRepos(nextPage, githubToken);
+  };
+
+  // Memoize filtered results to improve performance with large lists
+  const filteredRepos = useMemo(() => {
+    if (searchQuery.trim() === "") return repos;
+    return repos.filter(repo =>
+      repo.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      repo.description?.toLowerCase().includes(searchQuery.toLowerCase())
+    );
+  }, [repos, searchQuery]);
+
   const handleRepoClick = (repo: Repository) => {
     onRepoSelect(repo.html_url);
   };
+
+  if (isLoadingAuth) {
+    return <Card className="p-6"><Skeleton className="h-20 w-full" /></Card>;
+  }
 
   if (!hasGitHubToken) {
     return (
@@ -170,52 +139,71 @@ const RepoSelector = ({ onRepoSelect }: RepoSelectorProps) => {
         </div>
       </div>
 
-      <div className="space-y-2 max-h-[400px] overflow-y-auto">
-        {isLoading ? (
-          [...Array(5)].map((_, i) => (
+      <div className="space-y-2 max-h-[400px] overflow-y-auto pr-2 custom-scrollbar">
+        {repos.length === 0 && isLoading ? (
+          [...Array(3)].map((_, i) => (
             <Skeleton key={i} className="h-20 w-full" />
           ))
         ) : filteredRepos.length === 0 ? (
           <div className="text-center py-8 text-muted-foreground">
+            <FolderOpen className="w-8 h-8 mx-auto mb-2 opacity-50" />
             <p>No repositories found</p>
           </div>
         ) : (
-          filteredRepos.map((repo) => (
-            <button
-              key={repo.id}
-              onClick={() => handleRepoClick(repo)}
-              className="w-full text-left p-4 rounded-lg border border-border hover:border-primary/50 hover:bg-accent/50 transition-all group"
-            >
-              <div className="flex items-start justify-between gap-2">
-                <div className="flex-1 min-w-0">
-                  <h4 className="font-semibold text-sm md:text-base truncate group-hover:text-primary transition-colors">
-                    {repo.name}
-                  </h4>
-                  {repo.description && (
-                    <p className="text-xs md:text-sm text-muted-foreground mt-1 line-clamp-2">
-                      {repo.description}
-                    </p>
-                  )}
-                  <div className="flex items-center gap-4 mt-2 text-xs text-muted-foreground">
-                    {repo.language && (
-                      <span className="flex items-center gap-1">
-                        <span className="w-2 h-2 rounded-full bg-primary"></span>
-                        {repo.language}
-                      </span>
+          <>
+            {filteredRepos.map((repo) => (
+              <button
+                key={repo.id}
+                onClick={() => handleRepoClick(repo)}
+                className="w-full text-left p-4 rounded-lg border border-border hover:border-primary/50 hover:bg-accent/50 transition-all group"
+              >
+                <div className="flex items-start justify-between gap-2">
+                  <div className="flex-1 min-w-0">
+                    <h4 className="font-semibold text-sm md:text-base truncate group-hover:text-primary transition-colors">
+                      {repo.name}
+                    </h4>
+                    {repo.description && (
+                      <p className="text-xs md:text-sm text-muted-foreground mt-1 line-clamp-2">
+                        {repo.description}
+                      </p>
                     )}
-                    <span className="flex items-center gap-1">
-                      <Star className="w-3 h-3" />
-                      {repo.stargazers_count}
-                    </span>
-                    <span className="flex items-center gap-1">
-                      <GitFork className="w-3 h-3" />
-                      {repo.forks_count}
-                    </span>
+                    <div className="flex items-center gap-4 mt-2 text-xs text-muted-foreground">
+                      {repo.language && (
+                        <span className="flex items-center gap-1">
+                          <span className="w-2 h-2 rounded-full bg-primary"></span>
+                          {repo.language}
+                        </span>
+                      )}
+                      <span className="flex items-center gap-1">
+                        <Star className="w-3 h-3" />
+                        {repo.stargazers_count}
+                      </span>
+                      <span className="flex items-center gap-1">
+                        <GitFork className="w-3 h-3" />
+                        {repo.forks_count}
+                      </span>
+                    </div>
                   </div>
                 </div>
-              </div>
-            </button>
-          ))
+              </button>
+            ))}
+
+            {hasMore && searchQuery === "" && (
+              <Button
+                variant="ghost"
+                className="w-full mt-2"
+                onClick={handleLoadMore}
+                disabled={isLoading}
+              >
+                {isLoading ? "Loading..." : (
+                  <>
+                    <ChevronDown className="w-4 h-4 mr-2" />
+                    Load More
+                  </>
+                )}
+              </Button>
+            )}
+          </>
         )}
       </div>
     </Card>

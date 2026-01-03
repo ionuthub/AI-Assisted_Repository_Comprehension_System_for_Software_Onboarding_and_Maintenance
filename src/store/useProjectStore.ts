@@ -69,6 +69,9 @@ export const useProjectStore = create<ProjectState>((set) => ({
 
         // If adding a new file and cache is full
         if (Object.keys(currentFiles).length >= MAX_FILES && !currentFiles[path]) {
+            // NOTE: This uses a simple mechanism where the 'first' key is removed.
+            // In JavaScript objects, this often correlates to insertion order for string keys,
+            // but is not strict LRU. Sufficient for maintaining a bounded cache size here.
             const [firstKey] = Object.keys(currentFiles);
             const { [firstKey]: _, ...rest } = currentFiles;
             return { fileCache: { ...rest, [path]: file } };

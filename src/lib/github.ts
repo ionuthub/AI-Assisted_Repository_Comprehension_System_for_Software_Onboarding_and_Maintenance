@@ -42,44 +42,9 @@ interface GitHubTreeItem {
   size?: number;
 }
 
-const CODE_FILE_PATTERN = /\.(js|ts|tsx|jsx|py|rs|rb|go|java|cs|php|swift|kt|m|c|cpp|h|hs|scala|sql|md|json|yml|yaml|html|css)$/i;
+import { inferLanguageFromFilename } from "@/lib/languages";
 
-const inferLanguageFromPath = (path: string): string | null => {
-  const extension = path.split(".").pop();
-  if (!extension) {
-    return null;
-  }
-  const normalized = extension.toLowerCase();
-  const map: Record<string, string> = {
-    ts: "TypeScript",
-    tsx: "TypeScript",
-    js: "JavaScript",
-    jsx: "JavaScript",
-    py: "Python",
-    rs: "Rust",
-    rb: "Ruby",
-    go: "Go",
-    java: "Java",
-    cs: "C#",
-    php: "PHP",
-    swift: "Swift",
-    kt: "Kotlin",
-    m: "Objective-C",
-    cpp: "C++",
-    c: "C",
-    h: "C",
-    hs: "Haskell",
-    scala: "Scala",
-    sql: "SQL",
-    md: "Markdown",
-    json: "JSON",
-    yml: "YAML",
-    yaml: "YAML",
-    html: "HTML",
-    css: "CSS"
-  };
-  return map[normalized] ?? null;
-};
+const CODE_FILE_PATTERN = /\.(js|ts|tsx|jsx|py|rs|rb|go|java|cs|php|swift|kt|m|c|cpp|h|hs|scala|sql|md|json|yml|yaml|html|css)$/i;
 
 const validateGitHubIdentifier = (identifier: string, maxLength: number, type: string): string => {
   if (!identifier || identifier.length === 0) {
@@ -163,7 +128,7 @@ const buildProjectFiles = (items: GitHubTreeItem[]): ProjectFile[] => {
     .slice(0, MAX_FILES_TO_ANALYZE)
     .map((item) => ({
       path: item.path,
-      language: inferLanguageFromPath(item.path),
+      language: inferLanguageFromFilename(item.path),
       rawUrl: null,
       size: item.size ?? null,
       content: null
@@ -255,7 +220,7 @@ export const fetchFileContent = async (owner: string, repo: string, branch: stri
 
     return {
       path,
-      language: inferLanguageFromPath(path),
+      language: inferLanguageFromFilename(path),
       rawUrl: token ? null : rawUrl, // Don't expose raw URL for private repos
       size,
       content

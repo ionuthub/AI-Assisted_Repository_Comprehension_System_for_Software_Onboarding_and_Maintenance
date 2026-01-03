@@ -87,3 +87,5 @@ export const AuthCallback = () => {
                 </div>
         );
 };
+
+export default AuthCallback;

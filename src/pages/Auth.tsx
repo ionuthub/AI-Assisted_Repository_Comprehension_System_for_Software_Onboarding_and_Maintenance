@@ -4,7 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
-import { Code2, Github } from "lucide-react";
+import { Code2, Github, Mail, CheckCircle2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { Session } from "@supabase/supabase-js";
 import SEO from "@/components/SEO";
@@ -17,6 +17,7 @@ const Auth = () => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
+  const [checkEmail, setCheckEmail] = useState(false);
   const [session, setSession] = useState<Session | null>(null);
 
   const { signInWithGitHub, isLoading: isGitHubLoading } = useSupabaseOAuth();
@@ -71,9 +72,14 @@ const Auth = () => {
 
         if (error) throw error;
 
+        // If signup is successful, show check email screen
+        // Note: Supabase might auto-sign in if email confirm is off, 
+        // but default is on. The session listener will handle auto-signin.
+        setCheckEmail(true);
+
         toast({
           title: "Account created!",
-          description: "Welcome to AI Code Tutor",
+          description: "Please check your email to verify your account.",
         });
       }
     } catch (error: any) {
@@ -96,7 +102,7 @@ const Auth = () => {
   }
 
   return (
-    <div className="flex items-center justify-center p-4">
+    <div className="flex items-center justify-center p-4 min-h-[80vh]">
       <SEO
         title={isLogin ? "Sign In" : "Sign Up"}
         description="Connect with your GitHub account to start analyzing repositories and generating code explanations."
@@ -108,79 +114,116 @@ const Auth = () => {
           <h1 className="text-2xl font-bold">AI Code Tutor</h1>
         </div>
 
-        <div className="space-y-6">
-          <div className="space-y-2 text-center">
-            <h2 className="text-xl font-semibold">
-              {isLogin ? "Welcome back" : "Create an account"}
-            </h2>
-            <p className="text-sm text-muted-foreground">
-              {isLogin
-                ? "Sign in to continue learning"
-                : "Start your coding journey today"}
-            </p>
-          </div>
-
-          <Button
-            variant="outline"
-            className="w-full"
-            onClick={handleGitHubAuth}
-            disabled={loading || isGitHubLoading}
-          >
-            <Github className="w-4 h-4 mr-2" />
-            Continue with GitHub
-          </Button>
-
-          <div className="relative">
-            <div className="absolute inset-0 flex items-center">
-              <span className="w-full border-t" />
-            </div>
-            <div className="relative flex justify-center text-xs uppercase">
-              <span className="bg-background px-2 text-muted-foreground">
-                Or continue with email
-              </span>
-            </div>
-          </div>
-
-          <form onSubmit={handleEmailAuth} className="space-y-4">
-            <div className="space-y-2">
-              <Input
-                type="email"
-                placeholder="Email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                required
-                disabled={loading}
-              />
+        {checkEmail ? (
+          <div className="text-center space-y-6">
+            <div className="flex justify-center">
+              <div className="w-16 h-16 bg-green-100 dark:bg-green-900/30 rounded-full flex items-center justify-center">
+                <CheckCircle2 className="w-8 h-8 text-green-600 dark:text-green-400" />
+              </div>
             </div>
             <div className="space-y-2">
-              <Input
-                type="password"
-                placeholder="Password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                required
-                disabled={loading}
-                minLength={6}
-              />
+              <h2 className="text-xl font-semibold">Check your email</h2>
+              <p className="text-muted-foreground">
+                We've sent a confirmation link to <span className="font-medium text-foreground">{email}</span>.
+                <br />
+                Please verify your email to continue.
+              </p>
             </div>
-            <Button type="submit" className="w-full" disabled={loading}>
-              {loading ? "Loading..." : isLogin ? "Sign In" : "Sign Up"}
-            </Button>
-          </form>
-
-          <div className="text-center text-sm">
-            <button
-              type="button"
-              onClick={() => setIsLogin(!isLogin)}
-              className="text-primary hover:underline"
-              disabled={loading}
+            <Button
+              variant="outline"
+              className="w-full"
+              onClick={() => {
+                setCheckEmail(false);
+                setIsLogin(true);
+              }}
             >
-              {isLogin
-                ? "Don't have an account? Sign up"
-                : "Already have an account? Sign in"}
-            </button>
+              Return to Sign In
+            </Button>
           </div>
-        </div>
+        ) : (
+          <div className="space-y-6">
+            <div className="space-y-2 text-center">
+              <h2 className="text-xl font-semibold">
+                {isLogin ? "Welcome back" : "Create an account"}
+              </h2>
+              <p className="text-sm text-muted-foreground">
+                {isLogin
+                  ? "Sign in to continue learning"
+                  : "Start your coding journey today"}
+              </p>
+            </div>
+
+            <Button
+              variant="outline"
+              className="w-full h-11"
+              onClick={handleGitHubAuth}
+              disabled={loading || isGitHubLoading}
+            >
+              <Github className="w-4 h-4 mr-2" />
+              Continue with GitHub
+            </Button>
+
+            <div className="relative">
+              <div className="absolute inset-0 flex items-center">
+                <span className="w-full border-t" />
+              </div>
+              <div className="relative flex justify-center text-xs uppercase">
+                <span className="bg-background px-2 text-muted-foreground">
+                  Or continue with email
+                </span>
+              </div>
+            </div>
+
+            <form onSubmit={handleEmailAuth} className="space-y-4">
+              <div className="space-y-2">
+                <Input
+                  type="email"
+                  placeholder="Email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  required
+                  disabled={loading || isGitHubLoading}
+                  autoComplete="username"
+                />
+              </div>
+              <div className="space-y-2">
+                <Input
+                  type="password"
+                  placeholder="Password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  required
+                  disabled={loading || isGitHubLoading}
+                  minLength={6}
+                  autoComplete="current-password"
+                />
+              </div>
+              <Button type="submit" className="w-full h-11" disabled={loading || isGitHubLoading}>
+                {loading ? (
+                  <div className="flex items-center gap-2">
+                    <span className="h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent" />
+                    Loading...
+                  </div>
+                ) : (
+                  isLogin ? "Sign In" : "Sign Up"
+                )}
+              </Button>
+            </form>
+
+            <div className="text-center text-sm">
+              <button
+                type="button"
+                onClick={() => setIsLogin(!isLogin)}
+                className="text-primary hover:underline"
+                disabled={loading || isGitHubLoading}
+              >
+                {isLogin
+                  ? "Don't have an account? Sign up"
+                  : "Already have an account? Sign in"}
+              </button>
+            </div>
+          </div>
+        )}
       </Card>
     </div>
   );

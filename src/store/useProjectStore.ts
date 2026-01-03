@@ -12,6 +12,7 @@ interface ProjectState {
     project: Project | null;
     setProject: (project: Project | null) => void;
     fileCache: Record<string, ProjectFile>;
+    fileCacheOrder: string[]; // Track access order for LRU
     setFileCache: (cache: Record<string, ProjectFile>) => void;
     updateFileCache: (path: string, file: ProjectFile) => void;
 
@@ -43,42 +44,43 @@ interface ProjectState {
 
 export const useProjectStore = create<ProjectState>((set) => ({
     mode: TAB_MODES.GITHUB,
-    /**
-     * Sets the current tab mode (Github, Generate, Upload).
-     * @param mode - The new mode to switch to.
-     */
     setMode: (mode) => set({ mode }),
 
     project: null,
     setProject: (project) => set({ project }),
     fileCache: {},
-    /**
-     * Sets the entire file cache.
-     * @param fileCache - The new file cache object.
-     */
-    setFileCache: (fileCache) => set({ fileCache }),
-    /**
-     * Updates/Adds a single file to the cache.
-     * @param path - File path as key.
-     * @param file - File object.
-     */
-    updateFileCache: (path, file) => set((state) => {
-        // Simple size limit to prevent memory bloat
-        const MAX_FILES = 100;
-        const currentFiles = state.fileCache;
+    fileCacheOrder: [],
 
-        // If adding a new file and cache is full
-        if (Object.keys(currentFiles).length >= MAX_FILES && !currentFiles[path]) {
-            // NOTE: This uses a simple mechanism where the 'first' key is removed.
-            // In JavaScript objects, this often correlates to insertion order for string keys,
-            // but is not strict LRU. Sufficient for maintaining a bounded cache size here.
-            const [firstKey] = Object.keys(currentFiles);
-            const { [firstKey]: _, ...rest } = currentFiles;
-            return { fileCache: { ...rest, [path]: file } };
+    setFileCache: (fileCache) => set({
+        fileCache,
+        fileCacheOrder: Object.keys(fileCache)
+    }),
+
+    updateFileCache: (path, file) => set((state) => {
+        const MAX_FILES = 100;
+        let newCache = { ...state.fileCache };
+        let newOrder = [...state.fileCacheOrder];
+
+        // If file exists, remove from order (will re-add at end)
+        if (newCache[path]) {
+            newOrder = newOrder.filter(k => k !== path);
+        }
+
+        // Add to cache & order
+        newCache[path] = file;
+        newOrder.push(path);
+
+        // Evict if over limit
+        if (newOrder.length > MAX_FILES) {
+            const victim = newOrder.shift(); // Remove oldest (LRU)
+            if (victim) {
+                delete newCache[victim];
+            }
         }
 
         return {
-            fileCache: { ...state.fileCache, [path]: file }
+            fileCache: newCache,
+            fileCacheOrder: newOrder
         };
     }),
 
@@ -101,9 +103,6 @@ export const useProjectStore = create<ProjectState>((set) => ({
     isFileLoading: false,
     setIsFileLoading: (isFileLoading) => set({ isFileLoading }),
 
-    /**
-     * Resets the file selection state (lines).
-     */
     resetSelection: () => set({
         selectedLine: null,
         selectedLines: new Set(),

@@ -1,11 +1,8 @@
 import { motion } from "framer-motion";
 import { Link } from "react-router-dom";
 import { ExternalLink, Heart } from "lucide-react";
-import { useTranslation } from "react-i18next";
 
 const Footer = () => {
-    const { t } = useTranslation();
-
     return (
         <footer className="border-t border-border bg-secondary/30 mt-auto">
             <div className="container mx-auto px-4 py-12 md:px-8">
@@ -20,7 +17,7 @@ const Footer = () => {
                             <span className="font-bold text-lg">AI Code Tutor</span>
                         </div>
                         <p className="text-sm text-muted-foreground leading-relaxed">
-                            {t('footer.description')}
+                            Unlock the potential of any codebase with instant AI explanations and architectural insights.
                         </p>
                     </motion.div>
 
@@ -30,16 +27,16 @@ const Footer = () => {
                         transition={{ duration: 0.5, delay: 0.1 }}
                         viewport={{ once: true }}
                     >
-                        <h4 className="font-semibold mb-4 text-foreground">{t('footer.capabilities')}</h4>
+                        <h4 className="font-semibold mb-4 text-foreground">Capabilities</h4>
                         <ul className="space-y-2 text-sm text-muted-foreground">
                             <li>
-                                <Link to="/" className="hover:text-foreground transition-colors flex items-center gap-1">
-                                    Repo Analysis <ExternalLink className="h-3 w-3" />
+                                <Link to="/?tab=github" className="hover:text-foreground transition-colors flex items-center gap-1">
+                                    Repo Analysis
                                 </Link>
                             </li>
                             <li>
-                                <Link to="/" className="hover:text-foreground transition-colors flex items-center gap-1">
-                                    Project Generation <ExternalLink className="h-3 w-3" />
+                                <Link to="/?tab=generate" className="hover:text-foreground transition-colors flex items-center gap-1">
+                                    Project Generation
                                 </Link>
                             </li>
                         </ul>
@@ -51,7 +48,7 @@ const Footer = () => {
                         transition={{ duration: 0.5, delay: 0.2 }}
                         viewport={{ once: true }}
                     >
-                        <h4 className="font-semibold mb-4 text-foreground">{t('footer.resources')}</h4>
+                        <h4 className="font-semibold mb-4 text-foreground">Resources</h4>
                         <ul className="space-y-2 text-sm text-muted-foreground">
                             <li>
                                 <Link to="/faq" className="hover:text-foreground transition-colors">Documentation & FAQ</Link>
@@ -73,7 +70,7 @@ const Footer = () => {
                     transition={{ duration: 0.5, delay: 0.3 }}
                     viewport={{ once: true }}
                 >
-                    <p>© {new Date().getFullYear()} AI Code Tutor. {t('footer.rights')}</p>
+                    <p>© {new Date().getFullYear()} AI Code Tutor. All rights reserved.</p>
                     <div className="flex items-center gap-2 mt-4 md:mt-0">
                         <span>Built for the future of</span>
                         <Heart className="h-4 w-4 text-red-500 fill-red-500" />

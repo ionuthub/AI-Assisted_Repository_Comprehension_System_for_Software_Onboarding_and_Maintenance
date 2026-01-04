@@ -2,7 +2,6 @@ import { useNavigate } from "react-router-dom";
 import { Lock, Github } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { useTranslation } from "react-i18next";
 
 interface LockedFeatureProps {
     title: string;
@@ -11,7 +10,6 @@ interface LockedFeatureProps {
 
 const LockedFeature = ({ title, description }: LockedFeatureProps) => {
     const navigate = useNavigate();
-    const { t } = useTranslation();
 
     return (
         <Card className="flex flex-col items-center justify-center p-12 text-center space-y-6 h-[400px] bg-muted/30 border-dashed">

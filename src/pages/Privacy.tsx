@@ -22,9 +22,11 @@ const Privacy = () => {
               AI Code Tutor collects minimal data:
             </p>
             <ul className="list-disc list-inside mt-2 space-y-1 ml-4">
-              <li>Code snippets you submit for analysis (sent to Google Gemini API)</li>
+              <li>Code snippets you submit for analysis (process by AI, optionally saved to history)</li>
               <li>GitHub repository URLs you provide</li>
-              <li>Your skill level preference (stored locally)</li>
+              <li>Your skill level preference</li>
+              <li>Account information (GitHub username, avatar) when you sign in</li>
+              <li>Project history and generated projects (stored in our secure database)</li>
               <li>Basic analytics (optional, via Vercel)</li>
             </ul>
           </section>
@@ -36,7 +38,8 @@ const Privacy = () => {
             </p>
             <ul className="list-disc list-inside mt-2 space-y-1 ml-4">
               <li><strong>Google Gemini API</strong> - Processes code for AI explanations</li>
-              <li><strong>GitHub API</strong> - Fetches public repository data</li>
+              <li><strong>Supabase</strong> - Securely stores your account data and project history</li>
+              <li><strong>GitHub API</strong> - Fetches public repository data and handles authentication</li>
               <li><strong>Vercel</strong> - Hosts the application</li>
             </ul>
             <p className="mt-4">
@@ -69,11 +72,13 @@ const Privacy = () => {
               We do not store:
             </p>
             <ul className="list-disc list-inside mt-2 space-y-1 ml-4">
-              <li>Code snippets you submit</li>
-              <li>Your personal information</li>
-              <li>Browsing history</li>
-              <li>Explanations generated</li>
+              <li>Confidential business logic</li>
+              <li>Payment information</li>
             </ul>
+            <p className="mt-4">
+              <strong>For Signed-In Users:</strong> We store your project history (generated ideas and analyzed repo links) in our secure database to provide the Dashboard functionality. You can delete individual projects at any time.
+            </p>
+
             <p className="mt-4">
               Data is processed in real-time and not retained on our servers.
             </p>
@@ -142,12 +147,12 @@ const Privacy = () => {
 
           <div className="bg-primary/5 border border-primary/20 rounded-lg p-6 mt-8">
             <p className="text-sm">
-              <strong>Last Updated:</strong> October 24, 2025
+              <strong>Last Updated:</strong> January 4, 2026
             </p>
           </div>
         </div>
-      </main>
-    </div>
+      </main >
+    </div >
   );
 };
 

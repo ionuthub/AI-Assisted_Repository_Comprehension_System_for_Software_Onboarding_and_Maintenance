@@ -84,6 +84,7 @@ const Terms = () => {
               <li>Not submit sensitive, proprietary, or confidential code</li>
               <li>Verify all explanations with reliable sources</li>
               <li>Not rely solely on this tool for critical decisions</li>
+              <li>Maintain the security of your GitHub account credentials</li>
               <li>Comply with all applicable laws and regulations</li>
             </ul>
           </section>
@@ -98,7 +99,7 @@ const Terms = () => {
 
           <div className="bg-primary/5 border border-primary/20 rounded-lg p-6 mt-8">
             <p className="text-sm">
-              <strong>Last Updated:</strong> October 24, 2025
+              <strong>Last Updated:</strong> January 4, 2026
             </p>
           </div>
         </div>

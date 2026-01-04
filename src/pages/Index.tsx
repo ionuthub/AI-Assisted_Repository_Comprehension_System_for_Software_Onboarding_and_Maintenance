@@ -1,4 +1,5 @@
-import { useMemo, useState } from "react";
+import { useMemo, useState, useEffect } from "react";
+import { useSearchParams } from "react-router-dom";
 import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -45,6 +46,22 @@ const Index = () => {
   const { isAuthenticated, user } = useSupabaseOAuth();
   const { projects: historyProjects, isLoadingHistory, deleteProject } = useProjects(user, isAuthenticated);
   const { githubToken, manualGithubToken, setManualGithubToken } = useGitHubAuth();
+
+  const [searchParams] = useSearchParams();
+
+  useEffect(() => {
+    const tab = searchParams.get('tab');
+    if (tab === TAB_MODES.GITHUB) setMode(TAB_MODES.GITHUB);
+    if (tab === TAB_MODES.GENERATE) setMode(TAB_MODES.GENERATE);
+    if (tab === TAB_MODES.UPLOAD) setMode(TAB_MODES.UPLOAD);
+
+    // If a tab is requested, scroll to main area
+    if (tab) {
+      setTimeout(() => {
+        document.getElementById("main-tabs")?.scrollIntoView({ behavior: "smooth" });
+      }, 100);
+    }
+  }, [searchParams, setMode]);
 
   const [repoUrl, setRepoUrl] = useState("");
   const [projectIdea, setProjectIdea] = useState("");
@@ -248,20 +265,14 @@ const Index = () => {
                 </TabsContent>
 
                 <TabsContent value={TAB_MODES.UPLOAD}>
-                  {isAuthenticated ? (
-                    <UploadTab
-                      isLoading={isLoading}
-                      uploadedFolderName={uploadedFolderName}
-                      onFolderSelect={(files) => processUploadedFiles(files)}
-                      onAnalyze={() => handleAnalyze("", "", null)}
-                      isProjectLoaded={!!project}
-                    />
-                  ) : (
-                    <LockedFeature
-                      title="Analyze Local Projects"
-                      description="Upload your local project folders to get instant architecture reviews and code explanations."
-                    />
-                  )}
+                  <UploadTab
+                    isLoading={isLoading}
+                    uploadedFolderName={uploadedFolderName}
+                    onFolderSelect={(files) => processUploadedFiles(files)}
+                    onAnalyze={() => handleAnalyze("", "", null)}
+                    isProjectLoaded={!!project}
+                    isAuthenticated={isAuthenticated}
+                  />
                 </TabsContent>
               </Tabs>
 

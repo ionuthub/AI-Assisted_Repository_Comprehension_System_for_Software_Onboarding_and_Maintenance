@@ -35,7 +35,11 @@ export const useProjectManagement = () => {
     const folderInputRef = useRef<HTMLInputElement | null>(null);
 
     const processUploadedFiles = async (files: FileList | File[]) => {
-        if (!files || files.length === 0) return;
+        console.log("processUploadedFiles called with:", files);
+        if (!files || files.length === 0) {
+            console.log("No files provided");
+            return;
+        }
 
         resetSelection();
         setIsFileLoading(true);
@@ -44,14 +48,108 @@ export const useProjectManagement = () => {
             const fileArray = Array.from(files);
             const folderName = (fileArray[0] as File & { webkitRelativePath?: string }).webkitRelativePath?.split("/")?.[0] ?? "Uploaded Folder";
 
-            const folderFiles: ProjectFile[] = await Promise.all(
-                fileArray.map(async (file) => ({
-                    path: (file as File & { webkitRelativePath?: string }).webkitRelativePath ?? file.name,
-                    language: inferLanguageFromFilename(file.name),
-                    size: file.size ?? null,
-                    content: await file.text()
-                }))
-            );
+            // Filter out common binary/non-text files
+            const textFileExtensions = [
+                '.js', '.jsx', '.ts', '.tsx', '.json', '.html', '.css', '.scss', '.sass',
+                '.py', '.java', '.cpp', '.c', '.h', '.cs', '.go', '.rs', '.rb', '.php',
+                '.md', '.txt', '.xml', '.yml', '.yaml', '.toml', '.env', '.gitignore',
+                '.sh', '.bash', '.sql', '.graphql', '.vue', '.svelte'
+            ];
+
+            const filteredFiles = fileArray.filter(file => {
+                const fileName = file.name.toLowerCase();
+                return textFileExtensions.some(ext => fileName.endsWith(ext));
+            });
+
+            if (filteredFiles.length === 0) {
+                toast({
+                    title: "No text files found",
+                    description: "Please select a folder containing code files",
+                    variant: "destructive"
+                });
+                setIsFileLoading(false);
+                return;
+            }
+
+            // Limits
+            const MAX_FILES = 500;
+            const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB per file
+            const MAX_TOTAL_SIZE = 50 * 1024 * 1024; // 50MB total
+
+            // Check file count
+            if (filteredFiles.length > MAX_FILES) {
+                toast({
+                    title: "Too many files",
+                    description: `This folder has ${filteredFiles.length} code files. Please select a folder with fewer than ${MAX_FILES} files.`,
+                    variant: "destructive"
+                });
+                setIsFileLoading(false);
+                return;
+            }
+
+            // Check individual file sizes and total size
+            let totalSize = 0;
+            const oversizedFiles: string[] = [];
+
+            for (const file of filteredFiles) {
+                if (file.size > MAX_FILE_SIZE) {
+                    oversizedFiles.push(file.name);
+                }
+                totalSize += file.size;
+            }
+
+            if (oversizedFiles.length > 0) {
+                toast({
+                    title: "Files too large",
+                    description: `Some files exceed 5MB: ${oversizedFiles.slice(0, 3).join(', ')}${oversizedFiles.length > 3 ? '...' : ''}`,
+                    variant: "destructive"
+                });
+                setIsFileLoading(false);
+                return;
+            }
+
+            if (totalSize > MAX_TOTAL_SIZE) {
+                toast({
+                    title: "Folder too large",
+                    description: `Total size is ${(totalSize / 1024 / 1024).toFixed(1)}MB. Please select a folder under 50MB.`,
+                    variant: "destructive"
+                });
+                setIsFileLoading(false);
+                return;
+            }
+
+            const folderFiles: ProjectFile[] = [];
+
+            // Process files with progress feedback
+            toast({
+                title: "Processing folder...",
+                description: `Reading ${filteredFiles.length} files...`
+            });
+
+            for (const file of filteredFiles) {
+                try {
+                    const content = await file.text();
+                    folderFiles.push({
+                        path: (file as File & { webkitRelativePath?: string }).webkitRelativePath ?? file.name,
+                        language: inferLanguageFromFilename(file.name),
+                        size: file.size ?? null,
+                        content
+                    });
+                } catch (err) {
+                    console.warn(`Failed to read file ${file.name}:`, err);
+                    // Continue with other files
+                }
+            }
+
+            if (folderFiles.length === 0) {
+                toast({
+                    title: "Upload failed",
+                    description: "Could not read any files from the folder",
+                    variant: "destructive"
+                });
+                setIsFileLoading(false);
+                return;
+            }
 
             const cache: Record<string, ProjectFile> = {};
             folderFiles.forEach(f => { if (f.content) cache[f.path] = f; });
@@ -61,6 +159,7 @@ export const useProjectManagement = () => {
                 files: folderFiles
             });
             setFileCache(cache);
+            setUploadedFolderName(folderName);
 
             const first = folderFiles.find(f => f.content);
             if (first) {
@@ -68,8 +167,18 @@ export const useProjectManagement = () => {
                 const explanation = generateW3SchoolsFileExplanation(first.path, first.content || "", skillLevel);
                 setChatMessages([{ role: 'model', content: explanation }]);
             }
+
+            toast({
+                title: "Folder uploaded successfully",
+                description: `Loaded ${folderFiles.length} file(s) from ${folderName}`
+            });
         } catch (error) {
-            toast({ title: "Upload failed", variant: "destructive" });
+            console.error("Upload error:", error);
+            toast({
+                title: "Upload failed",
+                description: error instanceof Error ? error.message : "Failed to process folder",
+                variant: "destructive"
+            });
         } finally {
             setIsFileLoading(false);
             if (folderInputRef.current) folderInputRef.current.value = "";

@@ -55,7 +55,13 @@ const faqItems: FAQItem[] = [
     category: "features",
     question: "How does the project generator work?",
     answer:
-      "Describe your project idea, select your skill level, and the AI generates a complete starter project with all necessary files (package.json, tsconfig.json, components, hooks, etc.). You can download the project and run 'npm install && npm run dev' to start developing immediately.",
+      "Describe your project idea in the 'Project Generation' tab, and the AI will create a complete starter project for you. It automatically generates files, folder structure, and code. You can then download the entire project as a ZIP file to your computer and run it locally.",
+  },
+  {
+    category: "features",
+    question: "Can I save my projects?",
+    answer:
+      "Yes! Once you sign in with your GitHub account, your generated projects and analysis history are automatically saved to your personal dashboard. You can revisit them anytime to continue learning or export them again.",
   },
   {
     category: "features",
@@ -125,9 +131,15 @@ const faqItems: FAQItem[] = [
   // Privacy
   {
     category: "privacy",
+    question: "Do I need an account?",
+    answer:
+      "You can browse the landing page without an account, but to use the core features (Analysis, Generation, Upload) and save your history, you need to sign in with your GitHub account. This ensures your projects are securely stored and accessible only to you.",
+  },
+  {
+    category: "privacy",
     question: "Do you collect personal information?",
     answer:
-      "We collect minimal data: only the code you submit for analysis, GitHub URLs you provide, and your skill level preference. We don't collect names, emails, or personal identifiers unless you voluntarily provide them.",
+      "When you sign in, we receive your basic GitHub profile information (username, avatar) to create your account. We also store your project history and preferences in our database so you can access them later. We do NOT sell or share your personal data.",
   },
   {
     category: "privacy",
@@ -276,7 +288,7 @@ const FAQ = () => {
 
         <div className="bg-primary/5 border border-primary/20 rounded-lg p-6 mt-8">
           <p className="text-sm">
-            <strong>Last Updated:</strong> October 24, 2025
+            <strong>Last Updated:</strong> January 4, 2026
           </p>
         </div>
       </main>

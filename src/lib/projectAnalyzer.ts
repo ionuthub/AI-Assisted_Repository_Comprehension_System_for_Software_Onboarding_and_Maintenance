@@ -179,6 +179,12 @@ export const analyzeProject = (project: Project): ProjectOverview => {
     ``,
     `**What is this?**`,
     `This project is a ${projectType.toLowerCase()}. It's designed to ${getProjectPurpose(projectType)}.`,
+    ...(project.summary.source === 'generated' ? [
+      ``,
+      `⚠️ **Note (Proof of Concept)**:`,
+      `This is a starter template generated to demonstrate the project structure and best practices for your idea.`,
+      `It contains the core configuration and a sample UI component, but does **not** contain the full implementation of the business logic.`
+    ] : []),
     ``,
     `**Why use ${frameworks[0]}?**`,
     whyFramework,

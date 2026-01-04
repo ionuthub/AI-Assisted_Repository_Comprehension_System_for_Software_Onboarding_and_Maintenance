@@ -19,6 +19,7 @@ export interface ProjectSummary {
 }
 
 export interface Project {
+  id?: string;
   summary: ProjectSummary;
   files: ProjectFile[];
 }

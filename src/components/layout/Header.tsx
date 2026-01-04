@@ -3,13 +3,10 @@ import { Button } from "@/components/ui/button";
 import { Link, useLocation } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useEffect, useState } from "react";
-import { useTranslation } from "react-i18next";
-import { LanguageSwitcher } from "./LanguageSwitcher";
 
 const Header = () => {
     const [session, setSession] = useState<any>(null);
     const location = useLocation();
-    const { t } = useTranslation();
 
     useEffect(() => {
         supabase.auth.getSession().then(({ data: { session } }) => {
@@ -26,8 +23,8 @@ const Header = () => {
     }, []);
 
     const navItems = [
-        { label: t('nav.analyze'), path: "/" },
-        { label: t('nav.faq'), path: "/faq" },
+        { label: "Analyze", path: "/" },
+        { label: "FAQ", path: "/faq" },
     ];
 
     return (
@@ -64,8 +61,6 @@ const Header = () => {
                         ))}
                     </div>
 
-                    <LanguageSwitcher />
-
                     <div className="flex items-center gap-2 ml-2">
                         {session ? (
                             <Button
@@ -74,7 +69,7 @@ const Header = () => {
                                 onClick={() => supabase.auth.signOut()}
                                 className="px-4"
                             >
-                                {t('nav.signOut')}
+                                Sign Out
                             </Button>
                         ) : (
                             <Button
@@ -83,7 +78,7 @@ const Header = () => {
                                 asChild
                                 className="px-4 bg-sky-600 hover:bg-sky-700 text-white"
                             >
-                                <Link to="/auth">{t('nav.signIn')}</Link>
+                                <Link to="/auth">Sign In</Link>
                             </Button>
                         )}
                     </div>

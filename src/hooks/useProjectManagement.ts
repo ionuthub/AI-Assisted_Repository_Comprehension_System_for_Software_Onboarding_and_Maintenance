@@ -9,6 +9,7 @@ import { inferLanguageFromFilename } from "@/lib/languages";
 import { generateW3SchoolsFileExplanation } from "@/lib/w3schoolsExplainer";
 import { ProjectFile } from "@/types/project";
 import { supabase } from "@/integrations/supabase/client";
+import { Json } from "@/integrations/supabase/types";
 import { useSupabaseOAuth } from "./useSupabaseOAuth";
 
 export const useProjectManagement = () => {
@@ -33,8 +34,7 @@ export const useProjectManagement = () => {
     const [uploadedFolderName, setUploadedFolderName] = useState<string | null>(null);
     const folderInputRef = useRef<HTMLInputElement | null>(null);
 
-    const handleFolderInputChange = async (event: ChangeEvent<HTMLInputElement>) => {
-        const files = event.target.files;
+    const processUploadedFiles = async (files: FileList | File[]) => {
         if (!files || files.length === 0) return;
 
         resetSelection();
@@ -76,6 +76,12 @@ export const useProjectManagement = () => {
         }
     };
 
+    const handleFolderInputChange = async (event: ChangeEvent<HTMLInputElement>) => {
+        if (event.target.files) {
+            await processUploadedFiles(event.target.files);
+        }
+    };
+
     const handleAnalyze = async (repoUrl: string, projectIdea: string, token: string | null) => {
         resetSelection();
         if (mode === TAB_MODES.GITHUB && !repoUrl.trim()) return toast({ title: "Repo URL required", variant: "destructive" });
@@ -98,7 +104,7 @@ export const useProjectManagement = () => {
                         project_type: 'github',
                         language: next.summary.language,
                         skill_level: skillLevel,
-                        files: next.files as any
+                        files: next.files as unknown as Json
                     }).then(({ error }) => {
                         if (error) console.error("Failed to auto-save project:", error);
                         else toast({ title: "Project saved to history" });
@@ -122,7 +128,7 @@ export const useProjectManagement = () => {
                         project_idea: projectIdea.trim(),
                         project_type: 'generated',
                         skill_level: skillLevel,
-                        files: next.files as any
+                        files: next.files as unknown as Json
                     }).then(({ error }) => {
                         if (error) console.error("Failed to auto-save project:", error);
                         else toast({ title: "Project saved to history" });
@@ -172,6 +178,7 @@ export const useProjectManagement = () => {
         uploadedFolderName,
         folderInputRef,
         handleFolderInputChange,
+        processUploadedFiles,
         handleAnalyze,
         handleFileSelect
     };

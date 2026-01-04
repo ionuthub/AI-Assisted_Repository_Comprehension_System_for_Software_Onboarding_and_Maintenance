@@ -1,10 +1,12 @@
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Lightbulb, Code2, Zap, BookOpen, GitBranch, Map } from "lucide-react";
+import { Lightbulb, Code2, Zap, BookOpen, GitBranch, Map, Download } from "lucide-react";
 import type { ProjectOverview } from "@/lib/projectAnalyzer";
 import type { Project } from "@/types/project";
 import DependencyGraph from "./DependencyGraph";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Button } from "@/components/ui/button";
+import { downloadProject } from "@/lib/download";
 
 interface ProjectOverviewProps {
   overview: ProjectOverview;
@@ -14,7 +16,7 @@ interface ProjectOverviewProps {
 
 export default function ProjectOverviewComponent({ overview, project, onFileSelect }: ProjectOverviewProps) {
   return (
-    <Card className="p-0 mb-6 bg-card border-border overflow-hidden shadow-xl">
+    <Card id="project-overview" className="p-0 mb-6 bg-card border-border overflow-hidden shadow-xl">
       <Tabs defaultValue="overview" className="w-full">
         <div className="bg-secondary/30 px-6 py-4 flex flex-col md:flex-row items-start md:items-center justify-between gap-4 border-b border-border">
           <div className="flex items-center gap-3">
@@ -27,17 +29,29 @@ export default function ProjectOverviewComponent({ overview, project, onFileSele
             </div>
           </div>
 
-          <TabsList className="bg-background/50 border border-border">
-            <TabsTrigger value="overview" className="gap-2 text-xs">
-              <Lightbulb className="w-3.5 h-3.5" /> Overview
-            </TabsTrigger>
-            <TabsTrigger value="path" className="gap-2 text-xs">
-              <BookOpen className="w-3.5 h-3.5" /> Learning Path
-            </TabsTrigger>
-            <TabsTrigger value="graph" className="gap-2 text-xs">
-              <GitBranch className="w-3.5 h-3.5" /> Project Map
-            </TabsTrigger>
-          </TabsList>
+          <div className="flex gap-2 items-center">
+            {project.summary.source === 'generated' && (
+              <Button
+                variant="outline"
+                size="sm"
+                className="gap-2 text-xs hidden md:flex"
+                onClick={() => downloadProject(project)}
+              >
+                <Download className="w-3.5 h-3.5" /> Download ZIP
+              </Button>
+            )}
+            <TabsList className="bg-background/50 border border-border">
+              <TabsTrigger value="overview" className="gap-2 text-xs">
+                <Lightbulb className="w-3.5 h-3.5" /> Overview
+              </TabsTrigger>
+              <TabsTrigger value="path" className="gap-2 text-xs">
+                <BookOpen className="w-3.5 h-3.5" /> Learning Path
+              </TabsTrigger>
+              <TabsTrigger value="graph" className="gap-2 text-xs">
+                <GitBranch className="w-3.5 h-3.5" /> Project Map
+              </TabsTrigger>
+            </TabsList>
+          </div>
         </div>
 
         <div className="p-6">

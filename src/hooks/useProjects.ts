@@ -1,15 +1,16 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
+import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { Project, ProjectSummary, ProjectFile } from "@/types/project";
 import { useSupabaseOAuth } from "./useSupabaseOAuth";
 import { Json } from "@/integrations/supabase/types";
 
-export const useProjects = () => {
-    const { isAuthenticated, user } = useSupabaseOAuth();
+export const useProjects = (user: any | null, isAuthenticated: boolean) => {
+    const { toast } = useToast();
     const [projects, setProjects] = useState<Project[]>([]);
     const [isLoadingHistory, setIsLoadingHistory] = useState(false);
 
-    const fetchProjects = async () => {
+    const fetchProjects = useCallback(async () => {
         if (!isAuthenticated || !user) return;
 
         setIsLoadingHistory(true);
@@ -26,7 +27,7 @@ export const useProjects = () => {
                     summary: {
                         name: row.name,
                         description: row.description,
-                        source: row.project_type as any || 'generated',
+                        source: (row.project_type === 'github' || row.project_type === 'generated' || row.project_type === 'uploaded') ? row.project_type : 'generated',
                         language: row.language,
                         owner: null, // Not always stored perfectly, potentially inferred
                         repo: null,
@@ -34,8 +35,7 @@ export const useProjects = () => {
                     files: (row.files as unknown as ProjectFile[]) || [],
                     // We might want to store the ID to allow deleting/updating later
                     id: row.id
-                } as unknown as Project));
-                // Casting strict Project type for now, we might need to extend Project type with ID
+                }));
 
                 setProjects(mappedProjects);
             }
@@ -44,11 +44,29 @@ export const useProjects = () => {
         } finally {
             setIsLoadingHistory(false);
         }
-    };
+    }, [isAuthenticated, user]);
 
     useEffect(() => {
         fetchProjects();
-    }, [isAuthenticated, user]);
+    }, [fetchProjects]);
 
-    return { projects, isLoadingHistory, refreshHistory: fetchProjects };
+    const deleteProject = useCallback(async (projectId: string) => {
+        try {
+            const { error } = await supabase
+                .from('projects')
+                .delete()
+                .eq('id', projectId);
+
+            if (error) throw error;
+
+            // Update local state after successful deletion
+            setProjects(prev => prev.filter(p => p.id !== projectId));
+            toast({ title: "Project deleted", description: "The project has been permanently removed." });
+        } catch (error) {
+            console.error("Error deleting project:", error);
+            toast({ title: "Delete failed", description: "Could not delete the project. Please try again.", variant: "destructive" });
+        }
+    }, [toast]);
+
+    return { projects, isLoadingHistory, refreshHistory: fetchProjects, deleteProject };
 };

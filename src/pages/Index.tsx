@@ -1,9 +1,9 @@
 import { useMemo, useState } from "react";
 import { motion } from "framer-motion";
-import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Files, Code, Sparkles } from "lucide-react";
 import SkillSelector from "@/components/SkillSelector";
 import CodeViewer from "@/components/CodeViewer";
 import ExplanationPanel from "@/components/ExplanationPanel";
@@ -28,7 +28,6 @@ import ProjectHistory from "@/components/dashboard/ProjectHistory";
 import { useProjects } from "@/hooks/useProjects";
 
 const Index = () => {
-  const { t } = useTranslation();
   const {
     mode, setMode,
     project, setProject,
@@ -44,7 +43,7 @@ const Index = () => {
   } = useProjectStore();
 
   const { isAuthenticated, user } = useSupabaseOAuth();
-  const { projects: historyProjects, isLoadingHistory } = useProjects();
+  const { projects: historyProjects, isLoadingHistory, deleteProject } = useProjects(user, isAuthenticated);
   const { githubToken, manualGithubToken, setManualGithubToken } = useGitHubAuth();
 
   const [repoUrl, setRepoUrl] = useState("");
@@ -53,6 +52,7 @@ const Index = () => {
   const {
     uploadedFolderName,
     handleFolderInputChange,
+    processUploadedFiles,
     handleAnalyze,
     handleFileSelect
   } = useProjectManagement();
@@ -125,7 +125,7 @@ const Index = () => {
                 onSelectProject={(p) => {
                   setProject(p);
                   // Setup cache for the selected project
-                  const cache: Record<string, any> = {};
+                  const cache: Record<string, import("@/types/project").ProjectFile> = {};
                   p.files.forEach(f => { if (f.content) cache[f.path] = f; });
                   setFileCache(cache);
                   if (p.files.length > 0) setSelectedFile(p.files[0].path);
@@ -135,6 +135,7 @@ const Index = () => {
                     document.getElementById("main-tabs")?.scrollIntoView({ behavior: "smooth" });
                   }, 100);
                 }}
+                onDeleteProject={deleteProject}
               />
             </motion.div>
           ) : (
@@ -150,18 +151,18 @@ const Index = () => {
                 transition={{ delay: 0.2, duration: 0.5 }}
                 className="inline-block px-4 py-1.5 mb-6 text-sm font-medium tracking-wide uppercase bg-sky-100 dark:bg-sky-900/30 text-sky-600 dark:text-sky-400 rounded-full w-fit mx-auto"
               >
-                {t('hero.badge')}
+                Enterprise AI Code Intelligence
               </motion.div>
 
               <h1 className="text-5xl font-extrabold tracking-tight md:text-7xl mb-8 leading-[1.1]">
-                {t('hero.titleMain')} <br />
+                Understand unfamiliar code <br />
                 <span className="bg-clip-text text-transparent bg-gradient-to-r from-sky-600 via-blue-500 to-indigo-600 dark:from-sky-400 dark:to-indigo-400">
-                  {t('hero.titleSub')}
+                  in minutes, not hours.
                 </span>
               </h1>
 
               <p className="text-xl text-muted-foreground md:text-2xl leading-relaxed max-w-3xl mx-auto mb-10">
-                {t('hero.description')}
+                Stop struggling with context switching. Paste a GitHub repository or describe an idea, and let our neural engine deconstruct the logic for you.
               </p>
 
               <div className="flex flex-wrap justify-center gap-4">
@@ -173,7 +174,7 @@ const Index = () => {
                     tabsElement?.scrollIntoView({ behavior: "smooth" });
                   }}
                 >
-                  {t('hero.getStarted')}
+                  Get Started Free
                 </Button>
                 <Button
                   size="lg"
@@ -181,7 +182,7 @@ const Index = () => {
                   className="h-14 px-8 text-lg font-semibold"
                   asChild
                 >
-                  <a href="/faq">{t('hero.howItWorks')}</a>
+                  <a href="/faq">How it works</a>
                 </Button>
               </div>
             </motion.section>
@@ -201,13 +202,16 @@ const Index = () => {
               >
                 <TabsList className="grid w-full grid-cols-3 bg-secondary/50">
                   <TabsTrigger value={TAB_MODES.GITHUB} className="gap-2 data-[state=active]:bg-sky-600 data-[state=active]:text-white data-[state=inactive]:text-muted-foreground hover:text-foreground transition-colors">
-                    GitHub Repo
+                    <span className="hidden md:inline">GitHub Repo</span>
+                    <span className="inline md:hidden">GitHub</span>
                   </TabsTrigger>
                   <TabsTrigger value={TAB_MODES.GENERATE} className="gap-2 data-[state=active]:bg-sky-600 data-[state=active]:text-white data-[state=inactive]:text-muted-foreground hover:text-foreground transition-colors">
-                    Generate Idea
+                    <span className="hidden md:inline">Generate Idea</span>
+                    <span className="inline md:hidden">Idea</span>
                   </TabsTrigger>
                   <TabsTrigger value={TAB_MODES.UPLOAD} className="gap-2 data-[state=active]:bg-sky-600 data-[state=active]:text-white data-[state=inactive]:text-muted-foreground hover:text-foreground transition-colors">
-                    Upload Folder
+                    <span className="hidden md:inline">Upload Folder</span>
+                    <span className="inline md:hidden">Upload</span>
                   </TabsTrigger>
                 </TabsList>
 
@@ -232,9 +236,13 @@ const Index = () => {
                 <TabsContent value={TAB_MODES.GENERATE}>
                   <GenerateTab
                     isLoading={isLoading}
-                    onGenerate={(idea) => {
+                    onGenerate={async (idea) => {
                       setProjectIdea(idea);
-                      handleAnalyze("", idea, null);
+                      await handleAnalyze("", idea, null);
+                      // Auto-redirect by scrolling to project view
+                      setTimeout(() => {
+                        document.getElementById("project-overview")?.scrollIntoView({ behavior: "smooth" });
+                      }, 500);
                     }}
                   />
                 </TabsContent>
@@ -244,9 +252,7 @@ const Index = () => {
                     <UploadTab
                       isLoading={isLoading}
                       uploadedFolderName={uploadedFolderName}
-                      onFolderSelect={(files) => handleFolderInputChange({
-                        target: { files }
-                      } as any)}
+                      onFolderSelect={(files) => processUploadedFiles(files)}
                       onAnalyze={() => handleAnalyze("", "", null)}
                       isProjectLoaded={!!project}
                     />
@@ -282,28 +288,22 @@ const Index = () => {
                   onFileSelect={(path) => handleFileSelect(path, manualGithubToken || githubToken)}
                 />
               </motion.div>
+              {/* Desktop View (Grid) */}
               <motion.section
-                className="mt-16 grid gap-6 grid-cols-1 md:grid-cols-[260px_1fr_400px] lg:grid-cols-[300px_1fr_450px]"
+                className="mt-16 hidden md:grid gap-6 grid-cols-[260px_1fr_400px] lg:grid-cols-[300px_1fr_450px]"
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 transition={{ duration: 0.6, staggerChildren: 0.1 }}
               >
-                <motion.div
-                  initial={{ opacity: 0, x: -30 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  transition={{ duration: 0.5 }}
-                >
+                <div className="h-full border rounded-xl overflow-hidden bg-card">
                   <FileNavigator
                     files={displayedFiles}
                     selectedFile={selectedFile}
                     onFileSelect={(path) => handleFileSelect(path, manualGithubToken || githubToken)}
                   />
-                </motion.div>
-                <motion.div
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.5, delay: 0.1 }}
-                >
+                </div>
+
+                <div className="h-full min-h-[500px] border rounded-xl overflow-hidden bg-card shadow-sm">
                   <CodeViewer
                     isLoading={isFileLoading}
                     fileName={selectedFile}
@@ -312,12 +312,9 @@ const Index = () => {
                     selectedLine={selectedLine}
                     selectedLines={selectedLines}
                   />
-                </motion.div>
-                <motion.div
-                  initial={{ opacity: 0, x: 30 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  transition={{ duration: 0.5, delay: 0.2 }}
-                >
+                </div>
+
+                <div className="h-full border rounded-xl overflow-hidden bg-card">
                   <ExplanationPanel
                     isLoading={isExplaining}
                     messages={chatMessages}
@@ -326,8 +323,68 @@ const Index = () => {
                     skillLevel={skillLevel}
                     hasSelection={!!selectedLine}
                   />
-                </motion.div>
+                </div>
               </motion.section>
+
+              {/* Mobile View (Tabs) */}
+              <motion.div
+                className="mt-8 md:hidden"
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+              >
+                <Tabs defaultValue="files" className="w-full">
+                  <TabsList className="grid w-full grid-cols-3 mb-4">
+                    <TabsTrigger value="files" className="flex gap-2">
+                      <Files className="w-4 h-4" /> Files
+                    </TabsTrigger>
+                    <TabsTrigger value="code" className="flex gap-2">
+                      <Code className="w-4 h-4" /> Code
+                    </TabsTrigger>
+                    <TabsTrigger value="explain" className="flex gap-2">
+                      <Sparkles className="w-4 h-4" /> AI
+                    </TabsTrigger>
+                  </TabsList>
+
+                  <TabsContent value="files" className="mt-0">
+                    <div className="border rounded-xl overflow-hidden bg-card h-[60vh]">
+                      <FileNavigator
+                        files={displayedFiles}
+                        selectedFile={selectedFile}
+                        onFileSelect={(path) => {
+                          handleFileSelect(path, manualGithubToken || githubToken);
+                          // Optional: Auto-switch to code tab on file select check if we want this interaction
+                        }}
+                      />
+                    </div>
+                  </TabsContent>
+
+                  <TabsContent value="code" className="mt-0">
+                    <div className="border rounded-xl overflow-hidden bg-card h-[60vh] shadow-sm">
+                      <CodeViewer
+                        isLoading={isFileLoading}
+                        fileName={selectedFile}
+                        fileContent={currentFileContent}
+                        onLineSelect={(line) => handleLineSelect(line, currentFileContent || '')}
+                        selectedLine={selectedLine}
+                        selectedLines={selectedLines}
+                      />
+                    </div>
+                  </TabsContent>
+
+                  <TabsContent value="explain" className="mt-0">
+                    <div className="border rounded-xl overflow-hidden bg-card h-[60vh]">
+                      <ExplanationPanel
+                        isLoading={isExplaining}
+                        messages={chatMessages}
+                        onSendMessage={handleChatSendMessage}
+                        onRefactor={() => handleRefactorRequest(selectedLine, currentFileContent)}
+                        skillLevel={skillLevel}
+                        hasSelection={!!selectedLine}
+                      />
+                    </div>
+                  </TabsContent>
+                </Tabs>
+              </motion.div>
             </>
           )}
         </main>

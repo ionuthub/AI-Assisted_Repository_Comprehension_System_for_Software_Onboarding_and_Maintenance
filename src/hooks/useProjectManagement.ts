@@ -8,6 +8,8 @@ import { generateProject } from "@/lib/generation";
 import { inferLanguageFromFilename } from "@/lib/languages";
 import { generateW3SchoolsFileExplanation } from "@/lib/w3schoolsExplainer";
 import { ProjectFile } from "@/types/project";
+import { supabase } from "@/integrations/supabase/client";
+import { useSupabaseOAuth } from "./useSupabaseOAuth";
 
 export const useProjectManagement = () => {
     const { toast } = useToast();
@@ -25,6 +27,8 @@ export const useProjectManagement = () => {
         resetSelection,
         skillLevel
     } = useProjectStore();
+
+    const { isAuthenticated, user } = useSupabaseOAuth();
 
     const [uploadedFolderName, setUploadedFolderName] = useState<string | null>(null);
     const folderInputRef = useRef<HTMLInputElement | null>(null);
@@ -83,6 +87,24 @@ export const useProjectManagement = () => {
                 const next = await fetchRepositoryProject(repoUrl.trim(), token);
                 setProject(next);
                 if (next.files.length > 0) setSelectedFile(next.files[0].path);
+
+                // Auto-save if authenticated
+                if (isAuthenticated && user) {
+                    supabase.from('projects').insert({
+                        user_id: user.id,
+                        name: next.summary.name,
+                        description: next.summary.description,
+                        repo_url: repoUrl.trim(),
+                        project_type: 'github',
+                        language: next.summary.language,
+                        skill_level: skillLevel,
+                        files: next.files as any
+                    }).then(({ error }) => {
+                        if (error) console.error("Failed to auto-save project:", error);
+                        else toast({ title: "Project saved to history" });
+                    });
+                }
+
             } else if (mode === TAB_MODES.GENERATE) {
                 const next = generateProject(projectIdea.trim(), skillLevel);
                 setProject(next);
@@ -90,6 +112,22 @@ export const useProjectManagement = () => {
                 next.files.forEach(f => { if (f.content) cache[f.path] = f; });
                 setFileCache(cache);
                 if (next.files.length > 0) setSelectedFile(next.files[0].path);
+
+                // Auto-save if authenticated
+                if (isAuthenticated && user) {
+                    supabase.from('projects').insert({
+                        user_id: user.id,
+                        name: next.summary.name || projectIdea.trim().slice(0, 50),
+                        description: next.summary.description,
+                        project_idea: projectIdea.trim(),
+                        project_type: 'generated',
+                        skill_level: skillLevel,
+                        files: next.files as any
+                    }).then(({ error }) => {
+                        if (error) console.error("Failed to auto-save project:", error);
+                        else toast({ title: "Project saved to history" });
+                    });
+                }
             }
         } catch (e) {
             toast({ title: "Analysis failed", variant: "destructive" });

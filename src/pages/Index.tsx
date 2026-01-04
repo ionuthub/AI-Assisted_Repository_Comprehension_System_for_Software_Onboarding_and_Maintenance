@@ -24,14 +24,16 @@ import { useGitHubAuth } from "@/hooks/useGitHubAuth";
 import { useProjectManagement } from "@/hooks/useProjectManagement";
 import { useCodeExplanation } from "@/hooks/useCodeExplanation";
 import LockedFeature from "@/components/LockedFeature";
+import ProjectHistory from "@/components/dashboard/ProjectHistory";
+import { useProjects } from "@/hooks/useProjects";
 
 const Index = () => {
   const { t } = useTranslation();
   const {
     mode, setMode,
-    project,
-    fileCache,
-    selectedFile,
+    project, setProject,
+    fileCache, setFileCache,
+    selectedFile, setSelectedFile,
     selectedLine,
     selectedLines,
     skillLevel,
@@ -42,6 +44,7 @@ const Index = () => {
   } = useProjectStore();
 
   const { isAuthenticated, user } = useSupabaseOAuth();
+  const { projects: historyProjects, isLoadingHistory } = useProjects();
   const { githubToken, manualGithubToken, setManualGithubToken } = useGitHubAuth();
 
   const [repoUrl, setRepoUrl] = useState("");
@@ -115,6 +118,24 @@ const Index = () => {
               <p className="text-muted-foreground">
                 Continue your learning journey. Select a repository or upload a new project.
               </p>
+
+              <ProjectHistory
+                projects={historyProjects}
+                isLoading={isLoadingHistory}
+                onSelectProject={(p) => {
+                  setProject(p);
+                  // Setup cache for the selected project
+                  const cache: Record<string, any> = {};
+                  p.files.forEach(f => { if (f.content) cache[f.path] = f; });
+                  setFileCache(cache);
+                  if (p.files.length > 0) setSelectedFile(p.files[0].path);
+
+                  // Scroll to main area
+                  setTimeout(() => {
+                    document.getElementById("main-tabs")?.scrollIntoView({ behavior: "smooth" });
+                  }, 100);
+                }}
+              />
             </motion.div>
           ) : (
             <motion.section

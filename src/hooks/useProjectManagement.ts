@@ -11,6 +11,7 @@ import { ProjectFile } from "@/types/project";
 import { supabase } from "@/integrations/supabase/client";
 import { Json } from "@/integrations/supabase/types";
 import { useSupabaseOAuth } from "./useSupabaseOAuth";
+import { rateLimiters } from "@/lib/security";
 
 export const useProjectManagement = () => {
     const { toast } = useToast();
@@ -36,6 +37,19 @@ export const useProjectManagement = () => {
 
     const processUploadedFiles = async (files: FileList | File[]) => {
         console.log("processUploadedFiles called with:", files);
+
+        // Rate limit check
+        const rateLimitKey = user?.id || 'anonymous';
+        if (!rateLimiters.upload.isAllowed(rateLimitKey)) {
+            const waitTime = Math.ceil(rateLimiters.upload.getTimeUntilReset(rateLimitKey) / 1000);
+            toast({
+                title: "Rate limit exceeded",
+                description: `Please wait ${waitTime} seconds before uploading again`,
+                variant: "destructive",
+            });
+            return;
+        }
+
         if (!files || files.length === 0) {
             console.log("No files provided");
             return;
@@ -195,6 +209,31 @@ export const useProjectManagement = () => {
         resetSelection();
         if (mode === TAB_MODES.GITHUB && !repoUrl.trim()) return toast({ title: "Repo URL required", variant: "destructive" });
         if (mode === TAB_MODES.GENERATE && !projectIdea.trim()) return toast({ title: "Idea required", variant: "destructive" });
+
+        // Rate limit check
+        const rateLimitKey = user?.id || 'anonymous';
+
+        if (mode === TAB_MODES.GENERATE) {
+            if (!rateLimiters.generation.isAllowed(rateLimitKey)) {
+                const waitTime = Math.ceil(rateLimiters.generation.getTimeUntilReset(rateLimitKey) / 1000);
+                toast({
+                    title: "Rate limit exceeded",
+                    description: `Please wait ${waitTime} seconds before generating another project`,
+                    variant: "destructive",
+                });
+                return;
+            }
+        } else if (mode === TAB_MODES.GITHUB) {
+            if (!rateLimiters.api.isAllowed(rateLimitKey)) {
+                const waitTime = Math.ceil(rateLimiters.api.getTimeUntilReset(rateLimitKey) / 1000);
+                toast({
+                    title: "Rate limit exceeded",
+                    description: `Please wait ${waitTime} seconds before analyzing another repository`,
+                    variant: "destructive",
+                });
+                return;
+            }
+        }
 
         setIsLoading(true);
         try {

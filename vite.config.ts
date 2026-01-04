@@ -13,6 +13,30 @@ export default defineConfig(({ mode }) => {
     plugins: [
       react(),
       {
+        name: 'security-headers',
+        configureServer(server) {
+          server.middlewares.use((req, res, next) => {
+            // Security headers for development
+            res.setHeader('X-Frame-Options', 'DENY');
+            res.setHeader('X-Content-Type-Options', 'nosniff');
+            res.setHeader('X-XSS-Protection', '1; mode=block');
+            res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
+            res.setHeader('Permissions-Policy', 'geolocation=(), microphone=(), camera=()');
+            res.setHeader(
+              'Content-Security-Policy',
+              "default-src 'self'; " +
+              "script-src 'self' 'unsafe-inline' 'unsafe-eval'; " +
+              "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; " +
+              "font-src 'self' https://fonts.gstatic.com; " +
+              "img-src 'self' data: https:; " +
+              "connect-src 'self' https://generativelanguage.googleapis.com https://*.supabase.co wss://*.supabase.co; " +
+              "frame-ancestors 'none';"
+            );
+            next();
+          });
+        }
+      },
+      {
         name: 'api-middleware',
         configureServer(server) {
           server.middlewares.use('/api/explain-code', async (req, res, next) => {

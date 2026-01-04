@@ -1,8 +1,10 @@
 import { useState } from "react";
-import { Github, Sparkles, ExternalLink } from "lucide-react";
+import { Github, Sparkles, ExternalLink, AlertCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { TAB_CONFIG, TAB_MODES } from "@/constants/appConstants";
+import { isValidGitHubUrl, sanitizeUrl, sanitizeInput } from "@/lib/security";
+import { useToast } from "@/hooks/use-toast";
 
 interface GitHubTabProps {
   isLoading: boolean;
@@ -17,11 +19,45 @@ export const GitHubTab = ({ isLoading, onAnalyze }: GitHubTabProps) => {
   const [repoUrl, setRepoUrl] = useState("");
   const [token, setToken] = useState("");
   const [showTokenInput, setShowTokenInput] = useState(false);
+  const { toast } = useToast();
 
   const handleAnalyze = () => {
-    if (repoUrl.trim()) {
-      onAnalyze(repoUrl.trim(), token.trim());
+    const trimmedUrl = repoUrl.trim();
+
+    if (!trimmedUrl) {
+      toast({
+        title: "URL required",
+        description: "Please enter a GitHub repository URL",
+        variant: "destructive",
+      });
+      return;
     }
+
+    // Validate GitHub URL format
+    if (!isValidGitHubUrl(trimmedUrl)) {
+      toast({
+        title: "Invalid GitHub URL",
+        description: "Please enter a valid GitHub repository URL (e.g., https://github.com/user/repo)",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // Sanitize URL to prevent XSS
+    const sanitizedUrl = sanitizeUrl(trimmedUrl);
+    if (!sanitizedUrl) {
+      toast({
+        title: "Invalid URL",
+        description: "The URL contains invalid or dangerous content",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // Sanitize token input
+    const sanitizedToken = token.trim() ? sanitizeInput(token.trim()) : undefined;
+
+    onAnalyze(sanitizedUrl, sanitizedToken);
   };
 
   const config = TAB_CONFIG[TAB_MODES.GITHUB];

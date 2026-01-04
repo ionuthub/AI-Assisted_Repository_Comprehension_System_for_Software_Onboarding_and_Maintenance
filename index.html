@@ -12,7 +12,19 @@
     <meta property="og:type" content="website" />
     <meta property="og:type" content="website" />
     <meta name="twitter:card" content="summary_large_image" />
-        <link rel="icon" type="image/png" href="/favicon.png" />
+    <link rel="icon" type="image/png" href="/favicon.png" />
+    
+    <!-- Plausible Analytics (Privacy-friendly, GDPR compliant) -->
+    <!-- Only loads if VITE_PLAUSIBLE_DOMAIN is set -->
+    <script>
+      if (window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1') {
+        const script = document.createElement('script');
+        script.defer = true;
+        script.dataset.domain = '%VITE_PLAUSIBLE_DOMAIN%';
+        script.src = 'https://plausible.io/js/script.js';
+        document.head.appendChild(script);
+      }
+    </script>
   </head>
 
   <body>

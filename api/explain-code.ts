@@ -114,29 +114,66 @@ export default async function handler(req: Request): Promise<Response> {
         const reader = response.body?.getReader();
         if (!reader) return writer.close();
 
+        let buffer = '';
+
         try {
           while (true) {
             const { done, value } = await reader.read();
             if (done) break;
 
-            const chunk = decoder.decode(value);
-            // Gemini stream format is weird: objects inside a JSON array
-            // We just strip the array brackets if they exist and parse the JSON objects
-            try {
-              // Handle multiple JSON objects in one chunk
-              const lines = chunk.split('\n').filter(l => l.trim());
-              for (const line of lines) {
-                const cleanLine = line.replace(/^,/, '').replace(/,$/, '').replace(/^\[/, '').replace(/\]$/, '');
-                if (!cleanLine) continue;
-                const data = JSON.parse(cleanLine);
-                const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
-                if (text) {
-                  await writer.write(encoder.encode(text));
+            buffer += decoder.decode(value, { stream: true });
+
+            while (true) {
+              let openBraces = 0;
+              let inString = false;
+              let escape = false;
+              let startIndex = -1;
+              let endIndex = -1;
+
+              for (let i = 0; i < buffer.length; i++) {
+                const char = buffer[i];
+                if (escape) {
+                  escape = false;
+                  continue;
+                }
+                if (char === '\\') {
+                  escape = true;
+                  continue;
+                }
+                if (char === '"') {
+                  inString = !inString;
+                  continue;
+                }
+                if (inString) continue;
+
+                if (char === '{') {
+                  if (openBraces === 0) startIndex = i;
+                  openBraces++;
+                } else if (char === '}') {
+                  openBraces--;
+                  if (openBraces === 0 && startIndex !== -1) {
+                    endIndex = i;
+                    break;
+                  }
                 }
               }
-            } catch (e) {
-              // Fallback if parsing fails - sometimes chunks are partial
-              // In production we might want to buffer partial chunks
+
+              if (endIndex !== -1) {
+                const jsonStr = buffer.substring(startIndex, endIndex + 1);
+                buffer = buffer.substring(endIndex + 1);
+
+                try {
+                  const data = JSON.parse(jsonStr);
+                  const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
+                  if (text) {
+                    await writer.write(encoder.encode(text));
+                  }
+                } catch (e) {
+                  // Skip invalid JSON
+                }
+              } else {
+                break;
+              }
             }
           }
         } finally {

@@ -7,6 +7,7 @@ import { ThemeProvider } from "next-themes";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import Layout from "./components/layout/Layout";
 import { Skeleton } from "./components/ui/skeleton";
+import CookieConsent from "./components/CookieConsent";
 
 // Lazy load pages for optimized bundle size
 const Index = lazy(() => import("./pages/Index"));
@@ -52,6 +53,7 @@ const App = () => (
           </ErrorBoundary>
         </Layout>
       </BrowserRouter>
+      <CookieConsent />
     </TooltipProvider>
   </ThemeProvider>
 );

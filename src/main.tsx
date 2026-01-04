@@ -2,6 +2,7 @@ import { createRoot } from "react-dom/client";
 import App from "./App.tsx";
 import "./index.css";
 import * as Sentry from "@sentry/react";
+import { measureWebVitals } from "./lib/performance";
 
 // Initialize Sentry for error monitoring
 // Only enable in production or if VITE_SENTRY_DSN is set
@@ -27,6 +28,11 @@ if (import.meta.env.PROD || import.meta.env.VITE_SENTRY_DSN) {
         // Don't send errors in development unless explicitly enabled
         enabled: import.meta.env.PROD || !!import.meta.env.VITE_SENTRY_DSN,
     });
+}
+
+// Initialize performance monitoring
+if (import.meta.env.PROD || import.meta.env.VITE_SENTRY_DSN) {
+    measureWebVitals();
 }
 
 createRoot(document.getElementById("root")!).render(<App />);

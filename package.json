@@ -10,6 +10,8 @@
     "lint": "eslint .",
     "preview": "vite preview",
     "test:unit": "vitest",
+    "test:unit:watch": "vitest --watch",
+    "test:coverage": "vitest run --coverage",
     "test:e2e": "playwright test",
     "test": "npm run test:unit -- run && npm run test:e2e"
   },

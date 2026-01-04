@@ -19,25 +19,21 @@ const Auth = () => {
   const [loading, setLoading] = useState(false);
   const [checkEmail, setCheckEmail] = useState(false);
   const [session, setSession] = useState<Session | null>(null);
+  // Add a local check state to prevent flash before redirects
+  const [isCheckingSession, setIsCheckingSession] = useState(true);
 
   const { signInWithGitHub, isLoading: isGitHubLoading } = useSupabaseOAuth();
 
   useEffect(() => {
     // Only listen for auth state changes for navigation
-    // Token persistence is now handled in AuthCallback path
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, nextSession) => {
       setSession(nextSession);
+      setIsCheckingSession(false);
       if (nextSession) {
         navigate("/");
       }
     });
 
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setSession(session);
-      if (session) {
-        navigate("/");
-      }
-    });
 
     return () => {
       subscription.unsubscribe();

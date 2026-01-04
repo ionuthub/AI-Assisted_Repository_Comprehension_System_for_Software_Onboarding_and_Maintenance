@@ -19,9 +19,11 @@ import { TAB_MODES } from "@/constants/appConstants";
 import type { TabMode } from "@/constants/appConstants";
 import { useProjectStore } from "@/store/useProjectStore";
 import SEO from "@/components/SEO";
+import { useSupabaseOAuth } from "@/hooks/useSupabaseOAuth";
 import { useGitHubAuth } from "@/hooks/useGitHubAuth";
 import { useProjectManagement } from "@/hooks/useProjectManagement";
 import { useCodeExplanation } from "@/hooks/useCodeExplanation";
+import LockedFeature from "@/components/LockedFeature";
 
 const Index = () => {
   const { t } = useTranslation();
@@ -39,6 +41,7 @@ const Index = () => {
     isFileLoading,
   } = useProjectStore();
 
+  const { isAuthenticated, user } = useSupabaseOAuth();
   const { githubToken, manualGithubToken, setManualGithubToken } = useGitHubAuth();
 
   const [repoUrl, setRepoUrl] = useState("");
@@ -100,53 +103,68 @@ const Index = () => {
         <div className="absolute bottom-1/4 right-1/4 w-64 h-64 bg-purple-500/10 rounded-full blur-3xl -z-10 animate-bounce [animation-duration:10s]" />
 
         <main className="flex-1 container mx-auto px-4 py-12 md:px-8 md:py-24">
-          <motion.section
-            className="mx-auto max-w-5xl text-center mb-16 md:mb-24 flex flex-col justify-center min-h-[50vh]"
-            initial={{ opacity: 0, y: 30 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.8, ease: "easeOut" }}
-          >
+          {isAuthenticated ? (
             <motion.div
-              initial={{ opacity: 0, scale: 0.9 }}
-              animate={{ opacity: 1, scale: 1 }}
-              transition={{ delay: 0.2, duration: 0.5 }}
-              className="inline-block px-4 py-1.5 mb-6 text-sm font-medium tracking-wide uppercase bg-sky-100 dark:bg-sky-900/30 text-sky-600 dark:text-sky-400 rounded-full w-fit mx-auto"
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="mb-12"
             >
-              {t('hero.badge')}
+              <h1 className="text-3xl font-bold mb-2">
+                Welcome back, <span className="text-primary">{user?.user_metadata?.full_name || user?.email?.split('@')[0] || 'Developer'}</span>
+              </h1>
+              <p className="text-muted-foreground">
+                Continue your learning journey. Select a repository or upload a new project.
+              </p>
             </motion.div>
-
-            <h1 className="text-5xl font-extrabold tracking-tight md:text-7xl mb-8 leading-[1.1]">
-              {t('hero.titleMain')} <br />
-              <span className="bg-clip-text text-transparent bg-gradient-to-r from-sky-600 via-blue-500 to-indigo-600 dark:from-sky-400 dark:to-indigo-400">
-                {t('hero.titleSub')}
-              </span>
-            </h1>
-
-            <p className="text-xl text-muted-foreground md:text-2xl leading-relaxed max-w-3xl mx-auto mb-10">
-              {t('hero.description')}
-            </p>
-
-            <div className="flex flex-wrap justify-center gap-4">
-              <Button
-                size="lg"
-                className="h-14 px-8 text-lg font-semibold bg-sky-600 hover:bg-sky-700 text-white shadow-lg shadow-sky-500/20"
-                onClick={() => {
-                  const tabsElement = document.getElementById("main-tabs");
-                  tabsElement?.scrollIntoView({ behavior: "smooth" });
-                }}
+          ) : (
+            <motion.section
+              className="mx-auto max-w-5xl text-center mb-16 md:mb-24 flex flex-col justify-center min-h-[50vh]"
+              initial={{ opacity: 0, y: 30 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.8, ease: "easeOut" }}
+            >
+              <motion.div
+                initial={{ opacity: 0, scale: 0.9 }}
+                animate={{ opacity: 1, scale: 1 }}
+                transition={{ delay: 0.2, duration: 0.5 }}
+                className="inline-block px-4 py-1.5 mb-6 text-sm font-medium tracking-wide uppercase bg-sky-100 dark:bg-sky-900/30 text-sky-600 dark:text-sky-400 rounded-full w-fit mx-auto"
               >
-                {t('hero.getStarted')}
-              </Button>
-              <Button
-                size="lg"
-                variant="outline"
-                className="h-14 px-8 text-lg font-semibold"
-                asChild
-              >
-                <a href="/faq">{t('hero.howItWorks')}</a>
-              </Button>
-            </div>
-          </motion.section>
+                {t('hero.badge')}
+              </motion.div>
+
+              <h1 className="text-5xl font-extrabold tracking-tight md:text-7xl mb-8 leading-[1.1]">
+                {t('hero.titleMain')} <br />
+                <span className="bg-clip-text text-transparent bg-gradient-to-r from-sky-600 via-blue-500 to-indigo-600 dark:from-sky-400 dark:to-indigo-400">
+                  {t('hero.titleSub')}
+                </span>
+              </h1>
+
+              <p className="text-xl text-muted-foreground md:text-2xl leading-relaxed max-w-3xl mx-auto mb-10">
+                {t('hero.description')}
+              </p>
+
+              <div className="flex flex-wrap justify-center gap-4">
+                <Button
+                  size="lg"
+                  className="h-14 px-8 text-lg font-semibold bg-sky-600 hover:bg-sky-700 text-white shadow-lg shadow-sky-500/20"
+                  onClick={() => {
+                    const tabsElement = document.getElementById("main-tabs");
+                    tabsElement?.scrollIntoView({ behavior: "smooth" });
+                  }}
+                >
+                  {t('hero.getStarted')}
+                </Button>
+                <Button
+                  size="lg"
+                  variant="outline"
+                  className="h-14 px-8 text-lg font-semibold"
+                  asChild
+                >
+                  <a href="/faq">{t('hero.howItWorks')}</a>
+                </Button>
+              </div>
+            </motion.section>
+          )}
 
           <motion.div
             id="main-tabs"
@@ -173,14 +191,21 @@ const Index = () => {
                 </TabsList>
 
                 <TabsContent value={TAB_MODES.GITHUB}>
-                  <GitHubTab
-                    isLoading={isLoading}
-                    onAnalyze={(url, token) => {
-                      setRepoUrl(url);
-                      if (token) setManualGithubToken(token);
-                      handleAnalyze(url, "", token || githubToken);
-                    }}
-                  />
+                  {isAuthenticated ? (
+                    <GitHubTab
+                      isLoading={isLoading}
+                      onAnalyze={(url, token) => {
+                        setRepoUrl(url);
+                        if (token) setManualGithubToken(token);
+                        handleAnalyze(url, "", token || githubToken);
+                      }}
+                    />
+                  ) : (
+                    <LockedFeature
+                      title="Analyze GitHub Repositories"
+                      description="Connect your GitHub account to analyze private repositories, save your history, and get personalized insights."
+                    />
+                  )}
                 </TabsContent>
 
                 <TabsContent value={TAB_MODES.GENERATE}>
@@ -194,15 +219,22 @@ const Index = () => {
                 </TabsContent>
 
                 <TabsContent value={TAB_MODES.UPLOAD}>
-                  <UploadTab
-                    isLoading={isLoading}
-                    uploadedFolderName={uploadedFolderName}
-                    onFolderSelect={(files) => handleFolderInputChange({
-                      target: { files }
-                    } as any)}
-                    onAnalyze={() => handleAnalyze("", "", null)}
-                    isProjectLoaded={!!project}
-                  />
+                  {isAuthenticated ? (
+                    <UploadTab
+                      isLoading={isLoading}
+                      uploadedFolderName={uploadedFolderName}
+                      onFolderSelect={(files) => handleFolderInputChange({
+                        target: { files }
+                      } as any)}
+                      onAnalyze={() => handleAnalyze("", "", null)}
+                      isProjectLoaded={!!project}
+                    />
+                  ) : (
+                    <LockedFeature
+                      title="Analyze Local Projects"
+                      description="Upload your local project folders to get instant architecture reviews and code explanations."
+                    />
+                  )}
                 </TabsContent>
               </Tabs>
 

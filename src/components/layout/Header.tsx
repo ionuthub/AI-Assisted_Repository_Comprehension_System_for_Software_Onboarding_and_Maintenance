@@ -63,14 +63,24 @@ const Header = () => {
 
                     <div className="flex items-center gap-2 ml-2">
                         {session ? (
-                            <Button
-                                variant="ghost"
-                                size="sm"
-                                onClick={() => supabase.auth.signOut()}
-                                className="px-4"
-                            >
-                                Sign Out
-                            </Button>
+                            <div className="flex items-center gap-2">
+                                <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    asChild
+                                    className="px-4"
+                                >
+                                    <Link to="/settings">Settings</Link>
+                                </Button>
+                                <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={() => supabase.auth.signOut()}
+                                    className="px-4"
+                                >
+                                    Sign Out
+                                </Button>
+                            </div>
                         ) : (
                             <Button
                                 variant="default"

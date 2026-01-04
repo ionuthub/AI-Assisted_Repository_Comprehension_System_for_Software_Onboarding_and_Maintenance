@@ -117,11 +117,16 @@ const Privacy = () => {
               You have the right to:
             </p>
             <ul className="list-disc list-inside mt-2 space-y-1 ml-4">
-              <li>Clear your local data anytime</li>
+              <li>Access your account data</li>
+              <li>Delete your account and all associated data permanently</li>
+              <li>Clear your local browser data anytime</li>
               <li>Stop using the service</li>
               <li>Request information about data practices</li>
               <li>Disable analytics</li>
             </ul>
+            <p className="mt-4">
+              To delete your account, visit <strong>Settings</strong> and click "Delete Account". This will permanently remove all your projects, history, and preferences. This action cannot be undone.
+            </p>
           </section>
 
           <section>

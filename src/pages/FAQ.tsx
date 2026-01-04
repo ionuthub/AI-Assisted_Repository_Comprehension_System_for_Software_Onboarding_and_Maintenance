@@ -151,7 +151,7 @@ const faqItems: FAQItem[] = [
     category: "privacy",
     question: "How do I delete my data?",
     answer:
-      "Since we don't store your data, there's nothing to delete on our servers. You can clear your browser's local storage (skill level, theme preference) through your browser settings anytime.",
+      "If you're signed in, you can permanently delete your account and all associated data (projects, history, preferences) by going to Settings and clicking 'Delete Account'. This action cannot be undone. If you're not signed in, you can clear your browser's local storage (skill level, theme preference) through your browser settings.",
   },
   {
     category: "privacy",

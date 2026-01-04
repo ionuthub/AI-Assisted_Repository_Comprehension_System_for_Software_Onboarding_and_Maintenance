@@ -90,7 +90,23 @@ const Terms = () => {
           </section>
 
           <section>
-            <h2 className="text-2xl font-semibold text-foreground mb-4">7. Changes to Terms</h2>
+            <h2 className="text-2xl font-semibold text-foreground mb-4">7. Account Termination</h2>
+            <p>
+              You may delete your account at any time through the Settings page. Account deletion will:
+            </p>
+            <ul className="list-disc list-inside mt-2 space-y-1 ml-4">
+              <li>Permanently delete all your saved projects</li>
+              <li>Remove your project history</li>
+              <li>Delete your account preferences</li>
+              <li>Remove all associated data from our database</li>
+            </ul>
+            <p className="mt-4">
+              This action is <strong>irreversible</strong>. We cannot recover your data once your account is deleted.
+            </p>
+          </section>
+
+          <section>
+            <h2 className="text-2xl font-semibold text-foreground mb-4">8. Changes to Terms</h2>
             <p>
               We reserve the right to modify these terms at any time. Continued use of the service constitutes acceptance of any changes.
             </p>

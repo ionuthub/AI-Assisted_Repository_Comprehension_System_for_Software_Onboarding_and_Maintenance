@@ -241,7 +241,7 @@ export const measureBetweenMarks = (
 declare global {
     interface Window {
         Sentry?: {
-            captureMessage: (message: string, context?: any) => void;
+            captureMessage: (message: string, context?: unknown) => void;
         };
     }
 }

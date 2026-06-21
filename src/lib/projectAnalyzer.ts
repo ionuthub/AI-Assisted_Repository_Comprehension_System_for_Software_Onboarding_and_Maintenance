@@ -12,7 +12,12 @@ export interface ProjectOverview {
   learningPath: { day: string; goal: string; focus: string[] }[];
 }
 
-const detectProjectType = (files: string[], packageJson?: any): string => {
+interface PackageJson {
+  dependencies?: Record<string, string>;
+  devDependencies?: Record<string, string>;
+}
+
+const detectProjectType = (files: string[], packageJson?: PackageJson): string => {
   const fileContent = files.join(" ").toLowerCase();
 
   // Web frameworks

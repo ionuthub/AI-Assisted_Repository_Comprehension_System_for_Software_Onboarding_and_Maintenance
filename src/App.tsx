@@ -7,16 +7,10 @@ import { ThemeProvider } from "next-themes";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import Layout from "./components/layout/Layout";
 import { Skeleton } from "./components/ui/skeleton";
-import CookieConsent from "./components/CookieConsent";
 
 // Lazy load pages for optimized bundle size
 const Index = lazy(() => import("./pages/Index"));
-const Terms = lazy(() => import("./pages/Terms"));
-const Privacy = lazy(() => import("./pages/Privacy"));
-const FAQ = lazy(() => import("./pages/FAQ"));
-const Auth = lazy(() => import("./pages/Auth"));
-const AuthCallback = lazy(() => import("./pages/AuthCallback"));
-const Settings = lazy(() => import("./pages/Settings"));
+const Evaluation = lazy(() => import("./pages/Evaluation"));
 const NotFound = lazy(() => import("./pages/NotFound"));
 
 const PageLoader = () => (
@@ -35,25 +29,19 @@ const App = () => (
     <TooltipProvider>
       <Toaster />
       <Sonner />
-      <BrowserRouter>
+      <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
         <Layout>
           <ErrorBoundary>
             <Suspense fallback={<PageLoader />}>
               <Routes>
                 <Route path="/" element={<Index />} />
-                <Route path="/auth" element={<Auth />} />
-                <Route path="/auth/callback" element={<AuthCallback />} />
-                <Route path="/terms" element={<Terms />} />
-                <Route path="/privacy" element={<Privacy />} />
-                <Route path="/faq" element={<FAQ />} />
-                <Route path="/settings" element={<Settings />} />
+                <Route path="/evaluation" element={<Evaluation />} />
                 <Route path="*" element={<NotFound />} />
               </Routes>
             </Suspense>
           </ErrorBoundary>
         </Layout>
       </BrowserRouter>
-      <CookieConsent />
     </TooltipProvider>
   </ThemeProvider>
 );

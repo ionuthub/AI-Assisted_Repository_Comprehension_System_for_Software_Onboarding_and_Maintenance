@@ -12,6 +12,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Json } from "@/integrations/supabase/types";
 import { useSupabaseOAuth } from "./useSupabaseOAuth";
 import { rateLimiters } from "@/lib/security";
+import { parseZipFile } from "@/lib/zipParser";
 
 export const useProjectManagement = () => {
     const { toast } = useToast();
@@ -26,6 +27,7 @@ export const useProjectManagement = () => {
         fileCache,
         project,
         updateFileCache,
+        updateStaticAnalysis,
         resetSelection,
         skillLevel
     } = useProjectStore();
@@ -60,105 +62,146 @@ export const useProjectManagement = () => {
 
         try {
             const fileArray = Array.from(files);
-            const folderName = (fileArray[0] as File & { webkitRelativePath?: string }).webkitRelativePath?.split("/")?.[0] ?? "Uploaded Folder";
+            let folderFiles: ProjectFile[] = [];
+            let folderName = "Uploaded Folder";
 
-            // Filter out common binary/non-text files
-            const textFileExtensions = [
-                '.js', '.jsx', '.ts', '.tsx', '.json', '.html', '.css', '.scss', '.sass',
-                '.py', '.java', '.cpp', '.c', '.h', '.cs', '.go', '.rs', '.rb', '.php',
-                '.md', '.txt', '.xml', '.yml', '.yaml', '.toml', '.env', '.gitignore',
-                '.sh', '.bash', '.sql', '.graphql', '.vue', '.svelte'
-            ];
-
-            const filteredFiles = fileArray.filter(file => {
-                const fileName = file.name.toLowerCase();
-                return textFileExtensions.some(ext => fileName.endsWith(ext));
-            });
-
-            if (filteredFiles.length === 0) {
-                toast({
-                    title: "No text files found",
-                    description: "Please select a folder containing code files",
-                    variant: "destructive"
-                });
+            if (fileArray.length === 0) {
                 setIsFileLoading(false);
                 return;
             }
 
-            // Limits
-            const MAX_FILES = 500;
-            const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB per file
-            const MAX_TOTAL_SIZE = 50 * 1024 * 1024; // 50MB total
+            const firstFile = fileArray[0];
+            const isZipUpload = fileArray.length === 1 && firstFile.name.toLowerCase().endsWith(".zip");
 
-            // Check file count
-            if (filteredFiles.length > MAX_FILES) {
+            if (isZipUpload) {
                 toast({
-                    title: "Too many files",
-                    description: `This folder has ${filteredFiles.length} code files. Please select a folder with fewer than ${MAX_FILES} files.`,
-                    variant: "destructive"
+                    title: "Extracting ZIP archive...",
+                    description: `Reading ${firstFile.name}...`
                 });
-                setIsFileLoading(false);
-                return;
-            }
+                folderFiles = await parseZipFile(firstFile);
+                folderName = firstFile.name.replace(/\.[^/.]+$/, ""); // Strip extension
 
-            // Check individual file sizes and total size
-            let totalSize = 0;
-            const oversizedFiles: string[] = [];
+                const MAX_FILES = 500;
+                const MAX_TOTAL_SIZE = 50 * 1024 * 1024; // 50MB
 
-            for (const file of filteredFiles) {
-                if (file.size > MAX_FILE_SIZE) {
-                    oversizedFiles.push(file.name);
-                }
-                totalSize += file.size;
-            }
-
-            if (oversizedFiles.length > 0) {
-                toast({
-                    title: "Files too large",
-                    description: `Some files exceed 5MB: ${oversizedFiles.slice(0, 3).join(', ')}${oversizedFiles.length > 3 ? '...' : ''}`,
-                    variant: "destructive"
-                });
-                setIsFileLoading(false);
-                return;
-            }
-
-            if (totalSize > MAX_TOTAL_SIZE) {
-                toast({
-                    title: "Folder too large",
-                    description: `Total size is ${(totalSize / 1024 / 1024).toFixed(1)}MB. Please select a folder under 50MB.`,
-                    variant: "destructive"
-                });
-                setIsFileLoading(false);
-                return;
-            }
-
-            const folderFiles: ProjectFile[] = [];
-
-            // Process files with progress feedback
-            toast({
-                title: "Processing folder...",
-                description: `Reading ${filteredFiles.length} files...`
-            });
-
-            for (const file of filteredFiles) {
-                try {
-                    const content = await file.text();
-                    folderFiles.push({
-                        path: (file as File & { webkitRelativePath?: string }).webkitRelativePath ?? file.name,
-                        language: inferLanguageFromFilename(file.name),
-                        size: file.size ?? null,
-                        content
+                if (folderFiles.length > MAX_FILES) {
+                    toast({
+                        title: "Too many files in ZIP",
+                        description: `This ZIP contains ${folderFiles.length} code files. Limit is ${MAX_FILES}.`,
+                        variant: "destructive"
                     });
-                } catch (err) {
-                    console.warn(`Failed to read file ${file.name}:`, err);
-                    // Continue with other files
+                    setIsFileLoading(false);
+                    return;
+                }
+
+                const totalSize = folderFiles.reduce((acc, f) => acc + (f.size ?? 0), 0);
+                if (totalSize > MAX_TOTAL_SIZE) {
+                    toast({
+                        title: "ZIP contents too large",
+                        description: `Total unzipped size is ${(totalSize / 1024 / 1024).toFixed(1)}MB. Limit is 50MB.`,
+                        variant: "destructive"
+                    });
+                    setIsFileLoading(false);
+                    return;
+                }
+            } else {
+                folderName = (firstFile as File & { webkitRelativePath?: string }).webkitRelativePath?.split("/")?.[0] ?? "Uploaded Folder";
+
+                // Filter out common binary/non-text files
+                const textFileExtensions = [
+                    '.js', '.jsx', '.ts', '.tsx', '.json', '.html', '.css', '.scss', '.sass',
+                    '.py', '.java', '.cpp', '.c', '.h', '.cs', '.go', '.rs', '.rb', '.php',
+                    '.md', '.txt', '.xml', '.yml', '.yaml', '.toml', '.env', '.gitignore',
+                    '.sh', '.bash', '.sql', '.graphql', '.vue', '.svelte'
+                ];
+
+                const filteredFiles = fileArray.filter(file => {
+                    const fileName = file.name.toLowerCase();
+                    return textFileExtensions.some(ext => fileName.endsWith(ext));
+                });
+
+                if (filteredFiles.length === 0) {
+                    toast({
+                        title: "No text files found",
+                        description: "Please select a folder containing code files",
+                        variant: "destructive"
+                    });
+                    setIsFileLoading(false);
+                    return;
+                }
+
+                // Limits
+                const MAX_FILES = 500;
+                const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB per file
+                const MAX_TOTAL_SIZE = 50 * 1024 * 1024; // 50MB total
+
+                // Check file count
+                if (filteredFiles.length > MAX_FILES) {
+                    toast({
+                        title: "Too many files",
+                        description: `This folder has ${filteredFiles.length} code files. Please select a folder with fewer than ${MAX_FILES} files.`,
+                        variant: "destructive"
+                    });
+                    setIsFileLoading(false);
+                    return;
+                }
+
+                // Check individual file sizes and total size
+                let totalSize = 0;
+                const oversizedFiles: string[] = [];
+
+                for (const file of filteredFiles) {
+                    if (file.size > MAX_FILE_SIZE) {
+                        oversizedFiles.push(file.name);
+                    }
+                    totalSize += file.size;
+                }
+
+                if (oversizedFiles.length > 0) {
+                    toast({
+                        title: "Files too large",
+                        description: `Some files exceed 5MB: ${oversizedFiles.slice(0, 3).join(', ')}${oversizedFiles.length > 3 ? '...' : ''}`,
+                        variant: "destructive"
+                    });
+                    setIsFileLoading(false);
+                    return;
+                }
+
+                if (totalSize > MAX_TOTAL_SIZE) {
+                    toast({
+                        title: "Folder too large",
+                        description: `Total size is ${(totalSize / 1024 / 1024).toFixed(1)}MB. Please select a folder under 50MB.`,
+                        variant: "destructive"
+                    });
+                    setIsFileLoading(false);
+                    return;
+                }
+
+                // Process files with progress feedback
+                toast({
+                    title: "Processing folder...",
+                    description: `Reading ${filteredFiles.length} files...`
+                });
+
+                for (const file of filteredFiles) {
+                    try {
+                        const content = await file.text();
+                        folderFiles.push({
+                            path: (file as File & { webkitRelativePath?: string }).webkitRelativePath ?? file.name,
+                            language: inferLanguageFromFilename(file.name),
+                            size: file.size ?? null,
+                            content
+                        });
+                    } catch (err) {
+                        console.warn(`Failed to read file ${file.name}:`, err);
+                    }
                 }
             }
 
             if (folderFiles.length === 0) {
                 toast({
                     title: "Upload failed",
-                    description: "Could not read any files from the folder",
+                    description: "Could not read any files from the folder/zip",
                     variant: "destructive"
                 });
                 setIsFileLoading(false);
@@ -183,7 +226,7 @@ export const useProjectManagement = () => {
             }
 
             toast({
-                title: "Folder uploaded successfully",
+                title: isZipUpload ? "ZIP archive uploaded successfully" : "Folder uploaded successfully",
                 description: `Loaded ${folderFiles.length} file(s) from ${folderName}`
             });
         } catch (error) {
@@ -312,6 +355,9 @@ export const useProjectManagement = () => {
                     token
                 );
                 updateFileCache(path, fetched);
+                if (fetched.content) {
+                    updateStaticAnalysis(path, fetched.content);
+                }
                 const explanation = generateW3SchoolsFileExplanation(path, fetched.content || "", skillLevel);
                 setChatMessages([{ role: 'model', content: explanation }]);
             } catch (e) {

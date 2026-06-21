@@ -1,12 +1,12 @@
-import { useRef } from "react";
-import { FileCode, Sparkles, Info } from "lucide-react";
+import { useRef, useState } from "react";
+import { FileCode, Sparkles, Info, Upload, FolderOpen, Archive } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { TAB_CONFIG, TAB_MODES } from "@/constants/appConstants";
 
 interface UploadTabProps {
   isLoading: boolean;
   uploadedFolderName: string | null;
-  onFolderSelect: (files: FileList) => void;
+  onFolderSelect: (files: FileList | File[]) => void;
   onAnalyze: () => void;
   isProjectLoaded: boolean;
   isAuthenticated?: boolean;
@@ -14,7 +14,7 @@ interface UploadTabProps {
 
 /**
  * UploadTab Component
- * Handles local folder upload and analysis
+ * Handles local folder upload, ZIP upload, drag-and-drop, and analysis
  */
 export const UploadTab = ({
   isLoading,
@@ -25,17 +25,39 @@ export const UploadTab = ({
   isAuthenticated = false
 }: UploadTabProps) => {
   const folderInputRef = useRef<HTMLInputElement | null>(null);
+  const zipInputRef = useRef<HTMLInputElement | null>(null);
+  const [isDragActive, setIsDragActive] = useState(false);
 
   const handleFolderClick = () => {
-    console.log("Folder button clicked");
     folderInputRef.current?.click();
   };
 
+  const handleZipClick = () => {
+    zipInputRef.current?.click();
+  };
+
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    console.log("File input changed", e.target.files);
-    if (e.target.files) {
-      console.log("Files count:", e.target.files.length);
+    if (e.target.files && e.target.files.length > 0) {
       onFolderSelect(e.target.files);
+    }
+  };
+
+  const handleDrag = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (e.type === "dragenter" || e.type === "dragover") {
+      setIsDragActive(true);
+    } else if (e.type === "dragleave") {
+      setIsDragActive(false);
+    }
+  };
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragActive(false);
+    if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+      onFolderSelect(e.dataTransfer.files);
     }
   };
 
@@ -57,33 +79,73 @@ export const UploadTab = ({
         </div>
       )}
 
-      <div className="flex flex-col items-start gap-3">
-        <Button
-          onClick={handleFolderClick}
-          variant="outline"
-          className="bg-secondary/40 hover:bg-secondary/60 text-foreground"
-        >
-          <input
-            type="file"
-            multiple
-            className="hidden"
-            ref={(input) => {
-              folderInputRef.current = input;
-              if (input) {
-                input.setAttribute("webkitdirectory", "true");
-                input.setAttribute("directory", "true");
-              }
-            }}
-            onChange={handleFileChange}
-          />
-          <span>Select folder…</span>
-        </Button>
+      {/* Drag & Drop Area */}
+      <div
+        onDragEnter={handleDrag}
+        onDragOver={handleDrag}
+        onDragLeave={handleDrag}
+        onDrop={handleDrop}
+        className={`flex flex-col items-center justify-center border-2 border-dashed rounded-xl p-8 transition-all ${
+          isDragActive
+            ? "border-sky-500 bg-sky-500/10 scale-[1.01]"
+            : "border-muted hover:border-sky-500/50 hover:bg-secondary/20"
+        }`}
+      >
+        <Upload className={`w-10 h-10 mb-4 transition-transform duration-300 ${isDragActive ? "translate-y-[-4px] text-sky-500" : "text-muted-foreground"}`} />
+        <p className="text-sm text-foreground font-medium mb-1">
+          Drag & drop your project folder or .zip file here
+        </p>
+        <p className="text-xs text-muted-foreground mb-4">
+          Files will be analyzed entirely inside your browser
+        </p>
+
+        <div className="flex flex-wrap gap-3 justify-center">
+          <Button
+            onClick={handleFolderClick}
+            variant="outline"
+            className="gap-2 bg-secondary/40 hover:bg-secondary/60 text-foreground"
+          >
+            <input
+              type="file"
+              multiple
+              className="hidden"
+              ref={(input) => {
+                folderInputRef.current = input;
+                if (input) {
+                  input.setAttribute("webkitdirectory", "true");
+                  input.setAttribute("directory", "true");
+                }
+              }}
+              onChange={handleFileChange}
+            />
+            <FolderOpen className="w-4 h-4 text-sky-500" />
+            <span>Select Folder</span>
+          </Button>
+
+          <Button
+            onClick={handleZipClick}
+            variant="outline"
+            className="gap-2 bg-secondary/40 hover:bg-secondary/60 text-foreground"
+          >
+            <input
+              type="file"
+              accept=".zip"
+              className="hidden"
+              ref={zipInputRef}
+              onChange={handleFileChange}
+            />
+            <Archive className="w-4 h-4 text-indigo-500" />
+            <span>Select ZIP File</span>
+          </Button>
+        </div>
+
         {uploadedFolderName && (
-          <p className="text-sm text-muted-foreground">
+          <p className="text-sm font-semibold text-sky-600 dark:text-sky-400 mt-4 bg-sky-600/10 px-3 py-1 rounded-full animate-fade-in">
             Selected: {uploadedFolderName}
           </p>
         )}
       </div>
+
       <Button
         onClick={onAnalyze}
         disabled={isLoading || !isProjectLoaded}

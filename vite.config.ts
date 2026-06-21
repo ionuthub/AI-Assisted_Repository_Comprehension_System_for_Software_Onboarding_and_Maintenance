@@ -29,7 +29,7 @@ export default defineConfig(({ mode }) => {
               "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; " +
               "font-src 'self' https://fonts.gstatic.com; " +
               "img-src 'self' data: https:; " +
-              "connect-src 'self' https://generativelanguage.googleapis.com https://*.supabase.co wss://*.supabase.co; " +
+              "connect-src 'self' https://generativelanguage.googleapis.com https://*.supabase.co wss://*.supabase.co https://api.github.com https://raw.githubusercontent.com; " +
               "frame-ancestors 'none';"
             );
             next();
@@ -72,7 +72,7 @@ export default defineConfig(({ mode }) => {
               const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-exp:${endpoint}?key=${GEMINI_API_KEY}`;
 
               const geminiPayload = {
-                contents: messages.map((m: any) => ({
+                contents: messages.map((m: { role: string; content: string }) => ({
                   role: m.role,
                   parts: [{ text: m.content }]
                 })),
@@ -153,7 +153,9 @@ export default defineConfig(({ mode }) => {
                         if (text) {
                           res.write(text);
                         }
-                      } catch (e) { }
+                      } catch (e) {
+                        void e; // Ignore JSON parsing errors for incomplete chunks
+                      }
                     } else {
                       break;
                     }
@@ -162,11 +164,12 @@ export default defineConfig(({ mode }) => {
               }
               res.end();
 
-            } catch (error: any) {
-              console.error('Proxy Error:', error);
+            } catch (error) {
+              const err = error as Error;
+              console.error('Proxy Error:', err);
               if (!res.headersSent) {
                 res.writeHead(500, { 'Content-Type': 'application/json' });
-                res.end(JSON.stringify({ error: error.message }));
+                res.end(JSON.stringify({ error: err.message }));
               }
               res.end();
             }

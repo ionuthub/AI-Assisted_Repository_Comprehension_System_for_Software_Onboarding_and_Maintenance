@@ -5,7 +5,7 @@ import { Project, ProjectSummary, ProjectFile } from "@/types/project";
 import { useSupabaseOAuth } from "./useSupabaseOAuth";
 import { Json } from "@/integrations/supabase/types";
 
-export const useProjects = (user: any | null, isAuthenticated: boolean) => {
+export const useProjects = (user: unknown, isAuthenticated: boolean) => {
     const { toast } = useToast();
     const [projects, setProjects] = useState<Project[]>([]);
     const [isLoadingHistory, setIsLoadingHistory] = useState(false);

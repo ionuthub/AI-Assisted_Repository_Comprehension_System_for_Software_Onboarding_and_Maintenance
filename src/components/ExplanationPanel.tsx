@@ -13,7 +13,6 @@ interface ExplanationPanelProps {
   isLoading: boolean;
   messages: ChatMessage[];
   onSendMessage: (content: string) => void;
-  onRefactor?: () => void;
   skillLevel: string;
   hasSelection: boolean;
 }
@@ -22,7 +21,6 @@ const ExplanationPanel = ({
   isLoading,
   messages,
   onSendMessage,
-  onRefactor,
   skillLevel,
   hasSelection
 }: ExplanationPanelProps) => {
@@ -71,16 +69,6 @@ const ExplanationPanel = ({
           <span className="text-sm font-semibold">Tutor AI</span>
         </div>
         <div className="flex items-center gap-2">
-          {hasSelection && (
-            <Button
-              variant="outline"
-              size="sm"
-              className="h-7 text-[10px] gap-1 bg-primary/5 border-primary/20 hover:bg-primary/10"
-              onClick={onRefactor}
-            >
-              <Sparkles className="w-3 h-3" /> Refactor
-            </Button>
-          )}
           <Badge variant="outline" className="text-[10px] capitalize bg-background">{skillLevel}</Badge>
         </div>
       </div>
@@ -106,9 +94,6 @@ const ExplanationPanel = ({
                 <div className="flex flex-col gap-2">
                   <Button size="sm" onClick={() => onSendMessage("Explain this code in detail and use an analogy.")} className="text-xs">
                     Explain Selection
-                  </Button>
-                  <Button size="sm" variant="outline" onClick={onRefactor} className="text-xs">
-                    Refactor for quality
                   </Button>
                 </div>
               </div>

@@ -1,34 +1,50 @@
-import { useMemo, useState, useEffect } from "react";
+import { useMemo, useState, useEffect, useRef, useCallback } from "react";
 import { useSearchParams } from "react-router-dom";
 import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
-import { Card } from "@/components/ui/card";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Files, Code, Sparkles } from "lucide-react";
-import SkillSelector from "@/components/SkillSelector";
+import { Card, CardContent } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Badge } from "@/components/ui/badge";
+import { useToast } from "@/hooks/use-toast";
+import {
+  Search,
+  FileCode,
+  GitBranch,
+  Archive,
+  FolderOpen,
+  HelpCircle,
+  FileText,
+  Activity,
+  Layers,
+  Sparkles,
+  Zap
+} from "lucide-react";
 import CodeViewer from "@/components/CodeViewer";
-import ExplanationPanel from "@/components/ExplanationPanel";
-import FileNavigator from "@/components/FileNavigator";
-import ProjectOverviewComponent from "@/components/ProjectOverview";
+import FolderTree from "@/components/FolderTree";
+import WorkspaceQAView from "@/components/WorkspaceQAView";
+import WorkspaceSearchView from "@/components/WorkspaceSearchView";
+import WorkspaceInsightsPanel from "@/components/WorkspaceInsightsPanel";
+import DependencyGraph from "@/components/DependencyGraph";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
-import GitHubTab from "@/components/tabs/GitHubTab";
-import GenerateTab from "@/components/tabs/GenerateTab";
-import UploadTab from "@/components/tabs/UploadTab";
-import { analyzeProject } from "@/lib/projectAnalyzer";
-import { useKeyboardShortcuts } from "@/hooks/useKeyboardShortcuts";
 import { TAB_MODES } from "@/constants/appConstants";
-import type { TabMode } from "@/constants/appConstants";
 import { useProjectStore } from "@/store/useProjectStore";
 import SEO from "@/components/SEO";
-import { useSupabaseOAuth } from "@/hooks/useSupabaseOAuth";
 import { useGitHubAuth } from "@/hooks/useGitHubAuth";
 import { useProjectManagement } from "@/hooks/useProjectManagement";
 import { useCodeExplanation } from "@/hooks/useCodeExplanation";
-import LockedFeature from "@/components/LockedFeature";
-import ProjectHistory from "@/components/dashboard/ProjectHistory";
-import { useProjects } from "@/hooks/useProjects";
+import { searchRepository, SearchResult } from "@/lib/semanticSearch";
+import ProjectOverviewComponent from "@/components/ProjectOverview";
+import { analyzeProject } from "@/lib/projectAnalyzer";
+
+interface RecentRepoItem {
+  name: string;
+  url?: string;
+  date: string;
+}
 
 const Index = () => {
+  const { toast } = useToast();
   const {
     mode, setMode,
     project, setProject,
@@ -37,49 +53,174 @@ const Index = () => {
     selectedLine,
     selectedLines,
     skillLevel,
-    chatMessages,
-    isExplaining,
     isLoading,
     isFileLoading,
+    scanResult,
+    staticAnalyses,
+    searchIndex
   } = useProjectStore();
 
-  const { isAuthenticated, user } = useSupabaseOAuth();
-  const { projects: historyProjects, isLoadingHistory, deleteProject } = useProjects(user, isAuthenticated);
   const { githubToken, manualGithubToken, setManualGithubToken } = useGitHubAuth();
+  
+  const overview = useMemo(() => {
+    if (!project) return null;
+    return analyzeProject(project);
+  }, [project]);
 
   const [searchParams] = useSearchParams();
 
-  useEffect(() => {
-    const tab = searchParams.get('tab');
-    if (tab === TAB_MODES.GITHUB) setMode(TAB_MODES.GITHUB);
-    if (tab === TAB_MODES.GENERATE) setMode(TAB_MODES.GENERATE);
-    if (tab === TAB_MODES.UPLOAD) setMode(TAB_MODES.UPLOAD);
+  // Workspace dynamic view states
+  const [workspaceView, setWorkspaceView] = useState<'overview' | 'code' | 'architecture' | 'search' | 'qa'>('overview');
+  const [searchVal, setSearchVal] = useState("");
+  const [searchQuery, setSearchQuery] = useState("");
+  const [searchResults, setSearchResults] = useState<SearchResult[]>([]);
+  const [qaVal, setQaVal] = useState("");
+  const [qaQuestion, setQaQuestion] = useState("");
+  const [qaAnswer, setQaAnswer] = useState("");
+  const [isQaLoading, setIsQaLoading] = useState(false);
 
-    // If a tab is requested, scroll to main area
-    if (tab) {
-      setTimeout(() => {
-        document.getElementById("main-tabs")?.scrollIntoView({ behavior: "smooth" });
-      }, 100);
-    }
-  }, [searchParams, setMode]);
+  const [githubUrl, setGithubUrl] = useState("");
+  const [recentRepos, setRecentRepos] = useState<RecentRepoItem[]>([]);
 
-  const [repoUrl, setRepoUrl] = useState("");
-  const [projectIdea, setProjectIdea] = useState("");
+  const zipInputRef = useRef<HTMLInputElement>(null);
+  const folderInputRef = useRef<HTMLInputElement>(null);
 
   const {
-    uploadedFolderName,
-    handleFolderInputChange,
     processUploadedFiles,
     handleAnalyze,
     handleFileSelect
   } = useProjectManagement();
 
   const {
-    handleChatSendMessage,
-    handleLineSelect,
-    handleRefactorRequest,
-    handleSkillLevelChange
+    handleLineSelect
   } = useCodeExplanation();
+
+  // Load recent repositories from localStorage on mount
+  useEffect(() => {
+    const saved = localStorage.getItem("recent_repos");
+    if (saved) {
+      try {
+        setRecentRepos(JSON.parse(saved));
+      } catch (e) {
+        console.warn("Failed to parse recent repos", e);
+      }
+    }
+  }, []);
+
+  const addRecentRepo = useCallback((name: string, url?: string) => {
+    setRecentRepos((prev) => {
+      const list = [...prev];
+      const existingIndex = list.findIndex(r => r.name === name || (url && r.url === url));
+      if (existingIndex !== -1) {
+        list.splice(existingIndex, 1);
+      }
+      list.unshift({ name, url, date: new Date().toLocaleDateString() });
+      const trimmed = list.slice(0, 5);
+      localStorage.setItem("recent_repos", JSON.stringify(trimmed));
+      return trimmed;
+    });
+  }, []);
+
+  // Add project to history when loaded
+  useEffect(() => {
+    if (project) {
+      const name = project.summary.name;
+      const url = project.summary.source === 'github' ? githubUrl : undefined;
+      addRecentRepo(name, url);
+      setWorkspaceView('overview');
+    }
+  }, [project, githubUrl, addRecentRepo]);
+
+  const handleGithubAnalyze = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!githubUrl.trim()) {
+      toast({ title: "URL required", description: "Please enter a valid GitHub repository URL.", variant: "destructive" });
+      return;
+    }
+    setMode(TAB_MODES.GITHUB);
+    handleAnalyze(githubUrl, "", manualGithubToken || githubToken);
+  };
+
+  const handleZipClick = () => zipInputRef.current?.click();
+  const handleFolderClick = () => folderInputRef.current?.click();
+
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files.length > 0) {
+      setMode(TAB_MODES.UPLOAD);
+      await processUploadedFiles(e.target.files);
+    }
+  };
+
+  // Search submit handler
+  const handleSearchSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!searchVal.trim() || !searchIndex || !project) return;
+    setWorkspaceView('search');
+    setSearchQuery(searchVal);
+    const results = searchRepository(searchVal, searchIndex, project.files, 10);
+    setSearchResults(results);
+  };
+
+  // RAG Q&A submit handler
+  const handleQASubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!qaVal.trim() || !project) return;
+
+    const questionText = qaVal;
+    setQaVal("");
+    setWorkspaceView('qa');
+    setQaQuestion(questionText);
+    setIsQaLoading(true);
+    setQaAnswer("");
+
+    let systemContext = `You are a technical code tutor. Answer the user's question about the codebase. Refer to the provided source code context. Always cite files and explain reasoning. Avoid hallucinated claims.`;
+    
+    // RAG retrieval
+    if (searchIndex) {
+      const matches = searchRepository(questionText, searchIndex, project.files, 3);
+      if (matches.length > 0) {
+        systemContext += "\n\n[Grounded Repository Context for RAG - Answer using this evidence and cite file paths]";
+        matches.forEach(res => {
+          const fileObj = project.files.find(f => f.path === res.path);
+          if (fileObj && fileObj.content) {
+            systemContext += `\n\n--- File: ${res.path} ---\n${fileObj.content.slice(0, 2500)}`;
+          }
+        });
+      }
+    }
+
+    try {
+      const response = await fetch('/api/explain-code', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          messages: [{ role: 'user', content: questionText }],
+          skillLevel,
+          systemContext,
+          stream: true
+        })
+      });
+
+      if (!response.ok) throw new Error('Streaming failed');
+
+      const reader = response.body?.getReader();
+      const decoder = new TextDecoder();
+      if (!reader) return;
+
+      let fullText = "";
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        fullText += decoder.decode(value);
+        setQaAnswer(fullText);
+      }
+    } catch (error) {
+      console.error("QA error:", error);
+      setQaAnswer("I'm sorry, I encountered an error communicating with the AI service. Please verify server keys and try again.");
+    } finally {
+      setIsQaLoading(false);
+    }
+  };
 
   const displayedFiles = useMemo(() => {
     if (!project) return [];
@@ -95,313 +236,378 @@ const Index = () => {
 
   const currentFileContent = selectedFileEntry?.content ?? null;
 
-  // Register keyboard shortcuts
-  useKeyboardShortcuts([
-    {
-      key: "k",
-      ctrl: true,
-      meta: true,
-      callback: () => {
-        // Focus on the input field for the current mode
-        const input = document.querySelector(
-          `input[placeholder*="${mode === TAB_MODES.GITHUB ? "github" : mode === TAB_MODES.GENERATE ? "flashcard" : "Select"}"]`
-        ) as HTMLInputElement;
-        input?.focus();
-      }
-    }
-  ]);
-
   return (
     <ErrorBoundary>
       <SEO
-        title="Analyze & Understand Code"
-        description="Understand unfamiliar code in minutes. Paste a GitHub repository or describe an idea and let AI explain it to you."
+        title="Repository Comprehension System"
+        description="Understand unfamiliar codebases using static parsing, dependency graphing, semantic concept search, and grounded Q&A."
       />
-      <div className="flex flex-col relative overflow-hidden">
-        {/* Abstract Background Orbs */}
-        <div className="absolute top-0 left-1/4 w-96 h-96 bg-sky-500/10 rounded-full blur-3xl -z-10 animate-pulse" />
-        <div className="absolute bottom-1/4 right-1/4 w-64 h-64 bg-purple-500/10 rounded-full blur-3xl -z-10 animate-bounce [animation-duration:10s]" />
+      <div className="flex flex-col relative overflow-hidden min-h-[82vh]">
+        <main className="flex-1 container mx-auto px-4 py-8 md:px-8 flex flex-col justify-center">
+          {!project ? (
+            (isLoading || isFileLoading) ? (
+              // Screen 2: Analysing - Terminal style progress
+              <div className="max-w-xl w-full mx-auto px-6 py-16 flex flex-col justify-center min-h-[50vh] animate-fade-in">
+                <div className="bg-card border border-border rounded-[4px] p-6 shadow-none font-mono text-xs text-foreground space-y-2">
+                  <div className="text-muted-foreground mb-4 font-bold border-b border-border pb-2 flex items-center justify-between">
+                    <span>COMPILING INDEX</span>
+                    <span className="animate-pulse text-accent">●</span>
+                  </div>
+                  <div>&gt; reading repository...</div>
+                  <div className="animate-fade-in delay-200">&gt; indexing files...</div>
+                  <div className="animate-fade-in delay-500">&gt; extracting imports...</div>
+                  <div className="animate-fade-in delay-1000">&gt; building dependency graph...</div>
+                  <div className="animate-fade-in delay-1500">&gt; generating summaries...</div>
+                  <div className="animate-fade-in delay-2000 text-accent font-bold">✓ ready</div>
+                  <div className="animate-pulse inline-block w-1.5 h-3 bg-accent ml-1 mt-2" />
+                </div>
+              </div>
+            ) : (
+              // Screen 1: Selection Screen
+              <div className="max-w-xl w-full mx-auto px-6 py-16 flex flex-col justify-center min-h-[50vh] animate-fade-in space-y-6">
+                <div className="space-y-1">
+                  <h1 className="text-2xl font-bold text-foreground font-sans tracking-tight">
+                    Repository Comprehension System
+                  </h1>
+                  <p className="text-xs text-muted-foreground">
+                    AI-assisted understanding for codebases.
+                  </p>
+                </div>
 
-        <main className="flex-1 container mx-auto px-4 py-12 md:px-8 md:py-24">
-          {isAuthenticated ? (
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              className="mb-12"
-            >
-              <h1 className="text-3xl font-bold mb-2">
-                Welcome back, <span className="text-primary">{user?.user_metadata?.full_name || user?.email?.split('@')[0] || 'Developer'}</span>
-              </h1>
-              <p className="text-muted-foreground">
-                Continue your learning journey. Select a repository or upload a new project.
-              </p>
+                <div className="bg-card border border-border p-6 rounded-[4px] space-y-4 shadow-none">
+                  <form onSubmit={handleGithubAnalyze} className="space-y-4">
+                    <div className="space-y-1.5">
+                      <Label htmlFor="github-url" className="text-[10px] uppercase font-bold text-muted-foreground tracking-wider font-mono">
+                        GitHub repository URL
+                      </Label>
+                      <Input
+                        id="github-url"
+                        placeholder="https://github.com/username/repository"
+                        value={githubUrl}
+                        onChange={(e) => setGithubUrl(e.target.value)}
+                        className="text-xs bg-background border-border rounded-[4px] focus-visible:ring-accent font-mono h-9"
+                        disabled={isLoading}
+                      />
+                    </div>
 
-              <ProjectHistory
-                projects={historyProjects}
-                isLoading={isLoadingHistory}
-                onSelectProject={(p) => {
-                  setProject(p);
-                  // Setup cache for the selected project
-                  const cache: Record<string, import("@/types/project").ProjectFile> = {};
-                  p.files.forEach(f => { if (f.content) cache[f.path] = f; });
-                  setFileCache(cache);
-                  if (p.files.length > 0) setSelectedFile(p.files[0].path);
+                    <div className="flex flex-wrap gap-2.5">
+                      <Button
+                        type="submit"
+                        className="bg-accent hover:bg-accent-hover text-background font-bold text-xs h-9 rounded-[4px] px-5 transition-colors border-none"
+                        disabled={isLoading}
+                      >
+                        Analyse Repository
+                      </Button>
+                      
+                      <input
+                        type="file"
+                        accept=".zip"
+                        ref={zipInputRef}
+                        onChange={handleFileChange}
+                        className="hidden"
+                        disabled={isLoading}
+                      />
+                      <Button
+                        type="button"
+                        variant="outline"
+                        onClick={handleZipClick}
+                        className="border border-border bg-transparent text-muted-foreground hover:border-accent hover:bg-secondary/20 hover:text-foreground text-xs h-9 rounded-[4px] px-5 transition-colors"
+                        disabled={isLoading}
+                      >
+                        Upload ZIP
+                      </Button>
 
-                  // Scroll to main area
-                  setTimeout(() => {
-                    document.getElementById("main-tabs")?.scrollIntoView({ behavior: "smooth" });
-                  }, 100);
-                }}
-                onDeleteProject={deleteProject}
-              />
-            </motion.div>
+                      <input
+                        type="file"
+                        multiple
+                        ref={folderInputRef}
+                        onChange={handleFileChange}
+                        className="hidden"
+                        disabled={isLoading}
+                        webkitdirectory="true"
+                        directory="true"
+                      />
+                      <Button
+                        type="button"
+                        variant="outline"
+                        onClick={handleFolderClick}
+                        className="border border-border bg-transparent text-muted-foreground hover:border-accent hover:bg-secondary/20 hover:text-foreground text-xs h-9 rounded-[4px] px-5 transition-colors"
+                        disabled={isLoading}
+                      >
+                        Select Directory
+                      </Button>
+                    </div>
+                  </form>
+
+                  <div className="text-[10px] text-muted-foreground border-t border-border pt-3 font-mono">
+                    JS/TS only · Evaluation build · Grounded AI
+                  </div>
+                </div>
+
+                {/* Recent Repositories */}
+                {recentRepos.length > 0 && (
+                  <div className="space-y-2 font-mono">
+                    <h3 className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground border-b border-border pb-1">
+                      Recent Repositories
+                    </h3>
+                    <div className="border border-border rounded-[4px] divide-y divide-border overflow-hidden bg-card">
+                      {recentRepos.map((repo, idx) => (
+                        <button
+                          key={idx}
+                          onClick={() => {
+                            if (repo.url) {
+                              setGithubUrl(repo.url);
+                              setMode(TAB_MODES.GITHUB);
+                              handleAnalyze(repo.url, "", manualGithubToken || githubToken);
+                            }
+                          }}
+                          className="w-full flex items-center justify-between p-3 hover:bg-secondary/20 transition-colors text-left text-xs font-mono"
+                        >
+                          <span className="truncate pr-4 text-foreground">{repo.name}</span>
+                          <span className="text-[9px] text-muted-foreground shrink-0">{repo.date}</span>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            )
           ) : (
-            <motion.section
-              className="mx-auto max-w-5xl text-center mb-16 md:mb-24 flex flex-col justify-center min-h-[50vh]"
-              initial={{ opacity: 0, y: 30 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.8, ease: "easeOut" }}
-            >
-              <motion.div
-                initial={{ opacity: 0, scale: 0.9 }}
-                animate={{ opacity: 1, scale: 1 }}
-                transition={{ delay: 0.2, duration: 0.5 }}
-                className="inline-block px-4 py-1.5 mb-6 text-sm font-medium tracking-wide uppercase bg-sky-100 dark:bg-sky-900/30 text-sky-600 dark:text-sky-400 rounded-full w-fit mx-auto"
-              >
-                Enterprise AI Code Intelligence
-              </motion.div>
+            // Screen 3: Repository Workspace - Three-panel layout (Explorer | Content | Insights)
+            <div className="flex flex-col h-[82vh] border border-border rounded-[4px] bg-card overflow-hidden shadow-none animate-fade-in">
+              {/* Workspace Top Bar */}
+              <div className="bg-secondary/30 border-b border-border px-4 py-3 flex flex-col md:flex-row items-start md:items-center justify-between gap-4 shrink-0">
+                <div className="flex items-center gap-4 min-w-0">
+                  <div className="flex items-center gap-2">
+                    <GitBranch className="w-4 h-4 text-primary shrink-0" />
+                     <h2
+                       className="font-bold text-sm text-foreground truncate max-w-[150px] cursor-pointer hover:text-accent transition-colors"
+                       title="View Repository Overview"
+                       onClick={() => {
+                         setSelectedFile(null);
+                         setWorkspaceView('overview');
+                       }}
+                     >
+                       {project.summary.name}
+                     </h2>
+                     <Badge variant="outline" className="text-[9px] uppercase font-mono px-1.5 py-0 border-border/80 hidden sm:inline-flex">
+                       {project.summary.source}
+                     </Badge>
+                     <Button
+                       variant="ghost"
+                       size="icon"
+                       className="w-5 h-5 ml-1 hover:bg-secondary rounded-md"
+                       onClick={() => {
+                         setProject(null);
+                         setSelectedFile(null);
+                         setWorkspaceView('overview');
+                       }}
+                       title="Close workspace"
+                     >
+                       <span className="text-[10px] text-muted-foreground">✕</span>
+                     </Button>
+                   </div>
 
-              <h1 className="text-5xl font-extrabold tracking-tight md:text-7xl mb-8 leading-[1.1]">
-                Understand unfamiliar code <br />
-                <span className="bg-clip-text text-transparent bg-gradient-to-r from-sky-600 via-blue-500 to-indigo-600 dark:from-sky-400 dark:to-indigo-400">
-                  in minutes, not hours.
-                </span>
-              </h1>
+                   {/* Unified Top Navigation Tabs */}
+                   <div className="flex items-center gap-1 border-l border-border pl-4">
+                     <button
+                       onClick={() => {
+                         setSelectedFile(null);
+                         setWorkspaceView('overview');
+                       }}
+                       className={`text-xs px-2.5 py-1 rounded transition-colors ${
+                         workspaceView === 'overview'
+                           ? 'bg-secondary text-foreground font-semibold font-mono'
+                           : 'text-muted-foreground hover:text-foreground font-mono'
+                       }`}
+                     >
+                       Repository Overview
+                     </button>
+                     <button
+                       onClick={() => {
+                         setWorkspaceView('architecture');
+                       }}
+                       className={`text-xs px-2.5 py-1 rounded transition-colors ${
+                         workspaceView === 'architecture'
+                           ? 'bg-secondary text-foreground font-semibold font-mono'
+                           : 'text-muted-foreground hover:text-foreground font-mono'
+                       }`}
+                     >
+                       Architecture
+                     </button>
+                     <button
+                       onClick={() => {
+                         if (!selectedFile && project.files.length > 0) {
+                           setSelectedFile(project.files[0].path);
+                         }
+                         setWorkspaceView('code');
+                       }}
+                       className={`text-xs px-2.5 py-1 rounded transition-colors ${
+                         workspaceView === 'code' || workspaceView === 'search' || workspaceView === 'qa'
+                           ? 'bg-secondary text-foreground font-semibold font-mono'
+                           : 'text-muted-foreground hover:text-foreground font-mono'
+                       }`}
+                     >
+                       Workspace
+                     </button>
+                   </div>
+                 </div>
 
-              <p className="text-xl text-muted-foreground md:text-2xl leading-relaxed max-w-3xl mx-auto mb-10">
-                Stop struggling with context switching. Paste a GitHub repository or describe an idea, and let our neural engine deconstruct the logic for you.
-              </p>
+                 {/* Inputs: Search and Ask */}
+                 <div className="flex flex-wrap items-center gap-2.5 w-full md:w-auto">
+                   {/* Search Bar */}
+                   <form onSubmit={handleSearchSubmit} className="relative w-full sm:w-[180px]">
+                     <Search className="absolute left-2.5 top-2.5 h-3.5 w-3.5 text-muted-foreground" />
+                     <Input
+                       placeholder="Search repository..."
+                       value={searchVal}
+                       onChange={(e) => setSearchVal(e.target.value)}
+                       className="pl-8 h-8 text-xs bg-secondary/15 border-border/80"
+                     />
+                   </form>
 
-              <div className="flex flex-wrap justify-center gap-4">
-                <Button
-                  size="lg"
-                  className="h-14 px-8 text-lg font-semibold bg-sky-600 hover:bg-sky-700 text-white shadow-lg shadow-sky-500/20"
-                  onClick={() => {
-                    const tabsElement = document.getElementById("main-tabs");
-                    tabsElement?.scrollIntoView({ behavior: "smooth" });
-                  }}
-                >
-                  Get Started Free
-                </Button>
-                <Button
-                  size="lg"
-                  variant="outline"
-                  className="h-14 px-8 text-lg font-semibold"
-                  asChild
-                >
-                  <a href="/faq">How it works</a>
-                </Button>
-              </div>
-            </motion.section>
-          )}
+                   {/* Ask Bar */}
+                   <form onSubmit={handleQASubmit} className="relative w-full sm:w-[200px]">
+                     <Sparkles className="absolute left-2.5 top-2.5 h-3.5 w-3.5 text-accent" />
+                     <Input
+                       placeholder="Ask about repository..."
+                       value={qaVal}
+                       onChange={(e) => setQaVal(e.target.value)}
+                       className="pl-8 h-8 text-xs bg-secondary/15 border-border/80"
+                     />
+                   </form>
+                 </div>
+               </div>
 
-          <motion.div
-            id="main-tabs"
-            initial={{ opacity: 0, y: 40 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.8, delay: 0.4 }}
-          >
-
-            <Card className="p-8 md:p-12">
-              <Tabs
-                value={mode}
-                onValueChange={(value) => setMode(value as TabMode)}
-              >
-                <TabsList className="grid w-full grid-cols-3 bg-secondary/50">
-                  <TabsTrigger value={TAB_MODES.GITHUB} className="gap-2 data-[state=active]:bg-sky-600 data-[state=active]:text-white data-[state=inactive]:text-muted-foreground hover:text-foreground transition-colors">
-                    <span className="hidden md:inline">GitHub Repo</span>
-                    <span className="inline md:hidden">GitHub</span>
-                  </TabsTrigger>
-                  <TabsTrigger value={TAB_MODES.GENERATE} className="gap-2 data-[state=active]:bg-sky-600 data-[state=active]:text-white data-[state=inactive]:text-muted-foreground hover:text-foreground transition-colors">
-                    <span className="hidden md:inline">Generate Idea</span>
-                    <span className="inline md:hidden">Idea</span>
-                  </TabsTrigger>
-                  <TabsTrigger value={TAB_MODES.UPLOAD} className="gap-2 data-[state=active]:bg-sky-600 data-[state=active]:text-white data-[state=inactive]:text-muted-foreground hover:text-foreground transition-colors">
-                    <span className="hidden md:inline">Upload Folder</span>
-                    <span className="inline md:hidden">Upload</span>
-                  </TabsTrigger>
-                </TabsList>
-
-                <TabsContent value={TAB_MODES.GITHUB}>
-                  {isAuthenticated ? (
-                    <GitHubTab
-                      isLoading={isLoading}
-                      onAnalyze={(url, token) => {
-                        setRepoUrl(url);
-                        if (token) setManualGithubToken(token);
-                        handleAnalyze(url, "", token || githubToken);
-                      }}
-                    />
+               {/* Conditional Panels Layout */}
+               <div className="flex-1 flex overflow-hidden">
+                  {workspaceView === 'overview' ? (
+                    // Screen 2: Repository Overview - Full width, no sidebars, no clutter
+                    <div className="flex-1 h-full overflow-y-auto bg-background/30 flex justify-center">
+                      <div className="max-w-5xl w-full p-6 animate-fade-in">
+                        {overview && (
+                          <ProjectOverviewComponent
+                            overview={overview}
+                            project={project}
+                            onFileSelect={(path) => {
+                              handleFileSelect(path, manualGithubToken || githubToken);
+                            }}
+                          />
+                        )}
+                      </div>
+                    </div>
                   ) : (
-                    <LockedFeature
-                      title="Analyze GitHub Repositories"
-                      description="Connect your GitHub account to analyze private repositories, save your history, and get personalized insights."
-                    />
-                  )}
-                </TabsContent>
+                   // Screen 3: Repository Workspace - Three-panel layout (Explorer | Content | Insights)
+                   <>
+                     {/* Left Panel: File Explorer (260px) */}
+                     <div className="w-[260px] md:w-[280px] shrink-0 border-r border-border/80 h-full overflow-y-auto bg-secondary/5">
+                       <FolderTree
+                         tree={scanResult?.folderTree || { name: "Root", path: "", type: "folder", children: [] }}
+                         selectedFile={selectedFile}
+                         onFileSelect={(path) => {
+                           handleFileSelect(path, manualGithubToken || githubToken);
+                           setWorkspaceView('code');
+                         }}
+                       />
+                     </div>
 
-                <TabsContent value={TAB_MODES.GENERATE}>
-                  <GenerateTab
-                    isLoading={isLoading}
-                    onGenerate={async (idea) => {
-                      setProjectIdea(idea);
-                      await handleAnalyze("", idea, null);
-                      // Auto-redirect by scrolling to project view
-                      setTimeout(() => {
-                        document.getElementById("project-overview")?.scrollIntoView({ behavior: "smooth" });
-                      }, 500);
-                    }}
-                  />
-                </TabsContent>
+                     {/* Middle Panel: Workspace Content (Flex 1) */}
+                     <div className="flex-1 h-full overflow-hidden bg-background/30 flex flex-col">
+                       {workspaceView === 'code' && (
+                         <div className="h-full flex flex-col">
+                           <div className="flex-1 min-h-0">
+                             <CodeViewer
+                               isLoading={isFileLoading}
+                               fileName={selectedFile}
+                               fileContent={currentFileContent}
+                               onLineSelect={(line) => handleLineSelect(line, currentFileContent || '')}
+                               selectedLine={selectedLine}
+                               selectedLines={selectedLines}
+                             />
+                           </div>
+                         </div>
+                       )}
 
-                <TabsContent value={TAB_MODES.UPLOAD}>
-                  <UploadTab
-                    isLoading={isLoading}
-                    uploadedFolderName={uploadedFolderName}
-                    onFolderSelect={(files) => processUploadedFiles(files)}
-                    onAnalyze={() => handleAnalyze("", "", null)}
-                    isProjectLoaded={!!project}
-                    isAuthenticated={isAuthenticated}
-                  />
-                </TabsContent>
-              </Tabs>
+                       {workspaceView === 'architecture' && (
+                         <div className="h-full flex flex-col bg-code-bg overflow-hidden">
+                           {/* VS Code style editor tab */}
+                           <div className="bg-secondary/40 border-b border-border/80 h-9 flex items-center justify-between shrink-0 select-none px-1">
+                             <div className="flex h-full items-center">
+                               <div className="bg-code-bg text-foreground border-r border-border/80 h-full px-3.5 flex items-center gap-2 text-[11px] border-t-2 border-t-accent font-mono font-semibold">
+                                 <Layers className="w-3.5 h-3.5 text-accent shrink-0" />
+                                 <span>architecture-map.svg</span>
+                               </div>
+                             </div>
+                             <Button
+                               size="sm"
+                               variant="ghost"
+                               className="h-6 w-6 p-0 hover:bg-secondary/60 text-muted-foreground mr-2 rounded-sm"
+                               onClick={() => setWorkspaceView('overview')}
+                             >
+                               ✕
+                             </Button>
+                           </div>
+                           <div className="flex-1 min-h-0 p-4">
+                             <DependencyGraph
+                               project={project}
+                               onFileSelect={(path) => {
+                                 handleFileSelect(path, manualGithubToken || githubToken);
+                                 setWorkspaceView('code');
+                               }}
+                             />
+                           </div>
+                         </div>
+                       )}
 
-              <div className="mt-8">
-                <SkillSelector
-                  selectedLevel={skillLevel}
-                  onLevelChange={(level) => handleSkillLevelChange(level, currentFileContent)}
-                  disabled={isLoading || isFileLoading}
-                />
-              </div>
-            </Card>
-          </motion.div>
+                       {workspaceView === 'search' && (
+                         <WorkspaceSearchView
+                           query={searchQuery}
+                           results={searchResults}
+                           projectFiles={project.files}
+                           onBackToOverview={() => setWorkspaceView('overview')}
+                           onFileSelect={(path) => {
+                             handleFileSelect(path, manualGithubToken || githubToken);
+                             setWorkspaceView('code');
+                           }}
+                         />
+                       )}
 
-          {project && (
-            <>
-              <motion.div
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.5 }}
-              >
-                <ProjectOverviewComponent
-                  overview={analyzeProject(project)}
-                  project={project}
-                  onFileSelect={(path) => handleFileSelect(path, manualGithubToken || githubToken)}
-                />
-              </motion.div>
-              {/* Desktop View (Grid) */}
-              <motion.section
-                className="mt-16 hidden md:grid gap-6 grid-cols-[260px_1fr_400px] lg:grid-cols-[300px_1fr_450px]"
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                transition={{ duration: 0.6, staggerChildren: 0.1 }}
-              >
-                <div className="h-full border rounded-xl overflow-hidden bg-card">
-                  <FileNavigator
-                    files={displayedFiles}
-                    selectedFile={selectedFile}
-                    onFileSelect={(path) => handleFileSelect(path, manualGithubToken || githubToken)}
-                  />
-                </div>
+                       {workspaceView === 'qa' && (
+                         <WorkspaceQAView
+                           question={qaQuestion}
+                           answer={qaAnswer}
+                           isLoading={isQaLoading}
+                           onBackToOverview={() => setWorkspaceView('overview')}
+                           onFileSelect={(path) => {
+                             handleFileSelect(path, manualGithubToken || githubToken);
+                             setWorkspaceView('code');
+                           }}
+                         />
+                       )}
+                     </div>
 
-                <div className="h-full min-h-[500px] border rounded-xl overflow-hidden bg-card shadow-sm">
-                  <CodeViewer
-                    isLoading={isFileLoading}
-                    fileName={selectedFile}
-                    fileContent={currentFileContent}
-                    onLineSelect={(line) => handleLineSelect(line, currentFileContent || '')}
-                    selectedLine={selectedLine}
-                    selectedLines={selectedLines}
-                  />
-                </div>
+                     {/* Right Panel: Contextual Insights (300px / 320px) */}
+                     <div className="w-[300px] md:w-[320px] shrink-0 border-l border-border/80 h-full overflow-y-auto">
+                       <WorkspaceInsightsPanel
+                         selectedFile={selectedFile}
+                         analysis={selectedFile ? staticAnalyses[selectedFile] : null}
+                         fileContent={currentFileContent}
+                         allFiles={project.files}
+                         onFileSelect={(path) => {
+                           handleFileSelect(path, manualGithubToken || githubToken);
+                           setWorkspaceView('code');
+                         }}
+                       />
+                     </div>
+                   </>
+                 )}
+               </div>
+             </div>
+           )}
+         </main>
+       </div>
+     </ErrorBoundary>
+   );
+ };
 
-                <div className="h-full border rounded-xl overflow-hidden bg-card">
-                  <ExplanationPanel
-                    isLoading={isExplaining}
-                    messages={chatMessages}
-                    onSendMessage={handleChatSendMessage}
-                    onRefactor={() => handleRefactorRequest(selectedLine, currentFileContent)}
-                    skillLevel={skillLevel}
-                    hasSelection={!!selectedLine}
-                  />
-                </div>
-              </motion.section>
-
-              {/* Mobile View (Tabs) */}
-              <motion.div
-                className="mt-8 md:hidden"
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-              >
-                <Tabs defaultValue="files" className="w-full">
-                  <TabsList className="grid w-full grid-cols-3 mb-4">
-                    <TabsTrigger value="files" className="flex gap-2">
-                      <Files className="w-4 h-4" /> Files
-                    </TabsTrigger>
-                    <TabsTrigger value="code" className="flex gap-2">
-                      <Code className="w-4 h-4" /> Code
-                    </TabsTrigger>
-                    <TabsTrigger value="explain" className="flex gap-2">
-                      <Sparkles className="w-4 h-4" /> AI
-                    </TabsTrigger>
-                  </TabsList>
-
-                  <TabsContent value="files" className="mt-0">
-                    <div className="border rounded-xl overflow-hidden bg-card h-[60vh]">
-                      <FileNavigator
-                        files={displayedFiles}
-                        selectedFile={selectedFile}
-                        onFileSelect={(path) => {
-                          handleFileSelect(path, manualGithubToken || githubToken);
-                          // Optional: Auto-switch to code tab on file select check if we want this interaction
-                        }}
-                      />
-                    </div>
-                  </TabsContent>
-
-                  <TabsContent value="code" className="mt-0">
-                    <div className="border rounded-xl overflow-hidden bg-card h-[60vh] shadow-sm">
-                      <CodeViewer
-                        isLoading={isFileLoading}
-                        fileName={selectedFile}
-                        fileContent={currentFileContent}
-                        onLineSelect={(line) => handleLineSelect(line, currentFileContent || '')}
-                        selectedLine={selectedLine}
-                        selectedLines={selectedLines}
-                      />
-                    </div>
-                  </TabsContent>
-
-                  <TabsContent value="explain" className="mt-0">
-                    <div className="border rounded-xl overflow-hidden bg-card h-[60vh]">
-                      <ExplanationPanel
-                        isLoading={isExplaining}
-                        messages={chatMessages}
-                        onSendMessage={handleChatSendMessage}
-                        onRefactor={() => handleRefactorRequest(selectedLine, currentFileContent)}
-                        skillLevel={skillLevel}
-                        hasSelection={!!selectedLine}
-                      />
-                    </div>
-                  </TabsContent>
-                </Tabs>
-              </motion.div>
-            </>
-          )}
-        </main>
-      </div>
-    </ErrorBoundary>
-  );
-};
-
-export default Index;
+ export default Index;

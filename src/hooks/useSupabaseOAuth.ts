@@ -1,12 +1,12 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
-import type { Session } from '@supabase/supabase-js';
+import type { Session, User } from '@supabase/supabase-js';
 
 interface OAuthState {
     isLoading: boolean;
     isAuthenticated: boolean;
-    user: any | null;
+    user: User | null;
     error: string | null;
 }
 

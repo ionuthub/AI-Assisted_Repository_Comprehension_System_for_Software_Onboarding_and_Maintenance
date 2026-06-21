@@ -1,6 +1,5 @@
 import React from "react";
 import Header from "./Header";
-import Footer from "./Footer";
 import { motion, AnimatePresence } from "framer-motion";
 import { useLocation } from "react-router-dom";
 
@@ -14,7 +13,7 @@ const Layout = ({ children }: LayoutProps) => {
     return (
         <div className="relative flex min-h-screen flex-col bg-background">
             <Header />
-            <main className="flex-1">
+            <main className="flex-1 flex flex-col">
                 <AnimatePresence mode="wait">
                     <motion.div
                         key={location.pathname}
@@ -22,12 +21,12 @@ const Layout = ({ children }: LayoutProps) => {
                         animate={{ opacity: 1, y: 0 }}
                         exit={{ opacity: 0, y: -10 }}
                         transition={{ duration: 0.3 }}
+                        className="flex-1 flex flex-col"
                     >
                         {children}
                     </motion.div>
                 </AnimatePresence>
             </main>
-            <Footer />
         </div>
     );
 };

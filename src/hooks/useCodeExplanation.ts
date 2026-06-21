@@ -5,6 +5,7 @@ import { SkillLevel } from "@/constants/appConstants";
 import { analyzeProject } from "@/lib/projectAnalyzer";
 import { generateW3SchoolsFileExplanation } from "@/lib/w3schoolsExplainer";
 import { detectCodeBlock } from "@/lib/blockDetector";
+import { searchRepository } from "@/lib/semanticSearch";
 
 export const useCodeExplanation = () => {
     const {
@@ -17,7 +18,8 @@ export const useCodeExplanation = () => {
         resetSelection,
         selectedFile,
         setSelectedLine,
-        setSelectedLines
+        setSelectedLines,
+        searchIndex
     } = useProjectStore();
 
     const fetchAIExplanationStream = async (
@@ -56,10 +58,24 @@ export const useCodeExplanation = () => {
         setChatMessages(updated);
         setIsExplaining(true);
 
-        let fullText = "";
-        const summary = project ? analyzeProject(project).explanation.slice(0, 5).join("\n") : "";
+        let systemContext = project ? analyzeProject(project).explanation.slice(0, 5).join("\n") : "";
 
-        await fetchAIExplanationStream(updated.slice(0, -1), skillLevel, summary, (chunk) => {
+        // Retrieval-Augmented Generation (RAG)
+        if (project && searchIndex) {
+            const searchResults = searchRepository(content, searchIndex, project.files, 3);
+            if (searchResults.length > 0) {
+                systemContext += "\n\n[Grounded Repository Context for RAG - Answer using this evidence and cite file paths]";
+                searchResults.forEach(res => {
+                    const fileObj = project.files.find(f => f.path === res.path);
+                    if (fileObj && fileObj.content) {
+                        systemContext += `\n\n--- File: ${res.path} (Language: ${fileObj.language || 'unknown'}, Relevance: ${(res.score * 100).toFixed(0)}%) ---\n${fileObj.content.slice(0, 3000)}`;
+                    }
+                });
+            }
+        }
+
+        let fullText = "";
+        await fetchAIExplanationStream(updated.slice(0, -1), skillLevel, systemContext, (chunk) => {
             fullText += chunk;
             const streamingMsgs: ChatMessage[] = [...updated.slice(0, -1), { role: 'model', content: fullText }];
             setChatMessages(streamingMsgs);

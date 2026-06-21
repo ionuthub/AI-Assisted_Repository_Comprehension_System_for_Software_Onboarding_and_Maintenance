@@ -2,6 +2,9 @@ import { create } from 'zustand';
 import { Project, ProjectFile } from '@/types/project';
 import { SkillLevel, SKILL_LEVELS, TabMode, TAB_MODES } from '@/constants/appConstants';
 import { ChatMessage } from '@/types/chat';
+import { scanRepository, RepositoryScanResult } from '@/lib/repositoryScanner';
+import { analyzeCodeFile, computeWorkspaceReferences, FileAnalysisResult } from '@/lib/staticAnalysis';
+import { buildSearchIndex, SearchIndex } from '@/lib/semanticSearch';
 
 interface ProjectState {
     // Navigation & Mode
@@ -10,7 +13,11 @@ interface ProjectState {
 
     // Project Data
     project: Project | null;
+    scanResult: RepositoryScanResult | null;
+    staticAnalyses: Record<string, FileAnalysisResult>;
+    searchIndex: SearchIndex | null;
     setProject: (project: Project | null) => void;
+    updateStaticAnalysis: (path: string, content: string) => void;
     fileCache: Record<string, ProjectFile>;
     fileCacheOrder: string[]; // Track access order for LRU
     setFileCache: (cache: Record<string, ProjectFile>) => void;
@@ -47,7 +54,55 @@ export const useProjectStore = create<ProjectState>((set) => ({
     setMode: (mode) => set({ mode }),
 
     project: null,
-    setProject: (project) => set({ project }),
+    scanResult: null,
+    staticAnalyses: {},
+    searchIndex: null,
+    setProject: (project) => {
+        let analyses: Record<string, FileAnalysisResult> = {};
+        let index: SearchIndex | null = null;
+        if (project) {
+            const filePaths = project.files.map(f => f.path);
+            project.files.forEach(file => {
+                if (file.content) {
+                    analyses[file.path] = analyzeCodeFile(file.path, file.content, filePaths);
+                }
+            });
+            analyses = computeWorkspaceReferences(analyses);
+            index = buildSearchIndex(project.files);
+        }
+
+        set({
+            project,
+            scanResult: project ? scanRepository(project.files) : null,
+            staticAnalyses: analyses,
+            searchIndex: index
+        });
+    },
+    updateStaticAnalysis: (path, content) => set((state) => {
+        if (!state.project) return {};
+
+        const filePaths = state.project.files.map(f => f.path);
+        const newAnalyses = { ...state.staticAnalyses };
+        newAnalyses[path] = analyzeCodeFile(path, content, filePaths);
+
+        const updatedAnalyses = computeWorkspaceReferences(newAnalyses);
+
+        // Update file inside project files for indexing
+        const updatedFiles = state.project.files.map(f =>
+            f.path === path ? { ...f, content } : f
+        );
+
+        const newIndex = buildSearchIndex(updatedFiles);
+
+        return {
+            staticAnalyses: updatedAnalyses,
+            project: {
+                ...state.project,
+                files: updatedFiles
+            },
+            searchIndex: newIndex
+        };
+    }),
     fileCache: {},
     fileCacheOrder: [],
 

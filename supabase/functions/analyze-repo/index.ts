@@ -72,9 +72,15 @@ serve(async (req) => {
 
     const treeData = await treeResponse.json();
 
+    interface GitTreeItem {
+      type: string;
+      path: string;
+      url: string;
+    }
+
     // Find interesting files (limit to code files)
-    const codeFiles = treeData.tree
-      .filter((item: any) =>
+    const codeFiles = (treeData.tree as GitTreeItem[])
+      .filter((item: GitTreeItem) =>
         item.type === 'blob' &&
         /\.(js|ts|tsx|jsx|py|java|cpp|c|go|rs|rb)$/.test(item.path)
       )
@@ -88,7 +94,7 @@ serve(async (req) => {
         stars: repoData.stargazers_count,
         forks: repoData.forks_count
       },
-      files: codeFiles.map((file: any) => ({
+      files: codeFiles.map((file: GitTreeItem) => ({
         path: file.path,
         url: file.url
       })),

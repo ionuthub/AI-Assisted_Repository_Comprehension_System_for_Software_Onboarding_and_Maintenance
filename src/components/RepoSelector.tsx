@@ -34,17 +34,7 @@ const RepoSelector = ({ onRepoSelect }: RepoSelectorProps) => {
   const [page, setPage] = useState(1);
   const [hasMore, setHasMore] = useState(true);
 
-  useEffect(() => {
-    if (githubToken) {
-      // Reset when token is newly available
-      setRepos([]);
-      setPage(1);
-      setHasMore(true);
-      fetchUserRepos(1, githubToken);
-    }
-  }, [githubToken]);
-
-  const fetchUserRepos = async (pageToFetch: number, token: string) => {
+  const fetchUserRepos = useCallback(async (pageToFetch: number, token: string) => {
     try {
       setIsLoading(true);
       const response = await fetch(`https://api.github.com/user/repos?sort=updated&per_page=${REPOS_PER_PAGE}&page=${pageToFetch}`, {
@@ -72,17 +62,28 @@ const RepoSelector = ({ onRepoSelect }: RepoSelectorProps) => {
       }
 
       setRepos(prev => pageToFetch === 1 ? data : [...prev, ...data]);
-    } catch (error: any) {
-      console.error('Error fetching repos:', error);
+    } catch (error) {
+      const err = error as Error;
+      console.error('Error fetching repos:', err);
       toast({
         title: "Error",
-        description: error.message || "Failed to load your repositories",
+        description: err.message || "Failed to load your repositories",
         variant: "destructive",
       });
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [toast]);
+
+  useEffect(() => {
+    if (githubToken) {
+      // Reset when token is newly available
+      setRepos([]);
+      setPage(1);
+      setHasMore(true);
+      fetchUserRepos(1, githubToken);
+    }
+  }, [githubToken, fetchUserRepos]);
 
   const handleLoadMore = () => {
     if (!hasMore || isLoading || !githubToken) return;

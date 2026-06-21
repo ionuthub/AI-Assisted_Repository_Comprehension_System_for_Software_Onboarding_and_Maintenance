@@ -32,8 +32,8 @@ import { useProjectStore } from "@/store/useProjectStore";
 import SEO from "@/components/SEO";
 import { useGitHubAuth } from "@/hooks/useGitHubAuth";
 import { useProjectManagement } from "@/hooks/useProjectManagement";
-import { useCodeExplanation } from "@/hooks/useCodeExplanation";
 import { searchRepository, SearchResult } from "@/lib/semanticSearch";
+import { detectCodeBlock } from "@/lib/blockDetector";
 import ProjectOverviewComponent from "@/components/ProjectOverview";
 import { analyzeProject } from "@/lib/projectAnalyzer";
 
@@ -91,9 +91,16 @@ const Index = () => {
     handleFileSelect
   } = useProjectManagement();
 
-  const {
-    handleLineSelect
-  } = useCodeExplanation();
+  const handleLineSelect = (lineNumber: number) => {
+    if (!currentFileContent) return;
+    const block = detectCodeBlock(currentFileContent, lineNumber);
+    const lines = new Set<number>();
+    for (let i = block.startLine; i <= block.endLine; i++) {
+      lines.add(i);
+    }
+    setSelectedLine(lineNumber);
+    setSelectedLines(lines);
+  };
 
   // Load recent repositories from localStorage on mount
   useEffect(() => {
@@ -520,7 +527,7 @@ const Index = () => {
                                isLoading={isFileLoading}
                                fileName={selectedFile}
                                fileContent={currentFileContent}
-                               onLineSelect={(line) => handleLineSelect(line, currentFileContent || '')}
+                               onLineSelect={(line) => handleLineSelect(line)}
                                selectedLine={selectedLine}
                                selectedLines={selectedLines}
                              />

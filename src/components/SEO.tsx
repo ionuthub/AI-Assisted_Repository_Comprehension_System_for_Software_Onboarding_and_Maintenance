@@ -8,7 +8,7 @@ interface SEOProps {
 
 const SEO = ({ title, description, keywords }: SEOProps) => {
     useEffect(() => {
-        document.title = `${title} | AI Code Tutor`;
+        document.title = `${title} | Repository Comprehension System`;
 
         if (description) {
             const metaDescription = document.querySelector('meta[name="description"]');

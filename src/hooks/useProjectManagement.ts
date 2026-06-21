@@ -7,8 +7,7 @@ import { fetchRepositoryProject, fetchFileContent } from "@/lib/github";
 import { inferLanguageFromFilename } from "@/lib/languages";
 import { generateW3SchoolsFileExplanation } from "@/lib/w3schoolsExplainer";
 import { ProjectFile } from "@/types/project";
-import { supabase } from "@/integrations/supabase/client";
-import { Json } from "@/integrations/supabase/types";
+
 import { rateLimiters } from "@/lib/security";
 import { parseZipFile } from "@/lib/zipParser";
 

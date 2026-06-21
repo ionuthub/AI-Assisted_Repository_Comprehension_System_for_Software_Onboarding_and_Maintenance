@@ -20,17 +20,7 @@ https://rig.ai/
 
 ---
 
-## 🏛 Documentation Hub
 
-We maintain documentation standards. Please refer to the specialized docs for technical insights.
-
-### 🏛 Core Standards (Root)
-
-- [**Architecture & ADR**](ARCHITECTURE.md) - System design and technical decision logs.
-- [**Product Specifications**](PRODUCT_SPECS.md) - Audience and core requirements.
-- [**Security Policy**](SECURITY.md) - Data handling and API security measures.
-- [**Contributing Guide**](CONTRIBUTING.md) - Code style and PR requirements.
-- [**Changelog**](CHANGELOG.md) - Version history.
 
 ---
 
@@ -69,7 +59,7 @@ npm run dev
 
 ## 🔒 Security
 
-No API secrets are stored on the client side. All model interactions are proxied through secure Vercel Serverless functions. For more details, see [SECURITY.md](SECURITY.md).
+No API secrets are stored on the client side. All model interactions are proxied through secure Vercel Serverless functions.
 
 ---
 

@@ -1,52 +1,36 @@
-# 🎓 AI Code Tutor - Enterprise AI Intelligence
+# 🎓 Repository Comprehension System
 
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE.md)
-[![TypeScript](https://img.shields.io/badge/TypeScript-007ACC?style=flat&logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
-[![Vercel](https://img.shields.io/badge/Vercel-000000?style=flat&logo=vercel&logoColor=white)](https://vercel.com/)
-[![Gemini](https://img.shields.io/badge/Gemini%202.0-8E75B2?style=flat&logo=google-cloud&logoColor=white)](https://deepmind.google/technologies/gemini/)
+**Design and Evaluation of an AI-Assisted Repository Comprehension System for Software Onboarding and Maintenance Tasks**
 
-**AI Code Tutor** is a production-grade educational platform designed to deconstruct complex codebases into human-readable logic. Built for developers of all skill levels, it leverages High-Performance AI to provide context-aware explanations, architecture reviews, and project generation.
+This repository contains the software artefact for the Computer Science dissertation. It is designed to assist software developers in onboarding and maintaining JavaScript/TypeScript repositories.
 
 ---
 
 ## Link to the website
-
 https://rig.ai/
-
-## 🚀 Key Capabilities
-
-- **Neural Repo Analysis**: Connect any GitHub repository and get a deep structural breakdown.
-- **Adaptive Explanations**: Toggle between Beginner, Intermediate, and Advanced insights.
-- **AI Project Architect**: Describe an idea and generate a full enterprise-ready starter project.
-- **Secure File Navigation**: Explore files with real-time complexity detection and line-by-line reasoning.
 
 ---
 
-## 📖 Documentation Hub
+## 🚀 Key Capabilities
 
-We maintain high enterprise documentation standards. Please refer to the specialized docs for deeper technical insights.
+- **Repository Overview**: Detects technologies and frameworks, displaying critical files, components, and functions count.
+- **Architecture & Dependency Mapping**: Parses folder structure and import/export relationships to render an interactive dependency graph.
+- **Semantic Repository Search**: Fast, client-side TF-IDF vector similarity queries for natural-language search over files and code snippets.
+- **Grounded Repository Q&A**: Natural language Q&A grounded in codebase context (RAG) using Gemini 2.0 to explain file roles and design details.
+
+---
+
+## 🏛 Documentation Hub
+
+We maintain documentation standards. Please refer to the specialized docs for technical insights.
 
 ### 🏛 Core Standards (Root)
 
 - [**Architecture & ADR**](ARCHITECTURE.md) - System design and technical decision logs.
-- [**Product Specifications**](PRODUCT_SPECS.md) - Audience, requirements, and 2026 roadmap.
+- [**Product Specifications**](PRODUCT_SPECS.md) - Audience and core requirements.
 - [**Security Policy**](SECURITY.md) - Data handling and API security measures.
 - [**Contributing Guide**](CONTRIBUTING.md) - Code style and PR requirements.
-- [**Changelog**](CHANGELOG.md) - Version history and notable updates.
-
-### 📁 Technical Guides (`/docs/guides`)
-
-- [Deployment Guide](docs/guides/deployment-guide.md)
-- [Vercel Deployment](docs/guides/vercel-deployment.md)
-- [Icon Usage (Lucide)](docs/guides/icon-usage.md)
-- [Optimal Learning Approach](docs/guides/learning-approach.md)
-
-### 📊 Reports & Analysis (`/docs/reports`)
-
-- [Codebase Analysis Summary](docs/reports/codebase-analysis.md)
-- [Performance Optimization Report](docs/reports/performance-optimization.md)
-- [Flagship Upgrade Report](docs/reports/flagship-upgrade.md)
-- [Logic Analysis](docs/reports/logic-analysis.md)
+- [**Changelog**](CHANGELOG.md) - Version history.
 
 ---
 
@@ -54,10 +38,9 @@ We maintain high enterprise documentation standards. Please refer to the special
 
 - **Frontend**: React 18, TypeScript, Vite
 - **Styling**: Tailwind CSS, Shadcn/UI, Framer Motion
-- **AI**: Google Gemini 2.0 Flash (Edge Runtime)
-- **Backend**: Vercel Edge Functions
-- **Database**: Supabase (User Profiles & Auth)
-- **i18n**: i18next (English, Romanian)
+- **Static Analysis**: Custom AST-like import/export parser, file tokenizer, and folder tree builder.
+- **RAG & Search**: Local TF-IDF index matching + Google Gemini 2.0 Flash (Edge Runtime proxy).
+- **Backend/Hosting**: Vercel Serverless Functions
 
 ---
 
@@ -66,15 +49,14 @@ We maintain high enterprise documentation standards. Please refer to the special
 ### Prerequisites
 
 - Node.js 18+
-- NPM / Bun
-- [Gemini API Key](docs/setup/gemini-api-setup.md)
-- [GitHub Access Token](docs/setup/github-token-setup.md)
+- NPM
+- Google Gemini API Key (configured in environment variables for Q&A function)
 
 ### Installation
 
 ```bash
 # Clone the repository
-git clone https://github.com/your-username/ai-code-tutor.git
+git clone https://github.com/ionuthub/AI-Code-Tutor.git
 
 # Install dependencies
 npm install
@@ -87,12 +69,8 @@ npm run dev
 
 ## 🔒 Security
 
-No secrets are stored on the client side. All AI interactions are proxied through secure Vercel Edge functions with server-side rate-limiting. For more details, see [SECURITY.md](SECURITY.md).
-
-## 📄 License
-
-Distributed under the MIT License. See [LICENSE.md](LICENSE.md) for more information.
+No API secrets are stored on the client side. All model interactions are proxied through secure Vercel Serverless functions. For more details, see [SECURITY.md](SECURITY.md).
 
 ---
 
-_Built with ❤️ for the global developer community._
+_Built as a dissertation research project._

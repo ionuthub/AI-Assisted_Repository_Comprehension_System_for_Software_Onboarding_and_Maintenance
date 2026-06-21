@@ -277,7 +277,7 @@ const Index = () => {
                     Repository Comprehension System
                   </h1>
                   <p className="text-xs text-muted-foreground">
-                    AI-assisted understanding for codebases.
+                    Automated codebase comprehension and dependency mapping.
                   </p>
                 </div>
 
@@ -347,7 +347,7 @@ const Index = () => {
                   </form>
 
                   <div className="text-[10px] text-muted-foreground border-t border-border pt-3 font-mono">
-                    JS/TS only · Evaluation build · Grounded AI
+                    JS/TS only · Evaluation build · Static Analysis
                   </div>
                 </div>
 

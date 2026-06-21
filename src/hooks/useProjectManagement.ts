@@ -4,13 +4,11 @@ import { useToast } from "@/hooks/use-toast";
 import { useProjectStore } from "@/store/useProjectStore";
 import { TAB_MODES } from "@/constants/appConstants";
 import { fetchRepositoryProject, fetchFileContent } from "@/lib/github";
-import { generateProject } from "@/lib/generation";
 import { inferLanguageFromFilename } from "@/lib/languages";
 import { generateW3SchoolsFileExplanation } from "@/lib/w3schoolsExplainer";
 import { ProjectFile } from "@/types/project";
 import { supabase } from "@/integrations/supabase/client";
 import { Json } from "@/integrations/supabase/types";
-import { useSupabaseOAuth } from "./useSupabaseOAuth";
 import { rateLimiters } from "@/lib/security";
 import { parseZipFile } from "@/lib/zipParser";
 
@@ -32,8 +30,6 @@ export const useProjectManagement = () => {
         skillLevel
     } = useProjectStore();
 
-    const { isAuthenticated, user } = useSupabaseOAuth();
-
     const [uploadedFolderName, setUploadedFolderName] = useState<string | null>(null);
     const folderInputRef = useRef<HTMLInputElement | null>(null);
 
@@ -41,7 +37,7 @@ export const useProjectManagement = () => {
         console.log("processUploadedFiles called with:", files);
 
         // Rate limit check
-        const rateLimitKey = user?.id || 'anonymous';
+        const rateLimitKey = 'anonymous';
         if (!rateLimiters.upload.isAllowed(rateLimitKey)) {
             const waitTime = Math.ceil(rateLimiters.upload.getTimeUntilReset(rateLimitKey) / 1000);
             toast({
@@ -250,82 +246,26 @@ export const useProjectManagement = () => {
 
     const handleAnalyze = async (repoUrl: string, projectIdea: string, token: string | null) => {
         resetSelection();
-        if (mode === TAB_MODES.GITHUB && !repoUrl.trim()) return toast({ title: "Repo URL required", variant: "destructive" });
-        if (mode === TAB_MODES.GENERATE && !projectIdea.trim()) return toast({ title: "Idea required", variant: "destructive" });
+        if (!repoUrl.trim()) return toast({ title: "Repo URL required", variant: "destructive" });
 
         // Rate limit check
-        const rateLimitKey = user?.id || 'anonymous';
+        const rateLimitKey = 'anonymous';
 
-        if (mode === TAB_MODES.GENERATE) {
-            if (!rateLimiters.generation.isAllowed(rateLimitKey)) {
-                const waitTime = Math.ceil(rateLimiters.generation.getTimeUntilReset(rateLimitKey) / 1000);
-                toast({
-                    title: "Rate limit exceeded",
-                    description: `Please wait ${waitTime} seconds before generating another project`,
-                    variant: "destructive",
-                });
-                return;
-            }
-        } else if (mode === TAB_MODES.GITHUB) {
-            if (!rateLimiters.api.isAllowed(rateLimitKey)) {
-                const waitTime = Math.ceil(rateLimiters.api.getTimeUntilReset(rateLimitKey) / 1000);
-                toast({
-                    title: "Rate limit exceeded",
-                    description: `Please wait ${waitTime} seconds before analyzing another repository`,
-                    variant: "destructive",
-                });
-                return;
-            }
+        if (!rateLimiters.api.isAllowed(rateLimitKey)) {
+            const waitTime = Math.ceil(rateLimiters.api.getTimeUntilReset(rateLimitKey) / 1000);
+            toast({
+                title: "Rate limit exceeded",
+                description: `Please wait ${waitTime} seconds before analyzing another repository`,
+                variant: "destructive",
+            });
+            return;
         }
 
         setIsLoading(true);
         try {
-            if (mode === TAB_MODES.GITHUB) {
-                const next = await fetchRepositoryProject(repoUrl.trim(), token);
-                setProject(next);
-                if (next.files.length > 0) setSelectedFile(next.files[0].path);
-
-                // Auto-save if authenticated
-                if (isAuthenticated && user) {
-                    supabase.from('projects').insert({
-                        user_id: user.id,
-                        name: next.summary.name,
-                        description: next.summary.description,
-                        repo_url: repoUrl.trim(),
-                        project_type: 'github',
-                        language: next.summary.language,
-                        skill_level: skillLevel,
-                        files: next.files as unknown as Json
-                    }).then(({ error }) => {
-                        if (error) console.error("Failed to auto-save project:", error);
-                        else toast({ title: "Project saved to history" });
-                    });
-                }
-
-            } else if (mode === TAB_MODES.GENERATE) {
-                const next = generateProject(projectIdea.trim(), skillLevel);
-                setProject(next);
-                const cache: Record<string, ProjectFile> = {};
-                next.files.forEach(f => { if (f.content) cache[f.path] = f; });
-                setFileCache(cache);
-                if (next.files.length > 0) setSelectedFile(next.files[0].path);
-
-                // Auto-save if authenticated
-                if (isAuthenticated && user) {
-                    supabase.from('projects').insert({
-                        user_id: user.id,
-                        name: next.summary.name || projectIdea.trim().slice(0, 50),
-                        description: next.summary.description,
-                        project_idea: projectIdea.trim(),
-                        project_type: 'generated',
-                        skill_level: skillLevel,
-                        files: next.files as unknown as Json
-                    }).then(({ error }) => {
-                        if (error) console.error("Failed to auto-save project:", error);
-                        else toast({ title: "Project saved to history" });
-                    });
-                }
-            }
+            const next = await fetchRepositoryProject(repoUrl.trim(), token);
+            setProject(next);
+            if (next.files.length > 0) setSelectedFile(next.files[0].path);
         } catch (e) {
             toast({ title: "Analysis failed", variant: "destructive" });
         } finally {

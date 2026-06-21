@@ -9,6 +9,10 @@
 
 ---
 
+## Link to the website
+
+https://rig.ai/
+
 ## 🚀 Key Capabilities
 
 - **Neural Repo Analysis**: Connect any GitHub repository and get a deep structural breakdown.
@@ -23,6 +27,7 @@
 We maintain high enterprise documentation standards. Please refer to the specialized docs for deeper technical insights.
 
 ### 🏛 Core Standards (Root)
+
 - [**Architecture & ADR**](ARCHITECTURE.md) - System design and technical decision logs.
 - [**Product Specifications**](PRODUCT_SPECS.md) - Audience, requirements, and 2026 roadmap.
 - [**Security Policy**](SECURITY.md) - Data handling and API security measures.
@@ -30,12 +35,14 @@ We maintain high enterprise documentation standards. Please refer to the special
 - [**Changelog**](CHANGELOG.md) - Version history and notable updates.
 
 ### 📁 Technical Guides (`/docs/guides`)
+
 - [Deployment Guide](docs/guides/deployment-guide.md)
 - [Vercel Deployment](docs/guides/vercel-deployment.md)
 - [Icon Usage (Lucide)](docs/guides/icon-usage.md)
 - [Optimal Learning Approach](docs/guides/learning-approach.md)
 
 ### 📊 Reports & Analysis (`/docs/reports`)
+
 - [Codebase Analysis Summary](docs/reports/codebase-analysis.md)
 - [Performance Optimization Report](docs/reports/performance-optimization.md)
 - [Flagship Upgrade Report](docs/reports/flagship-upgrade.md)
@@ -57,12 +64,14 @@ We maintain high enterprise documentation standards. Please refer to the special
 ## 💻 Getting Started
 
 ### Prerequisites
-- Node.js 18+ 
+
+- Node.js 18+
 - NPM / Bun
 - [Gemini API Key](docs/setup/gemini-api-setup.md)
 - [GitHub Access Token](docs/setup/github-token-setup.md)
 
 ### Installation
+
 ```bash
 # Clone the repository
 git clone https://github.com/your-username/ai-code-tutor.git
@@ -77,10 +86,13 @@ npm run dev
 ---
 
 ## 🔒 Security
+
 No secrets are stored on the client side. All AI interactions are proxied through secure Vercel Edge functions with server-side rate-limiting. For more details, see [SECURITY.md](SECURITY.md).
 
 ## 📄 License
+
 Distributed under the MIT License. See [LICENSE.md](LICENSE.md) for more information.
 
 ---
-*Built with ❤️ for the global developer community.*
+
+_Built with ❤️ for the global developer community._

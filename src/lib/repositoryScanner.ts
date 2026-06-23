@@ -354,23 +354,23 @@ export const scanRepository = (files: ProjectFile[]): RepositoryScanResult => {
   const frontendTechs = techStack.filter(t => t.category === "frontend").map(t => t.name).join(", ");
   const backendTechs = techStack.filter(t => t.category === "backend").map(t => t.name).join(", ");
 
-  let archSummary = `This repository is written in **${primaryLang}**. It consists of **${fileCount}** files spanning **${(totalSize / 1024).toFixed(1)} KB** of code.`;
+  let archSummary = `This workspace features a **${primaryLang}** codebase containing **${fileCount}** files with a total size of **${(totalSize / 1024).toFixed(1)} KB**.`;
   
   if (frontendTechs) {
-    archSummary += ` The frontend interface is powered by **${frontendTechs}**.`;
+    archSummary += ` The client interface is built with **${frontendTechs}**, creating a structured, modular user experience.`;
   }
   if (backendTechs) {
-    archSummary += ` The backend server features **${backendTechs}**.`;
+    archSummary += ` It incorporates a server layer running on **${backendTechs}** to handle requests and data management.`;
   }
   
   if (techStack.some(t => t.name === "Tailwind CSS")) {
-    archSummary += ` User styling is modularly configured via utility-first **Tailwind CSS**.`;
+    archSummary += ` Component styling is modernly managed through **Tailwind CSS** utility classes.`;
   }
   if (techStack.some(t => t.name === "TypeScript")) {
-    archSummary += ` Type definitions and strict parameters are enforced using **TypeScript**.`;
+    archSummary += ` Clean architecture and reliable data models are maintained throughout with strict **TypeScript** types.`;
   }
   
-  archSummary += ` The workspace structure displays folder layouts configured for standard deployment builds.`;
+  archSummary += ` The files are organized in a clean directory structure designed for scalability and straightforward deployment.`;
 
   return {
     fileCount,

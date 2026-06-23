@@ -51,6 +51,56 @@ const getLanguageColor = (name: string): string => {
   return colors[name] || "#6b7280";
 };
 
+const formatSummaryText = (text?: string) => {
+  if (!text) return null;
+  
+  // Split text by period followed by a space
+  const sentences = text.split(/\.\s+/).map(s => s.trim()).filter(Boolean);
+  
+  const parseBoldText = (sentence: string) => {
+    // Add trailing period if it doesn't end with punctuation
+    const cleanSentence = /[.!?]$/.test(sentence) ? sentence : sentence + '.';
+    const parts = cleanSentence.split(/(\*\*[^*]+\*\*)/g);
+    return parts.map((part, idx) => {
+      if (part.startsWith('**') && part.endsWith('**')) {
+        return (
+          <span 
+            key={idx} 
+            className="font-semibold text-foreground px-1.5 py-0.5 rounded bg-primary/10 border border-primary/20 text-[11px] font-mono shrink-0 inline-block"
+          >
+            {part.slice(2, -2)}
+          </span>
+        );
+      }
+      return part;
+    });
+  };
+
+  return (
+    <div className="space-y-4 font-sans text-xs">
+      {sentences.length > 0 && (
+        <p className="text-foreground/90 leading-relaxed font-medium">
+          {parseBoldText(sentences[0])}
+        </p>
+      )}
+
+      {sentences.length > 1 && (
+        <ul className="space-y-2.5 mt-3 pt-3 border-t border-border/40">
+          {sentences.slice(1).map((sentence, idx) => (
+            <li 
+              key={idx} 
+              className="flex items-start gap-2.5 bg-secondary/10 p-3 rounded-[4px] border border-border/50 hover:bg-secondary/20 transition-colors"
+            >
+              <CheckCircle2 className="w-4 h-4 text-emerald-500 shrink-0 mt-0.5" />
+              <span className="leading-relaxed text-foreground/80">{parseBoldText(sentence)}</span>
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  );
+};
+
 export default function ProjectOverviewComponent({ overview, project, onFileSelect }: ProjectOverviewProps) {
   const { scanResult, staticAnalyses } = useProjectStore();
 
@@ -251,9 +301,9 @@ export default function ProjectOverviewComponent({ overview, project, onFileSele
                   <span className="text-[10px] font-mono font-bold text-muted-foreground uppercase tracking-wider block">
                     Summary
                   </span>
-                  <p className="text-xs text-foreground/90 font-mono leading-relaxed bg-secondary/10 p-4 border border-border rounded-[4px]">
-                    {scanResult?.architectureSummary || overview.description}
-                  </p>
+                  <div className="bg-secondary/5 p-5 border border-border rounded-[4px]">
+                    {formatSummaryText(scanResult?.architectureSummary || overview.description)}
+                  </div>
                 </div>
 
                 {/* Key Files Registry */}

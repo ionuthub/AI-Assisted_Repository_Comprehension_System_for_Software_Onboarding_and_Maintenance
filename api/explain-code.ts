@@ -2,13 +2,23 @@ import { Redis } from '@upstash/redis';
 
 // Security headers
 const getSecurityHeaders = (origin?: string) => {
-  const allowedOrigins = process.env.ALLOWED_ORIGINS?.split(',') || ['http://localhost:5173', 'http://localhost:3000', 'https://aicodetutor.vercel.app'];
-  const isAllowed = origin && allowedOrigins.some(allowed => origin.includes(allowed.trim()));
+  const allowedOrigins = (process.env.ALLOWED_ORIGINS?.split(',') || ['http://localhost:8080', 'http://localhost:5173', 'http://localhost:3000', 'https://aicodetutor.vercel.app'])
+    .map((value) => value.trim())
+    .filter(Boolean);
+  const normalizedOrigin = origin ? (() => {
+    try {
+      return new URL(origin).origin;
+    } catch {
+      return undefined;
+    }
+  })() : undefined;
+  const isAllowed = normalizedOrigin ? allowedOrigins.includes(normalizedOrigin) : false;
 
   return {
-    'Access-Control-Allow-Origin': isAllowed ? origin : allowedOrigins[0],
+    'Access-Control-Allow-Origin': isAllowed && normalizedOrigin ? normalizedOrigin : allowedOrigins[0],
     'Access-Control-Allow-Methods': 'POST, OPTIONS',
-    'Access-Control-Allow-Headers': 'Content-Type',
+    'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+    'Vary': 'Origin',
   };
 };
 
@@ -24,6 +34,13 @@ interface Message {
   content: string;
 }
 
+interface ExplainCodeRequest {
+  messages?: Message[];
+  skillLevel?: 'beginner' | 'intermediate' | 'advanced';
+  systemContext?: string;
+  stream?: boolean;
+}
+
 export default async function handler(req: Request): Promise<Response> {
   const origin = req.headers.get('origin') || undefined;
   const securityHeaders = getSecurityHeaders(origin);
@@ -36,8 +53,23 @@ export default async function handler(req: Request): Promise<Response> {
     return new Response(JSON.stringify({ error: 'Method not allowed' }), { status: 405, headers: securityHeaders });
   }
 
-  // Basic IP Rate Limiting (10 requests per minute)
-  const ip = req.headers.get('x-forwarded-for') || 'anonymous';
+  const allowedOrigins = (process.env.ALLOWED_ORIGINS?.split(',') || ['http://localhost:8080', 'http://localhost:5173', 'http://localhost:3000', 'https://aicodetutor.vercel.app'])
+    .map((value) => value.trim())
+    .filter(Boolean);
+  if (origin) {
+    let normalizedOrigin: string | null = null;
+    try {
+      normalizedOrigin = new URL(origin).origin;
+    } catch {
+      normalizedOrigin = null;
+    }
+    if (!normalizedOrigin || !allowedOrigins.includes(normalizedOrigin)) {
+      return new Response(JSON.stringify({ error: 'Origin not allowed' }), { status: 403, headers: securityHeaders });
+    }
+  }
+
+  // Basic IP rate limiting (15 requests per minute)
+  const ip = req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || 'anonymous';
   if (redis) {
     const rateLimitKey = `ratelimit:${ip}`;
     const count = await redis.incr(rateLimitKey);
@@ -48,7 +80,27 @@ export default async function handler(req: Request): Promise<Response> {
   }
 
   try {
-    const { messages, skillLevel, systemContext, stream = false } = await req.json();
+    const { messages, skillLevel, systemContext, stream = false } = await req.json() as ExplainCodeRequest;
+
+    if (!messages || !Array.isArray(messages) || messages.length === 0) {
+      return new Response(JSON.stringify({ error: 'messages must be a non-empty array' }), { status: 400, headers: securityHeaders });
+    }
+    if (messages.length > 25) {
+      return new Response(JSON.stringify({ error: 'Too many messages in a single request' }), { status: 400, headers: securityHeaders });
+    }
+    for (const message of messages) {
+      if (!message || (message.role !== 'user' && message.role !== 'model') || typeof message.content !== 'string') {
+        return new Response(JSON.stringify({ error: 'Invalid message format' }), { status: 400, headers: securityHeaders });
+      }
+      if (message.content.length > 10000) {
+        return new Response(JSON.stringify({ error: 'Message content exceeds 10,000 characters' }), { status: 400, headers: securityHeaders });
+      }
+    }
+
+    const normalizedSkillLevel = skillLevel && ['beginner', 'intermediate', 'advanced'].includes(skillLevel)
+      ? skillLevel
+      : 'beginner';
+    const normalizedSystemContext = typeof systemContext === 'string' ? systemContext.slice(0, 12000) : '';
 
     const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
     if (!GEMINI_API_KEY) {
@@ -66,9 +118,9 @@ export default async function handler(req: Request): Promise<Response> {
       advanced: "Senior architect view. Performance, trade-offs."
     };
 
-    const systemPrompt = `You are a Code Tutor. Level: ${skillLevel}. 
-    ${skillPrompts[skillLevel] || skillPrompts.beginner}
-    ${systemContext ? `Project Context:\n${systemContext}` : ''}`;
+    const systemPrompt = `You are a Code Tutor. Level: ${normalizedSkillLevel}.
+    ${skillPrompts[normalizedSkillLevel]}
+    ${normalizedSystemContext ? `Project Context:\n${normalizedSystemContext}` : ''}`;
 
     const endpoint = stream ? 'streamGenerateContent' : 'generateContent';
     const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-exp:${endpoint}?key=${GEMINI_API_KEY}`;

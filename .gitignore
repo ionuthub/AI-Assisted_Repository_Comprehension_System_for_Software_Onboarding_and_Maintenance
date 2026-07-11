@@ -32,3 +32,8 @@ dist-ssr
 # Local Netlify folder
 .netlify
 .vercel
+
+# Test artefacts
+coverage
+playwright-report
+test-results

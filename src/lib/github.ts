@@ -2,20 +2,14 @@ import type { Project, ProjectFile, ProjectSummary } from "@/types/project";
 
 const GITHUB_API = "https://api.github.com";
 
-// Get GitHub token from environment
-const getGitHubToken = (): string | null => {
-  return import.meta.env.VITE_GITHUB_TOKEN || null;
-};
-
 // Build headers with authentication if token is available
 const getGitHubHeaders = (token?: string | null): HeadersInit => {
-  const finalToken = token || getGitHubToken();
   const headers: HeadersInit = {
     'Accept': 'application/vnd.github.v3+json',
   };
 
-  if (finalToken) {
-    headers['Authorization'] = `token ${finalToken}`;
+  if (token) {
+    headers['Authorization'] = `token ${token}`;
   }
 
   return headers;
@@ -63,7 +57,8 @@ const validateGitHubIdentifier = (identifier: string, maxLength: number, type: s
 const parseGitHubUrl = (url: string) => {
   try {
     const parsed = new URL(url.trim());
-    if (!parsed.hostname.includes("github.com")) {
+    const hostname = parsed.hostname.toLowerCase();
+    if (hostname !== "github.com" && hostname !== "www.github.com") {
       throw new Error("Provide a valid GitHub URL");
     }
     const segments = parsed.pathname.replace(/\.git$/, "").split("/").filter(Boolean);
@@ -110,8 +105,21 @@ const buildProjectSummary = (repo: GitHubRepoResponse): ProjectSummary => ({
 });
 
 const validateFilePath = (path: string): boolean => {
-  // Prevent directory traversal attacks
-  if (path.includes("..") || path.startsWith("/")) {
+  let decoded: string;
+  try {
+    decoded = decodeURIComponent(path);
+  } catch {
+    return false;
+  }
+  if (
+    !path ||
+    path.includes("..") ||
+    path.startsWith("/") ||
+    path.includes("\\") ||
+    decoded.includes("..") ||
+    decoded.startsWith("/") ||
+    /[\x00-\x1f\x7f]/.test(decoded)
+  ) {
     return false;
   }
   return true;
@@ -234,4 +242,3 @@ export const fetchFileContent = async (owner: string, repo: string, branch: stri
     clearTimeout(timeoutId);
   }
 };
-

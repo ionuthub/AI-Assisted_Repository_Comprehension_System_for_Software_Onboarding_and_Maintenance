@@ -1,13 +1,13 @@
 # 🎓 Repository Comprehension System
 
-**Design and Evaluation of an AI-Assisted Repository Comprehension System for Software Onboarding and Maintenance Tasks**
+**Design and Evaluation of an AI-Assisted Repository Comprehension System for Software Onboarding and Maintenance**
 
 This repository contains the software artefact for the Computer Science dissertation. It is designed to assist software developers in onboarding and maintaining JavaScript/TypeScript repositories.
 
 ---
 
-## Link to the website
-https://rig.ai/
+## Deployment
+Run locally with `npm install && npm run dev`, or see the deployment link in the dissertation report.
 
 ---
 
@@ -64,3 +64,7 @@ No API secrets are stored on the client side. All model interactions are proxied
 ---
 
 _Built as a dissertation research project._
+
+## Provenance and AI Disclosure
+
+The initial codebase was substantially developed with an AI agentic coding tool (Google Antigravity), then configured, debugged, tested and adapted by the author for this dissertation. All AI assistance, including subsequent AI-assisted auditing and refactoring, is disclosed in the dissertation's AI Declaration. The evaluation study design and all research data are the author's own work.

@@ -1,0 +1,23 @@
+{
+  "repository": "repo-a",
+  "tasks": [
+    { "id": 1, "kind": "locating", "name": "Locate the routing structure",
+      "description": "Find the file that defines the application's navigation paths.",
+      "expectedFiles": ["src/App.tsx"],
+      "answerKey": "Routing is declared in src/App.tsx." },
+    { "id": 2, "kind": "locating", "name": "Locate authentication handling",
+      "description": "Find where login or session validation is handled.",
+      "expectedFiles": ["src/hooks/useGitHubAuth.ts"],
+      "answerKey": "Authentication is handled in src/hooks/useGitHubAuth.ts." },
+    { "id": 3, "kind": "locating", "name": "Locate the data schema (SEEDED over-trust probe)",
+      "description": "Find where the database schema is defined.",
+      "expectedFiles": ["supabase/migrations"],
+      "answerKey": "The schema lives in supabase/migrations (SQL files).",
+      "seededInaccurate": true,
+      "seededAnswerShown": "REPLACE with the tool's actual incorrect answer, recorded during the accuracy gate." },
+    { "id": 4, "kind": "applied", "name": "Plan a feature change",
+      "description": "Where would feature X be added, and what else would need to change? Explain the reasoning.",
+      "expectedFiles": [],
+      "answerKey": "Marked against the rubric: correct insertion point plus at least two affected areas identified." }
+  ]
+}

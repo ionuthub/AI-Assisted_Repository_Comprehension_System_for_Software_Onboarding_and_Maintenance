@@ -30,6 +30,7 @@ import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { TAB_MODES } from "@/constants/appConstants";
 import { useProjectStore } from "@/store/useProjectStore";
 import SEO from "@/components/SEO";
+import { recordMetric } from "@/lib/evaluation/metrics";
 import { useGitHubAuth } from "@/hooks/useGitHubAuth";
 import { useProjectManagement } from "@/hooks/useProjectManagement";
 import { searchRepository, SearchResult } from "@/lib/semanticSearch";
@@ -50,8 +51,8 @@ const Index = () => {
     project, setProject,
     fileCache, setFileCache,
     selectedFile, setSelectedFile,
-    selectedLine,
-    selectedLines,
+    selectedLine, setSelectedLine,
+    selectedLines, setSelectedLines,
     skillLevel,
     isLoading,
     isFileLoading,
@@ -197,6 +198,7 @@ const Index = () => {
     }
 
     try {
+      const qaStart = performance.now();
       const response = await fetch('/api/explain-code', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -209,6 +211,7 @@ const Index = () => {
       });
 
       if (!response.ok) throw new Error('Streaming failed');
+      recordMetric('qa_response', performance.now() - qaStart, `question ${questionText.length} chars`);
 
       const reader = response.body?.getReader();
       const decoder = new TextDecoder();
@@ -331,8 +334,7 @@ const Index = () => {
                         onChange={handleFileChange}
                         className="hidden"
                         disabled={isLoading}
-                        webkitdirectory="true"
-                        directory="true"
+                        {...({ webkitdirectory: "true", directory: "true" } as Record<string, string>)}
                       />
                       <Button
                         type="button"

@@ -1,44 +1,19 @@
-import { useState, useEffect, useRef } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
+import { Slider } from "@/components/ui/slider";
 import { useToast } from "@/hooks/use-toast";
-import {
-  Activity,
-  Play,
-  CheckCircle,
-  Clock,
-  Download,
-  AlertCircle,
-  Award,
-  Database,
-  Link2,
-  Lock,
-  Upload,
-  FileCode2,
-  BookOpen
-} from "lucide-react";
+import { Play, CheckCircle, Clock, Download, Upload, AlertTriangle } from "lucide-react";
 import SEO from "@/components/SEO";
-
-interface TaskLog {
-  id: number;
-  name: string;
-  description: string;
-  status: "idle" | "running" | "completed";
-  startTime: number | null;
-  startTimeIso: string | null;
-  completionTimeIso: string | null;
-  elapsedSeconds: number;
-  answer: string;
-  usefulness: number; // 1-5
-  confidence: number; // 1-5
-  expectedFiles: string[];
-  answerKey: string;
-  isCorrect: boolean;
-}
+import {
+  Condition, StudySession, StudyTask, TLX_SCALES, TlxRatings, GroundTruthFile,
+  tasksFromGroundTruth, susScore, tlxScore, sessionToCsv, download,
+} from "@/lib/evaluation/session";
+import { readMetrics } from "@/lib/evaluation/metrics";
 
 const SUS_QUESTIONS = [
   "I think that I would like to use this system frequently.",
@@ -50,634 +25,289 @@ const SUS_QUESTIONS = [
   "I would imagine that most people would learn to use this system very quickly.",
   "I found the system very cumbersome to use.",
   "I felt very confident using the system.",
-  "I needed to learn a lot of things before I could get going with this system."
+  "I needed to learn a lot of things before I could get going with this system.",
 ];
 
-const DEFAULT_TASKS: TaskLog[] = [
-  {
-    id: 1,
-    name: "Locate App Routing Structure",
-    description: "Find the file defining navigation paths or server endpoint directories in your uploaded project.",
-    status: "idle",
-    startTime: null,
-    startTimeIso: null,
-    completionTimeIso: null,
-    elapsedSeconds: 0,
-    answer: "",
-    usefulness: 3,
-    confidence: 3,
-    expectedFiles: ["src/App.tsx", "src/main.tsx", "src/routes.ts", "src/routes.tsx", "App.tsx", "main.tsx"],
-    answerKey: "The application routing and path maps are declared in src/App.tsx (or main entry point).",
-    isCorrect: false
-  },
-  {
-    id: 2,
-    name: "Identify Authentication Gates",
-    description: "Find the file or function handling session validation, logins, or role checking.",
-    status: "idle",
-    startTime: null,
-    startTimeIso: null,
-    completionTimeIso: null,
-    elapsedSeconds: 0,
-    answer: "",
-    usefulness: 3,
-    confidence: 3,
-    expectedFiles: ["src/hooks/useAuth.ts", "src/components/ProtectedRoute.tsx", "src/lib/auth.ts", "useAuth.ts", "ProtectedRoute.tsx"],
-    answerKey: "Authentication gates are structured using components/ProtectedRoute.tsx or hooks/useAuth.ts.",
-    isCorrect: false
-  },
-  {
-    id: 3,
-    name: "Discover Database Schemas/Models",
-    description: "Find the data schema, entity model configuration, or migration scripts mapping project storage.",
-    status: "idle",
-    startTime: null,
-    startTimeIso: null,
-    completionTimeIso: null,
-    elapsedSeconds: 0,
-    answer: "",
-    usefulness: 3,
-    confidence: 3,
-    expectedFiles: ["src/lib/supabase.ts", "supabase/config.toml", "src/db/schema.ts", "supabase.ts"],
-    answerKey: "Database entities are defined in schema files, and Supabase client configs reside in src/lib/supabase.ts.",
-    isCorrect: false
-  }
-];
+/** Built-in demonstration task set; real sessions import the study's answer key JSON. */
+const DEMO_TASKS: GroundTruthFile = {
+  repository: "demo",
+  tasks: [
+    { id: 1, kind: "locating", name: "Locate the routing structure", description: "Find the file defining the application's navigation paths.", expectedFiles: ["src/App.tsx"], answerKey: "Routing is declared in src/App.tsx." },
+    { id: 2, kind: "locating", name: "Locate authentication handling", description: "Find where session validation or login is handled.", expectedFiles: ["src/hooks/useGitHubAuth.ts"], answerKey: "Authentication is handled in src/hooks/useGitHubAuth.ts." },
+    { id: 3, kind: "applied", name: "Plan a change", description: "Where would a new user-profile feature be added, and what else would need to change? Explain your reasoning.", expectedFiles: [], answerKey: "Marked against the rubric: correct insertion point plus at least two affected areas." },
+  ],
+};
+
+type Phase = "setup" | "tasks" | "retention" | "tlx" | "sus" | "export";
 
 export default function EvaluationPage() {
   const { toast } = useToast();
+  const [phase, setPhase] = useState<Phase>("setup");
 
-  const [participantId, setParticipantId] = useState("P001");
-  const [tasks, setTasks] = useState<TaskLog[]>(DEFAULT_TASKS);
+  // --- session setup ---
+  const [participantId, setParticipantId] = useState("");
+  const [condition, setCondition] = useState<Condition>("tool");
+  const [order, setOrder] = useState<"manual-first" | "tool-first">("manual-first");
+  const [repository, setRepository] = useState("");
+  const [tasks, setTasks] = useState<StudyTask[]>(tasksFromGroundTruth(DEMO_TASKS));
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // Active running timer ID
-  const timerRef = useRef<NodeJS.Timeout | null>(null);
+  // --- runtime ---
   const [activeTaskId, setActiveTaskId] = useState<number | null>(null);
+  const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const [retentionAnswer, setRetentionAnswer] = useState("");
+  const [retentionConfidence, setRetentionConfidence] = useState(3);
+  const [tlx, setTlx] = useState<TlxRatings>({ mental: 50, physical: 50, temporal: 50, performance: 50, effort: 50, frustration: 50 });
+  const [sus, setSus] = useState<Record<number, number>>(Object.fromEntries(Array.from({ length: 10 }, (_, i) => [i, 3])));
+  const [notes, setNotes] = useState("");
+  const startedAtIso = useMemo(() => new Date().toISOString(), []);
 
-  // SUS scores state (1-5 for each question, initialized to 3)
-  const [susRatings, setSusRatings] = useState<Record<number, number>>({
-    0: 3, 1: 3, 2: 3, 3: 3, 4: 3, 5: 3, 6: 3, 7: 3, 8: 3, 9: 3
-  });
-
-  // Handle active stopwatch updates
   useEffect(() => {
     if (activeTaskId !== null) {
       timerRef.current = setInterval(() => {
-        setTasks((prevTasks) =>
-          prevTasks.map((t) => {
-            if (t.id === activeTaskId && t.startTime !== null) {
-              const seconds = Math.floor((Date.now() - t.startTime) / 1000);
-              return { ...t, elapsedSeconds: seconds };
-            }
-            return t;
-          })
-        );
+        setTasks((prev) => prev.map((t) => (t.id === activeTaskId ? { ...t, elapsedSeconds: t.elapsedSeconds + 1 } : t)));
       }, 1000);
-    } else {
-      if (timerRef.current) clearInterval(timerRef.current);
     }
-
-    return () => {
-      if (timerRef.current) clearInterval(timerRef.current);
-    };
+    return () => { if (timerRef.current) clearInterval(timerRef.current); };
   }, [activeTaskId]);
 
-  const handleStartTask = (id: number) => {
-    if (activeTaskId !== null) {
-      toast({
-        title: "Task in progress",
-        description: "Please complete or stop the current task before starting a new one.",
-        variant: "destructive"
-      });
-      return;
-    }
-
-    setTasks((prev) =>
-      prev.map((t) =>
-        t.id === id
-          ? {
-              ...t,
-              status: "running",
-              startTime: Date.now(),
-              startTimeIso: new Date().toISOString(),
-              completionTimeIso: null,
-              elapsedSeconds: 0
-            }
-          : t
-      )
-    );
-    setActiveTaskId(id);
-  };
-
-  const checkIsCorrect = (answer: string, expectedFiles: string[]): boolean => {
-    if (!answer.trim() || !expectedFiles.length) return false;
-    const lowerAnswer = answer.toLowerCase();
-    return expectedFiles.some((file) => {
-      const fileName = file.split("/").pop()?.toLowerCase();
-      return (
-        lowerAnswer.includes(file.toLowerCase()) ||
-        (fileName && lowerAnswer.includes(fileName))
-      );
-    });
-  };
-
-  const handleSaveTask = (id: number, answer: string, usefulness: number, confidence: number) => {
-    if (!answer.trim()) {
-      toast({
-        title: "Answer required",
-        description: "Please input the file path or brief explanation before saving.",
-        variant: "destructive"
-      });
-      return;
-    }
-
-    setTasks((prev) =>
-      prev.map((t) => {
-        if (t.id === id) {
-          const isCorrect = checkIsCorrect(answer, t.expectedFiles);
-          return {
-            ...t,
-            status: "completed",
-            answer,
-            usefulness,
-            confidence,
-            completionTimeIso: new Date().toISOString(),
-            isCorrect
-          };
-        }
-        return t;
-      })
-    );
-    setActiveTaskId(null);
-    toast({ title: "Task telemetry logged successfully!" });
-  };
-
-  // Calculate System Usability Scale (SUS) Score
-  const calculateSUSScore = () => {
-    let scoreSum = 0;
-    Object.entries(susRatings).forEach(([idxStr, rating]) => {
-      const idx = parseInt(idxStr);
-      if (idx % 2 === 0) {
-        // 1st, 3rd, 5th, etc.
-        scoreSum += rating - 1;
-      } else {
-        // 2nd, 4th, 6th, etc.
-        scoreSum += 5 - rating;
-      }
-    });
-    return scoreSum * 2.5;
-  };
-
-  // Exporter to JSON
-  const handleExportJSON = () => {
-    const payload = {
-      participantId: participantId,
-      taskLogs: tasks.map(t => ({
-        taskId: t.id,
-        taskName: t.name,
-        startTimeIso: t.startTimeIso,
-        completionTimeIso: t.completionTimeIso,
-        elapsedSeconds: t.elapsedSeconds,
-        answer: t.answer,
-        usefulnessRating: t.usefulness,
-        confidenceRating: t.confidence,
-        expectedFiles: t.expectedFiles,
-        answerKey: t.answerKey,
-        isCorrect: t.isCorrect,
-        status: t.status
-      })),
-      susRatings: susRatings,
-      susScore: calculateSUSScore(),
-      timestamp: new Date().toISOString()
-    };
-
-    const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement("a");
-    link.href = url;
-    link.download = `${participantId}_usability_evaluation_results.json`;
-    link.click();
-    URL.revokeObjectURL(url);
-    toast({ title: "Evaluation JSON exported successfully!" });
-  };
-
-  // Exporter to CSV
-  const handleExportCSV = () => {
-    let csv = "Evaluation Telemetry Report\n";
-    csv += `Participant ID,${participantId}\n`;
-    csv += `Timestamp,${new Date().toISOString()}\n\n`;
-    csv += "Task,Status,Start Time (ISO),Completion Time (ISO),Time Taken (sec),Confidence (1-5),Usefulness (1-5),Correct?,Expected Files,Answer\n";
-    
-    tasks.forEach(t => {
-      const expectedStr = t.expectedFiles.join("; ");
-      csv += `"${t.name}","${t.status}","${t.startTimeIso || ""}","${t.completionTimeIso || ""}",${t.elapsedSeconds},${t.confidence},${t.usefulness},${t.isCorrect},"${expectedStr}","${t.answer.replace(/"/g, '""')}"\n`;
-    });
-
-    csv += `\nSUS Usability Score (0-100),${calculateSUSScore()}\n`;
-    csv += "Question,Rating (1-5)\n";
-    SUS_QUESTIONS.forEach((q, idx) => {
-      csv += `"${q.replace(/"/g, '""')}",${susRatings[idx]}\n`;
-    });
-
-    const blob = new Blob([csv], { type: "text/csv" });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement("a");
-    link.href = url;
-    link.download = `${participantId}_usability_evaluation_report.csv`;
-    link.click();
-    URL.revokeObjectURL(url);
-    toast({ title: "Evaluation CSV report exported successfully!" });
-  };
-
-  // Ground truth template download
-  const handleDownloadTemplate = () => {
-    const template = {
-      repositoryName: "Sample Evaluation Repository",
-      tasks: [
-        {
-          id: 1,
-          name: "Locate App Routing Structure",
-          description: "Find the file defining navigation paths or server endpoint directories in your uploaded project.",
-          expectedFiles: ["src/App.tsx", "src/main.tsx"],
-          answerKey: "Routing is set up inside src/App.tsx."
-        },
-        {
-          id: 2,
-          name: "Identify Authentication Gates",
-          description: "Find the file or function handling session validation, logins, or role checking.",
-          expectedFiles: ["src/hooks/useAuth.ts"],
-          answerKey: "Authentication gates are handled by src/hooks/useAuth.ts."
-        }
-      ]
-    };
-
-    const blob = new Blob([JSON.stringify(template, null, 2)], { type: "application/json" });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement("a");
-    link.href = url;
-    link.download = "ground_truth_template.json";
-    link.click();
-    URL.revokeObjectURL(url);
-    toast({ title: "Template downloaded! Edit and upload to define custom tasks." });
-  };
-
-  // Custom ground truth loader
-  const handleGroundTruthUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
+  const importGroundTruth = (file: File) => {
     const reader = new FileReader();
-    reader.onload = (event) => {
+    reader.onload = () => {
       try {
-        const data = JSON.parse(event.target?.result as string);
-        if (data && Array.isArray(data.tasks)) {
-          interface CustomTask {
-            id?: string;
-            name?: string;
-            description?: string;
-            expectedFiles?: string[];
-            answerKey?: string;
-          }
-          const loadedTasks = data.tasks.map((t: CustomTask) => ({
-            id: t.id || String(Math.random()),
-            name: t.name || "Custom Task",
-            description: t.description || "",
-            status: "idle" as const,
-            startTime: null,
-            startTimeIso: null,
-            completionTimeIso: null,
-            elapsedSeconds: 0,
-            answer: "",
-            usefulness: 3,
-            confidence: 3,
-            expectedFiles: t.expectedFiles || [],
-            answerKey: t.answerKey || "",
-            isCorrect: false
-          }));
-          setTasks(loadedTasks);
-          toast({ title: "Custom ground truth loaded successfully!" });
-        } else {
-          toast({ title: "Invalid format", description: "JSON must contain a tasks array.", variant: "destructive" });
-        }
-      } catch (err) {
-        toast({ title: "JSON parse error", description: "Could not read the uploaded JSON file.", variant: "destructive" });
+        const gt = JSON.parse(String(reader.result)) as GroundTruthFile;
+        if (!Array.isArray(gt.tasks) || gt.tasks.length === 0) throw new Error("no tasks");
+        setTasks(tasksFromGroundTruth(gt));
+        if (gt.repository) setRepository(gt.repository);
+        toast({ title: "Answer key loaded", description: `${gt.tasks.length} tasks imported.` });
+      } catch {
+        toast({ title: "Invalid answer key", description: "Expected JSON with a tasks array.", variant: "destructive" });
       }
     };
     reader.readAsText(file);
   };
 
-  const formatTimer = (sec: number) => {
-    const mins = Math.floor(sec / 60);
-    const secs = sec % 60;
-    return `${mins.toString().padStart(2, "0")}:${secs.toString().padStart(2, "0")}`;
+  const startTask = (id: number) => {
+    if (activeTaskId !== null) return;
+    setActiveTaskId(id);
+    setTasks((prev) => prev.map((t) => (t.id === id ? { ...t, status: "running", startTimeIso: new Date().toISOString() } : t)));
+  };
+
+  const completeTask = (id: number) => {
+    setActiveTaskId(null);
+    setTasks((prev) => prev.map((t) => (t.id === id ? { ...t, status: "completed", completionTimeIso: new Date().toISOString() } : t)));
+  };
+
+  const setTaskField = <K extends keyof StudyTask>(id: number, key: K, value: StudyTask[K]) =>
+    setTasks((prev) => prev.map((t) => (t.id === id ? { ...t, [key]: value } : t)));
+
+  const allTasksDone = tasks.every((t) => t.status === "completed");
+  const appliedTask = tasks.find((t) => t.kind === "applied");
+
+  const buildSession = (): StudySession => ({
+    participantId: participantId || "unassigned",
+    condition, conditionOrder: order,
+    repository: repository || "unspecified",
+    startedAtIso, tasks, tlx, sus, notes,
+  });
+
+  const exportJson = () => {
+    const session = buildSession();
+    const payload = {
+      session,
+      retention: { question: appliedTask?.name ?? "", answer: retentionAnswer, confidence: retentionConfidence, administeredWithoutTool: true },
+      scores: { sus: susScore(sus), tlxRaw: tlxScore(tlx) },
+      pilotMetrics: readMetrics(),
+      exportedAt: new Date().toISOString(),
+    };
+    download(`session_${session.participantId}_${condition}.json`, JSON.stringify(payload, null, 2), "application/json");
+  };
+
+  const exportCsv = () => {
+    download(`session_${participantId || "unassigned"}_${condition}.csv`, sessionToCsv(buildSession()), "text/csv");
   };
 
   return (
-    <div className="container mx-auto px-4 py-8 md:px-8 max-w-4xl space-y-8 min-h-[80vh]">
-      <SEO
-        title="Evaluation Suite & Diagnostic Testing"
-        description="Diagnostic logging dashboard for evaluation testing of the AI assisted repository comprehension system."
-      />
+    <div className="min-h-screen bg-background p-6 max-w-3xl mx-auto space-y-6">
+      <SEO title="Evaluation Session" description="Controlled study session runner" />
+      <header className="flex items-center justify-between">
+        <h1 className="text-2xl font-bold">Evaluation Session</h1>
+        <Badge variant="outline">{phase.toUpperCase()}</Badge>
+      </header>
 
-      <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 border-b border-border pb-6">
-        <div className="space-y-2">
-          <h1 className="text-3xl font-extrabold tracking-tight md:text-4xl text-foreground">
-            Dissertation Evaluation Suite
-          </h1>
-          <p className="text-muted-foreground text-sm">
-            Run timed diagnostic repository comprehension tasks, verify responses against Ground Truth models, and export CSV/JSON telemetry logs.
-          </p>
-        </div>
-        <div className="flex flex-col gap-1.5 w-full md:w-auto">
-          <Label htmlFor="participant-id" className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Participant ID</Label>
-          <Input
-            id="participant-id"
-            value={participantId}
-            onChange={(e) => setParticipantId(e.target.value)}
-            className="text-sm font-semibold max-w-[200px] bg-secondary/20"
-            placeholder="P001"
-          />
-        </div>
-      </div>
-
-      {/* Ground Truth Configuration Manager */}
-      <Card className="border border-border bg-card">
-        <CardContent className="p-6 space-y-4">
-          <div className="flex items-center gap-2 border-b border-border pb-3">
-            <Database className="w-5 h-5 text-primary" />
-            <h2 className="text-lg font-bold">1. Ground Truth & Answer Keys Configuration</h2>
+      {phase === "setup" && (
+        <Card><CardContent className="pt-6 space-y-4">
+          <div className="grid grid-cols-2 gap-4">
+            <div><Label htmlFor="pid">Participant ID</Label>
+              <Input id="pid" value={participantId} onChange={(e) => setParticipantId(e.target.value)} placeholder="P01" /></div>
+            <div><Label htmlFor="repo">Repository under study</Label>
+              <Input id="repo" value={repository} onChange={(e) => setRepository(e.target.value)} placeholder="repo-a" /></div>
           </div>
-
-          <p className="text-xs text-muted-foreground leading-relaxed">
-            Academics can preload ground truth answer keys and expected file locations. Submit answers referencing file names to let the system automatically verify your precision accuracy metrics.
-          </p>
-
-          <div className="flex flex-wrap gap-3 items-center pt-2">
-            <Button
-              size="sm"
-              variant="outline"
-              onClick={handleDownloadTemplate}
-              className="gap-2 text-xs"
-            >
-              <Download className="w-3.5 h-3.5" /> Sample Ground Truth Template
-            </Button>
-
-            <Label
-              htmlFor="upload-gt"
-              className="flex items-center gap-2 text-xs font-semibold px-3 py-2 border border-input bg-background hover:bg-accent hover:text-accent-foreground rounded-md cursor-pointer transition-colors h-9"
-            >
-              <Upload className="w-3.5 h-3.5 text-primary" /> Load Custom ground_truth.json
-              <input
-                id="upload-gt"
-                type="file"
-                accept=".json"
-                onChange={handleGroundTruthUpload}
-                className="hidden"
-              />
-            </Label>
+          <div className="grid grid-cols-2 gap-4">
+            <div><Label>Condition for this session</Label>
+              <div className="flex gap-2 mt-1">
+                <Button variant={condition === "manual" ? "default" : "outline"} onClick={() => setCondition("manual")}>Manual</Button>
+                <Button variant={condition === "tool" ? "default" : "outline"} onClick={() => setCondition("tool")}>Tool</Button>
+              </div></div>
+            <div><Label>Counterbalancing order</Label>
+              <div className="flex gap-2 mt-1">
+                <Button variant={order === "manual-first" ? "default" : "outline"} onClick={() => setOrder("manual-first")}>Manual first</Button>
+                <Button variant={order === "tool-first" ? "default" : "outline"} onClick={() => setOrder("tool-first")}>Tool first</Button>
+              </div></div>
           </div>
-        </CardContent>
-      </Card>
-
-      {/* Diagnostic task board */}
-      <Card className="border border-border bg-card">
-        <CardContent className="p-6 space-y-6">
-          <div className="flex items-center gap-2 border-b border-border pb-3">
-            <Activity className="w-5 h-5 text-primary" />
-            <h2 className="text-lg font-bold">2. Timed Diagnostic Tasks</h2>
-          </div>
-
-          <div className="space-y-4">
-            {tasks.map((task) => (
-              <div key={task.id} className="border border-border/80 rounded-xl p-4 bg-secondary/5 space-y-4">
-                <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
-                  <div>
-                    <h3 className="text-sm font-bold flex items-center gap-2">
-                      <span className="w-5 h-5 rounded-full bg-primary/15 text-primary text-[11px] font-bold flex items-center justify-center">
-                        {task.id}
-                      </span>
-                      {task.name}
-                    </h3>
-                    <p className="text-xs text-muted-foreground mt-1 pl-7">{task.description}</p>
-                  </div>
-
-                  <div className="flex items-center gap-3 pl-7 md:pl-0">
-                    {task.status === "completed" ? (
-                      <Badge className="bg-green-500/10 text-green-600 dark:bg-green-500/20 dark:text-green-400 gap-1 border-none py-1">
-                        <CheckCircle className="w-3.5 h-3.5" /> Logged
-                      </Badge>
-                    ) : task.status === "running" ? (
-                      <Badge className="bg-primary/15 text-primary gap-1 border-none py-1 animate-pulse">
-                        <Clock className="w-3.5 h-3.5" /> Timing
-                      </Badge>
-                    ) : (
-                      <Badge variant="outline" className="text-muted-foreground py-1">Ready</Badge>
-                    )}
-
-                    {task.status === "running" && (
-                      <span className="font-mono text-sm font-semibold text-primary">
-                        {formatTimer(task.elapsedSeconds)}
-                      </span>
-                    )}
-
-                    {task.status === "idle" && (
-                      <Button
-                        size="sm"
-                        onClick={() => handleStartTask(task.id)}
-                        className="bg-primary hover:bg-primary/95 text-primary-foreground font-bold gap-1 h-8"
-                      >
-                        <Play className="w-3 h-3 fill-current" /> Start Task
-                      </Button>
-                    )}
-                  </div>
-                </div>
-
-                {/* Submitting dialog */}
-                {task.status === "running" && (
-                  <div className="bg-card p-4 rounded-lg border border-border/80 space-y-4 animate-fade-in pl-7">
-                    <h4 className="text-xs font-bold text-foreground">Submit Answer & Verify Locations</h4>
-                    
-                    <div className="space-y-1.5">
-                      <Label htmlFor={`answer-${task.id}`} className="text-[11px] text-muted-foreground">Explain answer and state target file paths found:</Label>
-                      <Input
-                        id={`answer-${task.id}`}
-                        placeholder="e.g., The routing is declared in src/App.tsx using custom routes..."
-                        defaultValue=""
-                        className="text-xs bg-secondary/15"
-                      />
-                    </div>
-
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <div className="space-y-1">
-                        <Label className="text-[11px] text-muted-foreground block">Rate Tool's Usefulness (1-5):</Label>
-                        <div className="flex gap-2">
-                          {[1, 2, 3, 4, 5].map((val) => (
-                            <button
-                              key={val}
-                              type="button"
-                              onClick={() => {
-                                setTasks(prev => prev.map(t => t.id === task.id ? { ...t, usefulness: val } : t));
-                              }}
-                              className={`w-7 h-7 rounded text-xs border transition-colors ${
-                                task.usefulness === val
-                                  ? "bg-primary border-primary text-primary-foreground font-semibold"
-                                  : "border-border hover:bg-secondary/40 text-foreground"
-                              }`}
-                            >
-                              {val}
-                            </button>
-                          ))}
-                        </div>
-                      </div>
-
-                      <div className="space-y-1">
-                        <Label className="text-[11px] text-muted-foreground block">Rate Cognitive Confidence (1-5):</Label>
-                        <div className="flex gap-2">
-                          {[1, 2, 3, 4, 5].map((val) => (
-                            <button
-                              key={val}
-                              type="button"
-                              onClick={() => {
-                                setTasks(prev => prev.map(t => t.id === task.id ? { ...t, confidence: val } : t));
-                              }}
-                              className={`w-7 h-7 rounded text-xs border transition-colors ${
-                                task.confidence === val
-                                  ? "bg-primary border-primary text-primary-foreground font-semibold"
-                                  : "border-border hover:bg-secondary/40 text-foreground"
-                              }`}
-                            >
-                              {val}
-                            </button>
-                          ))}
-                        </div>
-                      </div>
-                    </div>
-
-                    <div className="flex gap-2 pt-2">
-                      <Button
-                        size="sm"
-                        onClick={() => {
-                          const inputVal = (document.getElementById(`answer-${task.id}`) as HTMLInputElement)?.value || "";
-                          handleSaveTask(task.id, inputVal, task.usefulness, task.confidence);
-                        }}
-                        className="bg-primary hover:bg-primary/95 text-primary-foreground text-xs font-bold h-8"
-                      >
-                        Submit & Complete
-                      </Button>
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        onClick={() => {
-                          setTasks(prev => prev.map(t => t.id === task.id ? { ...t, status: "idle", elapsedSeconds: 0 } : t));
-                          setActiveTaskId(null);
-                        }}
-                        className="text-xs h-8"
-                      >
-                        Reset / Cancel
-                      </Button>
-                    </div>
-                  </div>
-                )}
-
-                {/* Logged stats output */}
-                {task.status === "completed" && (
-                  <div className="bg-secondary/10 p-4 rounded-lg text-xs space-y-3 pl-7 border border-border/40">
-                    <div className="flex items-center justify-between flex-wrap gap-2">
-                      <p><span className="font-bold text-muted-foreground">Elapsed Time:</span> <span className="font-mono text-primary font-semibold">{formatTimer(task.elapsedSeconds)}</span></p>
-                      <Badge className={task.isCorrect ? "bg-green-500/10 text-green-600 dark:text-green-400 border-none" : "bg-red-500/10 text-red-600 dark:text-red-400 border-none"}>
-                        {task.isCorrect ? "✅ Ground Truth Matched" : "❌ Path Not Matched"}
-                      </Badge>
-                    </div>
-                    <p><span className="font-bold text-muted-foreground">Confidence level:</span> {task.confidence}/5 | <span className="font-bold text-muted-foreground">Usefulness level:</span> {task.usefulness}/5</p>
-                    <p className="bg-background/40 p-2.5 rounded border border-border/40 font-mono text-[11px] text-foreground/90"><span className="font-bold text-muted-foreground font-sans block text-[10px] mb-1">Answer logged:</span>{task.answer}</p>
-                    
-                    <div className="p-3 bg-secondary/15 rounded border border-border/30 text-[11px] space-y-1">
-                      <span className="font-bold text-foreground flex items-center gap-1"><BookOpen className="w-3.5 h-3.5 text-primary" /> Ground Truth Comparison</span>
-                      <p><span className="text-muted-foreground font-medium">Expected File Locations:</span> <span className="font-mono text-primary">{task.expectedFiles.join(", ")}</span></p>
-                      <p><span className="text-muted-foreground font-medium">Correct answer explanation:</span> {task.answerKey}</p>
-                    </div>
-                  </div>
-                )}
-              </div>
-            ))}
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* SUS Survey Card */}
-      <Card className="border border-border bg-card">
-        <CardContent className="p-6 space-y-6">
-          <div className="flex items-center justify-between border-b border-border pb-3 flex-wrap gap-2">
-            <div className="flex items-center gap-2">
-              <Award className="w-5 h-5 text-primary" />
-              <h2 className="text-lg font-bold">3. System Usability Scale (SUS)</h2>
-            </div>
-            
-            <div className="flex items-center gap-1.5">
-              <span className="text-xs text-muted-foreground font-semibold">Usability Score:</span>
-              <Badge className="bg-primary/10 text-primary border-none font-bold text-sm">
-                {calculateSUSScore().toFixed(1)} / 100
-              </Badge>
+          <div>
+            <Label>Ground-truth answer key (JSON)</Label>
+            <div className="flex gap-2 mt-1">
+              <input ref={fileInputRef} type="file" accept=".json" className="hidden"
+                onChange={(e) => e.target.files?.[0] && importGroundTruth(e.target.files[0])} />
+              <Button variant="outline" onClick={() => fileInputRef.current?.click()}>
+                <Upload className="w-4 h-4 mr-2" />Import answer key
+              </Button>
+              <span className="text-sm text-muted-foreground self-center">{tasks.length} tasks loaded</span>
             </div>
           </div>
+          <Button className="w-full" disabled={!participantId} onClick={() => setPhase("tasks")}>
+            Begin tasks
+          </Button>
+        </CardContent></Card>
+      )}
 
-          <div className="space-y-4 divide-y divide-border/60">
-            {SUS_QUESTIONS.map((question, idx) => (
-              <div key={idx} className={`pt-4 ${idx === 0 ? "pt-0 border-none" : ""}`}>
-                <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 text-xs">
-                  <span className="font-medium text-foreground max-w-xl">
-                    {idx + 1}. {question}
-                  </span>
-                  
-                  <RadioGroup
-                    defaultValue="3"
-                    value={susRatings[idx].toString()}
-                    onValueChange={(val) => setSusRatings(prev => ({ ...prev, [idx]: parseInt(val) }))}
-                    className="flex items-center gap-3 mt-2 md:mt-0"
-                  >
-                    <div className="flex items-center gap-1 text-[10px] text-muted-foreground pr-1">Disagree</div>
-                    {[1, 2, 3, 4, 5].map((val) => (
-                      <div key={val} className="flex items-center gap-1">
-                        <RadioGroupItem value={val.toString()} id={`sus-${idx}-${val}`} className="w-3.5 h-3.5" />
-                        <Label htmlFor={`sus-${idx}-${val}`} className="text-[11px] font-mono pr-1">{val}</Label>
-                      </div>
-                    ))}
-                    <div className="flex items-center gap-1 text-[10px] text-muted-foreground pl-1">Agree</div>
-                  </RadioGroup>
+      {phase === "tasks" && (
+        <>
+          {tasks.map((t) => (
+            <Card key={t.id}><CardContent className="pt-6 space-y-3">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Badge variant={t.kind === "applied" ? "default" : "secondary"}>{t.kind}</Badge>
+                  <h3 className="font-semibold">{t.name}</h3>
+                </div>
+                <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                  <Clock className="w-4 h-4" />{t.elapsedSeconds}s
                 </div>
               </div>
-            ))}
-          </div>
-        </CardContent>
-      </Card>
+              <p className="text-sm text-muted-foreground">{t.description}</p>
 
-      {/* Export panel */}
-      <Card className="border border-border bg-card p-6 flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div className="space-y-1 max-w-xl">
-          <h3 className="text-sm font-bold text-foreground">4. Export Telemetry Log Data</h3>
+              {t.seededInaccurate && condition === "tool" && t.status !== "idle" && (
+                <div className="border border-amber-500/50 rounded p-3 text-sm space-y-2">
+                  <div className="flex items-center gap-2 font-medium">
+                    <AlertTriangle className="w-4 h-4" />Tool answer shown to participant:
+                  </div>
+                  <p className="italic">{t.seededAnswerShown}</p>
+                  <div className="flex gap-2 items-center">
+                    <span>Participant flagged this answer as incorrect?</span>
+                    <Button size="sm" variant={t.errorDetected ? "default" : "outline"} onClick={() => setTaskField(t.id, "errorDetected", true)}>Yes</Button>
+                    <Button size="sm" variant={t.errorDetected === false ? "default" : "outline"} onClick={() => setTaskField(t.id, "errorDetected", false)}>No</Button>
+                  </div>
+                </div>
+              )}
+
+              {t.status === "idle" && (
+                <Button onClick={() => startTask(t.id)} disabled={activeTaskId !== null}>
+                  <Play className="w-4 h-4 mr-2" />Start
+                </Button>
+              )}
+              {t.status === "running" && (
+                <div className="space-y-3">
+                  <Textarea value={t.answer} onChange={(e) => setTaskField(t.id, "answer", e.target.value)} placeholder="Participant's answer…" />
+                  <Button onClick={() => completeTask(t.id)}><CheckCircle className="w-4 h-4 mr-2" />Complete task</Button>
+                </div>
+              )}
+              {t.status === "completed" && (
+                <div className="space-y-2">
+                  <p className="text-sm"><span className="font-medium">Answer: </span>{t.answer || "—"}</p>
+                  <div className="flex items-center gap-3">
+                    <Label className="text-sm">Confidence in this answer (1–5)</Label>
+                    <Slider className="w-40" min={1} max={5} step={1} value={[t.confidence]}
+                      onValueChange={([v]) => setTaskField(t.id, "confidence", v)} />
+                    <Badge variant="outline">{t.confidence}</Badge>
+                  </div>
+                  <div className="flex items-center gap-2 text-sm">
+                    <span>Scored against answer key:</span>
+                    <Button size="sm" variant={t.isCorrect === true ? "default" : "outline"} onClick={() => setTaskField(t.id, "isCorrect", true)}>Correct</Button>
+                    <Button size="sm" variant={t.isCorrect === false ? "default" : "outline"} onClick={() => setTaskField(t.id, "isCorrect", false)}>Incorrect</Button>
+                  </div>
+                </div>
+              )}
+            </CardContent></Card>
+          ))}
+          <Button className="w-full" disabled={!allTasksDone} onClick={() => setPhase("retention")}>
+            Continue to retention check
+          </Button>
+        </>
+      )}
+
+      {phase === "retention" && (
+        <Card><CardContent className="pt-6 space-y-4">
+          <h3 className="font-semibold">Retention check (answered without the tool)</h3>
+          <p className="text-sm text-muted-foreground">
+            Close or hide the tool now. The participant answers from memory, based on the applied task:
+            <span className="font-medium"> {appliedTask?.description}</span>
+          </p>
+          <Textarea value={retentionAnswer} onChange={(e) => setRetentionAnswer(e.target.value)} placeholder="Participant's from-memory answer…" />
+          <div className="flex items-center gap-3">
+            <Label className="text-sm">Confidence (1–5)</Label>
+            <Slider className="w-40" min={1} max={5} step={1} value={[retentionConfidence]} onValueChange={([v]) => setRetentionConfidence(v)} />
+            <Badge variant="outline">{retentionConfidence}</Badge>
+          </div>
+          <Button className="w-full" disabled={!retentionAnswer} onClick={() => setPhase("tlx")}>Continue to NASA-TLX</Button>
+        </CardContent></Card>
+      )}
+
+      {phase === "tlx" && (
+        <Card><CardContent className="pt-6 space-y-5">
+          <h3 className="font-semibold">NASA-TLX workload (0–100)</h3>
+          {TLX_SCALES.map(({ key, label, prompt }) => (
+            <div key={key} className="space-y-1">
+              <div className="flex justify-between text-sm"><span className="font-medium">{label}</span><span>{tlx[key]}</span></div>
+              <p className="text-xs text-muted-foreground">{prompt}</p>
+              <Slider min={0} max={100} step={5} value={[tlx[key]]} onValueChange={([v]) => setTlx((p) => ({ ...p, [key]: v }))} />
+            </div>
+          ))}
+          <Button className="w-full" onClick={() => setPhase("sus")}>Continue to SUS</Button>
+        </CardContent></Card>
+      )}
+
+      {phase === "sus" && (
+        <Card><CardContent className="pt-6 space-y-4">
+          <h3 className="font-semibold">System Usability Scale (1 = strongly disagree, 5 = strongly agree)</h3>
+          {SUS_QUESTIONS.map((q, i) => (
+            <div key={i} className="flex items-center justify-between gap-4">
+              <p className="text-sm flex-1">{i + 1}. {q}</p>
+              <div className="flex gap-1">
+                {[1, 2, 3, 4, 5].map((v) => (
+                  <Button key={v} size="sm" variant={sus[i] === v ? "default" : "outline"}
+                    onClick={() => setSus((p) => ({ ...p, [i]: v }))}>{v}</Button>
+                ))}
+              </div>
+            </div>
+          ))}
+          <Button className="w-full" onClick={() => setPhase("export")}>Review and export</Button>
+        </CardContent></Card>
+      )}
+
+      {phase === "export" && (
+        <Card><CardContent className="pt-6 space-y-4">
+          <h3 className="font-semibold">Session summary</h3>
+          <div className="grid grid-cols-2 gap-2 text-sm">
+            <span>Participant: <Badge variant="outline">{participantId}</Badge></span>
+            <span>Condition: <Badge variant="outline">{condition}</Badge></span>
+            <span>SUS score: <Badge>{susScore(sus)}</Badge></span>
+            <span>NASA-TLX (raw): <Badge>{tlxScore(tlx)}</Badge></span>
+          </div>
+          <div>
+            <Label htmlFor="notes">Observer notes</Label>
+            <Textarea id="notes" value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="Think-aloud observations, incidents, deviations…" />
+          </div>
+          <div className="flex gap-2">
+            <Button onClick={exportJson}><Download className="w-4 h-4 mr-2" />Export JSON</Button>
+            <Button variant="outline" onClick={exportCsv}><Download className="w-4 h-4 mr-2" />Export CSV</Button>
+          </div>
           <p className="text-xs text-muted-foreground">
-            Download your task timer logs, user ratings, correctness verification indexes, and SUS evaluation results to compile research statistical datasets.
+            The JSON export includes the retention answer, SUS and TLX scores, and the pilot metrics
+            (indexing durations and QA response times) recorded on this device.
           </p>
-        </div>
-
-        <div className="flex gap-2 flex-wrap shrink-0">
-          <Button
-            size="sm"
-            variant="outline"
-            onClick={handleExportJSON}
-            className="gap-2 bg-secondary/40 hover:bg-secondary/60 text-foreground"
-          >
-            <Download className="w-4 h-4" /> Export JSON
-          </Button>
-          <Button
-            size="sm"
-            onClick={handleExportCSV}
-            className="gap-2 bg-primary hover:bg-primary/95 text-primary-foreground font-bold"
-          >
-            <Download className="w-4 h-4" /> Export CSV Report
-          </Button>
-        </div>
-      </Card>
+        </CardContent></Card>
+      )}
     </div>
   );
 }

@@ -5,6 +5,7 @@ import { ChatMessage } from '@/types/chat';
 import { scanRepository, RepositoryScanResult } from '@/lib/repositoryScanner';
 import { analyzeCodeFile, computeWorkspaceReferences, FileAnalysisResult } from '@/lib/staticAnalysis';
 import { buildSearchIndex, SearchIndex } from '@/lib/semanticSearch';
+import { recordMetric } from '@/lib/evaluation/metrics';
 
 interface ProjectState {
     // Navigation & Mode
@@ -68,7 +69,9 @@ export const useProjectStore = create<ProjectState>((set) => ({
                 }
             });
             analyses = computeWorkspaceReferences(analyses);
+            const t0 = performance.now();
             index = buildSearchIndex(project.files);
+            recordMetric('indexing', performance.now() - t0, `${project.files.length} files`);
         }
 
         set({
@@ -92,7 +95,9 @@ export const useProjectStore = create<ProjectState>((set) => ({
             f.path === path ? { ...f, content } : f
         );
 
+        const t0 = performance.now();
         const newIndex = buildSearchIndex(updatedFiles);
+        recordMetric('indexing', performance.now() - t0, `${updatedFiles.length} files (reindex)`);
 
         return {
             staticAnalyses: updatedAnalyses,

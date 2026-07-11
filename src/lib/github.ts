@@ -118,7 +118,10 @@ const validateFilePath = (path: string): boolean => {
     path.includes("\\") ||
     decoded.includes("..") ||
     decoded.startsWith("/") ||
-    /[\x00-\x1f\x7f]/.test(decoded)
+    Array.from(decoded).some((character) => {
+      const codePoint = character.charCodeAt(0);
+      return codePoint <= 31 || codePoint === 127;
+    })
   ) {
     return false;
   }

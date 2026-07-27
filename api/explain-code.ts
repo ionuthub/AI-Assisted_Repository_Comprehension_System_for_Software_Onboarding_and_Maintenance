@@ -9,6 +9,13 @@ const DEFAULT_ALLOWED_ORIGINS = [
   'https://repo-comprehension-system.vercel.app',
 ];
 
+// The generation model is pinned here and overridable via GEMINI_MODEL so a Google-side
+// model retirement can be handled with a configuration change rather than a code change.
+// Record the exact value used when reporting results: outputs are model-dependent.
+const DEFAULT_GEMINI_MODEL = 'gemini-3.5-flash';
+
+const getGeminiModel = (): string => process.env.GEMINI_MODEL?.trim() || DEFAULT_GEMINI_MODEL;
+
 const getAllowedOrigins = (): string[] =>
   (process.env.ALLOWED_ORIGINS?.split(',') || DEFAULT_ALLOWED_ORIGINS)
     .map((value) => value.trim())
@@ -137,7 +144,7 @@ export default async function handler(req: Request): Promise<Response> {
     ${normalizedSystemContext ? `Project Context:\n${normalizedSystemContext}` : ''}`;
 
     const endpoint = stream ? 'streamGenerateContent' : 'generateContent';
-    const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-exp:${endpoint}?key=${GEMINI_API_KEY}`;
+    const url = `https://generativelanguage.googleapis.com/v1beta/models/${getGeminiModel()}:${endpoint}?key=${GEMINI_API_KEY}`;
 
     const geminiPayload = {
       contents: messages.map((m: Message) => ({

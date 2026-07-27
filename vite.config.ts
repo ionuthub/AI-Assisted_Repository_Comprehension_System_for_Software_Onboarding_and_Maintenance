@@ -69,7 +69,8 @@ export default defineConfig(({ mode }) => {
               ${systemContext ? `Project Context:\n${systemContext}` : ''}`;
 
               const endpoint = stream ? 'streamGenerateContent' : 'generateContent';
-              const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-exp:${endpoint}?key=${GEMINI_API_KEY}`;
+              const GEMINI_MODEL = (env.GEMINI_MODEL || process.env.GEMINI_MODEL || 'gemini-3.5-flash').trim();
+              const url = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:${endpoint}?key=${GEMINI_API_KEY}`;
 
               const geminiPayload = {
                 contents: messages.map((m: { role: string; content: string }) => ({

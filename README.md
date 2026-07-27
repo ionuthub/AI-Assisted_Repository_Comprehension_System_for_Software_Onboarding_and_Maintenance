@@ -16,7 +16,7 @@ Run locally with `npm install && npm run dev`, or see the deployment link in the
 - **Repository Overview**: Detects technologies and frameworks, displaying critical files, components, and functions count.
 - **Architecture & Dependency Mapping**: Parses folder structure and import/export relationships to render an interactive dependency graph.
 - **Semantic Repository Search**: Fast, client-side TF-IDF vector similarity queries for natural-language search over files and code snippets.
-- **Grounded Repository Q&A**: Natural language Q&A grounded in codebase context (RAG) using Gemini 2.0 to explain file roles and design details.
+- **Grounded Repository Q&A**: Natural language Q&A grounded in codebase context (RAG) using the Google Gemini API to explain file roles and design details.
 
 ---
 
@@ -29,7 +29,10 @@ Run locally with `npm install && npm run dev`, or see the deployment link in the
 - **Frontend**: React 18, TypeScript, Vite
 - **Styling**: Tailwind CSS, Shadcn/UI, Framer Motion
 - **Static Analysis**: Custom AST-like import/export parser, file tokenizer, and folder tree builder.
-- **RAG & Search**: Local TF-IDF index matching + Google Gemini 2.0 Flash (Edge Runtime proxy).
+- **RAG & Search**: Local TF-IDF index matching + Google Gemini (Edge Runtime proxy). The
+  generation model is pinned by the `GEMINI_MODEL` environment variable, defaulting to
+  `gemini-3.5-flash`; the exact model used for any reported results is recorded in the
+  dissertation's Methodology chapter.
 - **Backend/Hosting**: Vercel Serverless Functions
 
 ---

@@ -205,3 +205,61 @@ matrix mapping every proposal commitment to its implementation).
 
 Boundary respected: the scripts are instruments. Ground truth, tool answers, markings,
 repository choice, participant data and interpretation are the researcher's own work.
+
+---
+
+# Phase 4 — Deployment identity and model retirement (added)
+
+## F5 — Deployed origin never matched the API allowlist (the production 403)
+
+`api/explain-code.ts` rejected any request whose `Origin` was not in a hardcoded
+allowlist, which contained `https://aicodetutor.vercel.app`. The actual Vercel domain was
+`ai-code-tutor-delta.vercel.app` (Vercel appends a suffix when the preferred subdomain is
+taken), so the string never matched and **every grounded-QA request returned HTTP 403
+"Origin not allowed" before reaching the model**. Note the browser sends `Origin` on
+cross-*and* same-origin POST requests, so being served from the same domain did not exempt it.
+
+**Fix:** the duplicated allowlist was collapsed into one helper, the stale name replaced,
+and deployment-specific values moved into the `ALLOWED_ORIGINS` environment variable so the
+code no longer hardcodes a guess at its own domain. Preview deployments of this project are
+also accepted, so a viva demo from a preview URL is not blocked.
+
+**Naming:** the artefact was still carrying its pre-dissertation identity ("AI Code Tutor")
+in `index.html`, the e2e suite, the README clone URL and the API allowlist, while
+`package.json` already used the dissertation name. All now read
+`repo-comprehension-system`, matching the Vercel project.
+
+## F6 — Retired generation model (the 404)
+
+With the origin fixed, requests reached Google and returned **HTTP 404**, passed through
+verbatim by the handler's `if (!response.ok)` branch. The cause: the code requested
+`gemini-2.0-flash-exp`, an experimental preview alias that Google has retired. Its stable
+counterpart `gemini-2.0-flash` was itself shut down on 1 June 2026
+(https://ai.google.dev/gemini-api/docs/deprecations). A retired model ID returns 404, not a
+descriptive error, which is why the failure was opaque.
+
+**Fix:** the model is now pinned in one place and overridable via a `GEMINI_MODEL`
+environment variable, defaulting to `gemini-3.5-flash` — a GA model with no announced
+shutdown date, chosen over `gemini-2.5-flash` (earliest shutdown 16 October 2026) so the
+artefact outlives submission and remains runnable by a marker after the viva. Making the
+model configuration rather than code means a future retirement is a dashboard change, not a
+redeploy of edited source.
+
+## Research implications the researcher must act on (not delegable)
+
+1. **The write-up must be corrected.** AE1 and the earlier README describe the generator as
+   "Gemini 2.0 Flash". That model no longer exists. AE2's Methodology must state the model
+   actually used, with the date, and the Design & Implementation chapter should discuss this
+   as an implementation challenge — AE2 explicitly asks for challenges and their solutions.
+2. **The accuracy gate must be run on the final model.** Gate results, seeded-error
+   candidates and all study data are model-dependent. A gate run under one model does not
+   license claims about another, so the gate must be (re)run once the model is settled, and
+   the model must not change between the gate and the last participant.
+3. **Record model provenance as a validity threat.** Externally-hosted model versions can be
+   retired or silently updated mid-study; this is a genuine reproducibility limitation of
+   any artefact built on a third-party API and is worth stating explicitly rather than
+   discovering in the viva.
+
+## Verification
+
+`tsc --noEmit` clean (app and API) · 31/31 unit tests pass · production build succeeds.

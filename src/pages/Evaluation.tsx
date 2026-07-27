@@ -60,6 +60,10 @@ export default function EvaluationPage() {
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const [retentionAnswer, setRetentionAnswer] = useState("");
   const [retentionConfidence, setRetentionConfidence] = useState(3);
+  // Confirmed by the observer rather than asserted by the export. The protocol requires the
+  // tool to be hidden for this phase; recording it as true regardless would mean the export
+  // claimed a condition nobody verified.
+  const [retentionToolHidden, setRetentionToolHidden] = useState(false);
   const [tlx, setTlx] = useState<TlxRatings>({ mental: 50, physical: 50, temporal: 50, performance: 50, effort: 50, frustration: 50 });
   const [sus, setSus] = useState<Record<number, number>>(Object.fromEntries(Array.from({ length: 10 }, (_, i) => [i, 3])));
   const [notes, setNotes] = useState("");
@@ -167,7 +171,14 @@ export default function EvaluationPage() {
     const session = buildSession();
     const payload = {
       session,
-      retention: { question: appliedTask?.name ?? "", answer: retentionAnswer, confidence: retentionConfidence, administeredWithoutTool: true },
+      retention: {
+        // The prompt the participant was actually given, not the internal task label.
+        question: appliedTask?.description ?? "",
+        taskName: appliedTask?.name ?? "",
+        answer: retentionAnswer,
+        confidence: retentionConfidence,
+        administeredWithoutTool: retentionToolHidden,
+      },
       scores: { sus: susScore(sus), tlxRaw: tlxScore(tlx) },
       pilotMetrics: readMetrics(),
       exportedAt: new Date().toISOString(),
@@ -323,7 +334,22 @@ export default function EvaluationPage() {
             <Slider className="w-40" min={1} max={5} step={1} value={[retentionConfidence]} onValueChange={([v]) => setRetentionConfidence(v)} />
             <Badge variant="outline">{retentionConfidence}</Badge>
           </div>
-          <Button className="w-full" disabled={!retentionAnswer} onClick={() => setPhase("tlx")}>Continue to NASA-TLX</Button>
+          <label className="flex items-center gap-2 text-sm">
+            <input
+              type="checkbox"
+              checked={retentionToolHidden}
+              onChange={(e) => setRetentionToolHidden(e.target.checked)}
+              className="h-4 w-4"
+            />
+            I confirm the tool was closed or hidden for this answer
+          </label>
+          <Button
+            className="w-full"
+            disabled={!retentionAnswer || !retentionToolHidden}
+            onClick={() => setPhase("tlx")}
+          >
+            Continue to NASA-TLX
+          </Button>
         </CardContent></Card>
       )}
 

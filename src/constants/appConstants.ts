@@ -31,7 +31,8 @@ export type SkillLevel = typeof SKILL_LEVELS[keyof typeof SKILL_LEVELS];
  * and can be quoted directly in the methodology.
  *
  * RAG_TOP_K            number of files retrieved as evidence for a question
- * RAG_CONTEXT_CHARS    characters taken from the head of each retrieved file
+ * RAG_CONTEXT_CHARS    size of the excerpt taken from each retrieved file. The region
+ *                      is selected by query-term coverage, not taken from the head.
  * SEARCH_RESULT_LIMIT  results shown in the user-facing repository search
  *
  * RAG_TOP_K x RAG_CONTEXT_CHARS bounds the evidence at 7,500 characters, within the

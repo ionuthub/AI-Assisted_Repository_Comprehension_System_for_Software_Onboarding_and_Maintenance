@@ -17,6 +17,8 @@ Run locally with `npm install && npm run dev`, or see the deployment link in the
 - **Architecture & Dependency Mapping**: Parses folder structure and import/export relationships to render an interactive dependency graph.
 - **Semantic Repository Search**: Fast, client-side TF-IDF vector similarity queries for natural-language search over files and code snippets.
 - **Grounded Repository Q&A**: Natural language Q&A grounded in codebase context (RAG) using the Google Gemini API to explain file roles and design details.
+- **Verifiable answers**: Every answer is accompanied by the evidence it was built from — the retrieved files in rank order, their relevance scores, and the exact excerpt supplied to the model. Paths the answer mentions that were not retrieved are listed separately as unverified, and an answer for which nothing could be retrieved is explicitly marked as ungrounded. Citations are derived from the retrieval layer, never from parsing the model's output.
+- **Honest coverage**: Ingestion reports how many files were indexed against how many the repository offered, including files excluded by the analysis cap or that failed to load.
 
 ---
 

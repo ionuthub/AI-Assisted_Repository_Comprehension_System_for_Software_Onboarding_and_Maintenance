@@ -81,7 +81,12 @@ def per_participant_measures(payload: dict):
     total_time = sum(t["elapsedSeconds"] for t in tasks)
     accuracy = (sum(1 for t in scored if t["isCorrect"]) / len(scored)) if scored else None
     seeded = [t for t in tasks if t.get("seededInaccurate")]
-    detected = [t for t in seeded if t.get("errorDetected")]
+    # errorDetected is tri-state: True (flagged), False (asked, not flagged), None (the
+    # probe was never administered - it is only shown in the tool condition, and an
+    # observer may skip it). Unadministered probes must not sit in the denominator, or the
+    # detection rate is deflated by items no participant was ever asked about.
+    administered = [t for t in seeded if t.get("errorDetected") is not None]
+    detected = [t for t in administered if t["errorDetected"] is True]
     conf_correct = [t["confidence"] for t in scored if t["isCorrect"]]
     conf_incorrect = [t["confidence"] for t in scored if not t["isCorrect"]]
     return {
@@ -90,6 +95,7 @@ def per_participant_measures(payload: dict):
         "sus": payload["scores"]["sus"],
         "tlx": payload["scores"]["tlxRaw"],
         "seeded_n": len(seeded),
+        "seeded_administered": len(administered),
         "seeded_detected": len(detected),
         "mean_conf_correct": (sum(conf_correct) / len(conf_correct)) if conf_correct else None,
         "mean_conf_incorrect": (sum(conf_incorrect) / len(conf_incorrect)) if conf_incorrect else None,
@@ -133,10 +139,18 @@ def analyze(directory: Path):
 
     # Over-trust: detection rate on seeded tasks (tool condition)
     seeded_total = sum(t[p]["seeded_n"] for p in order)
+    seeded_administered = sum(t[p]["seeded_administered"] for p in order)
     seeded_detected = sum(t[p]["seeded_detected"] for p in order)
-    if seeded_total:
-        print(f"\nOver-trust probe: {seeded_detected}/{seeded_total} seeded errors detected "
-              f"({100 * seeded_detected / seeded_total:.0f}% detection rate)")
+    if seeded_administered:
+        print(f"\nOver-trust probe: {seeded_detected}/{seeded_administered} seeded errors detected "
+              f"({100 * seeded_detected / seeded_administered:.0f}% detection rate)")
+        skipped = seeded_total - seeded_administered
+        if skipped:
+            print(f"  [warn] {skipped} of {seeded_total} seeded task(s) had no recorded probe "
+                  f"and are excluded from the rate. Report this figure in AE2.")
+    elif seeded_total:
+        print(f"\nOver-trust probe: {seeded_total} seeded task(s) present but none had a recorded "
+              f"probe response - detection rate cannot be computed.")
     else:
         print("\nOver-trust probe: no seeded tasks found in tool sessions")
 

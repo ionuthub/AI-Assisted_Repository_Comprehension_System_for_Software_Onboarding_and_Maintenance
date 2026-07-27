@@ -26,15 +26,17 @@ API function, organised as:
 - **Grounded QA (RAG)** — `src/pages/Index.tsx` builds the prompt: it runs the search over
   the question, takes the top-ranked files, injects up to 2,500 characters of each with its
   path under an instruction to "answer using this evidence and cite file paths", and sends
-  it to `api/explain-code.ts`, a serverless function calling Gemini 2.0 Flash with the
-  repository context as the system instruction. This is a textbook retrieval-augmented
+  it to `api/explain-code.ts`, a serverless function calling the Google Gemini API with the
+  repository context as the system instruction. The model is pinned by `GEMINI_MODEL`
+  (see Phase 4: the originally-specified Gemini 2.0 Flash has since been retired). This is a textbook retrieval-augmented
   pipeline: retrieval = TF-IDF ranking, augmentation = file excerpts in the prompt,
   generation = Gemini. Grounding quality therefore depends on retrieval quality — a point
   for your Design chapter and a threat-to-validity for the study.
 - **State** — `src/store/useProjectStore.ts` (Zustand), selected via
   `src/hooks/useStoreSelectors.ts`.
-- **Evaluation suite** — `src/pages/Evaluation.tsx` (683 lines): task list with per-task
-  timers, SUS questionnaire, results capture. See §4 for what it still lacks for your study.
+- **Evaluation suite** — `src/pages/Evaluation.tsx`, at this point a 683-line page with a
+  task list, per-task timers, a SUS questionnaire and basic capture. See §4 for what it
+  still lacks for the study; Phase 2 replaces it with the six-phase session runner.
 - **Auth/persistence** — Supabase (GitHub OAuth, saved projects) in `src/integrations/…`
   and `src/hooks/useGitHubAuth.ts`.
 

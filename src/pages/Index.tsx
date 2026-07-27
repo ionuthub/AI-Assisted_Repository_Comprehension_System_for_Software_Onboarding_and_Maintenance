@@ -392,8 +392,10 @@ const Index = () => {
                     </Button>
                   </div>
                   <p className="text-meta text-muted-foreground">
-                    Only JavaScript and TypeScript repositories are supported. Up to 50 source
-                    files are indexed.
+                    Search and questions work across most source and configuration files. The
+                    dependency graph and code analysis cover JavaScript and TypeScript only.
+                    Up to 50 files are indexed, and installed dependencies and build output
+                    are skipped.
                   </p>
                 </form>
 

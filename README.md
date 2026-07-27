@@ -2,7 +2,9 @@
 
 **Design and Evaluation of an AI-Assisted Repository Comprehension System for Software Onboarding and Maintenance**
 
-This repository contains the software artefact for the Computer Science dissertation. It is designed to assist software developers in onboarding and maintaining JavaScript/TypeScript repositories.
+This repository contains the software artefact for the Computer Science dissertation. It is designed to assist software developers in onboarding and maintaining unfamiliar repositories.
+
+**Scope.** Ingestion, search and grounded question-answering operate across common source and configuration file types. The dependency graph, import resolution and complexity analysis parse JavaScript and TypeScript syntax only, so those views are empty for other languages. The evaluation study uses JavaScript/TypeScript repositories exclusively; the wider file-type support exists so the tool degrades gracefully rather than rejecting a repository outright.
 
 ---
 

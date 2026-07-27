@@ -120,7 +120,7 @@ export default async function handler(req: Request): Promise<Response> {
 
     const normalizedSkillLevel = skillLevel && ['beginner', 'intermediate', 'advanced'].includes(skillLevel)
       ? skillLevel
-      : 'beginner';
+      : 'advanced';
     const normalizedSystemContext = typeof systemContext === 'string' ? systemContext.slice(0, 12000) : '';
 
     const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
@@ -129,18 +129,22 @@ export default async function handler(req: Request): Promise<Response> {
     }
 
     // Prompt Engineering Strategy:
-    // We strictly differentiate tone and depth based on skill level.
+    // Depth and register vary by skill level; the grounding and citation rules do not.
     // Beginner: Uses analogies (e.g., "Think of a variable like a box"), avoids jargon.
     // Intermediate: Focuses on best practices, patterns (e.g., DRY, SOLID), and design rationale.
-    // Advanced: Discusses performance, trade-offs, scaling, and architectural implications.
+    // Advanced (default): Discusses performance, trade-offs, and architectural implications.
     const skillPrompts: Record<string, string> = {
       beginner: "Explain like a friendly tutor using analogies.",
-      intermediate: "Focus on patterns and 'why'.",
-      advanced: "Senior architect view. Performance, trade-offs."
+      intermediate: "Focus on patterns and design rationale — the 'why' behind the code.",
+      advanced: "Respond as an experienced engineer to an experienced engineer: precise and technical, covering structure, control flow, trade-offs and maintenance impact. Do not use analogies or introductory framing."
     };
 
-    const systemPrompt = `You are a Code Tutor. Level: ${normalizedSkillLevel}.
+    // The grounding rules are constant across skill levels: the artefact's claim is
+    // retrieval-augmented, file-cited answers, and the study measures whether participants
+    // detect inaccurate ones. Hedging honestly when the evidence is absent is required.
+    const systemPrompt = `You are a repository comprehension assistant. You help developers onboard to and maintain an unfamiliar codebase. Level: ${normalizedSkillLevel}.
     ${skillPrompts[normalizedSkillLevel]}
+    Ground every claim in the provided repository context and cite the file paths you relied on. If the context does not contain the answer, say so plainly rather than guessing, and never invent file paths, functions or behaviour.
     ${normalizedSystemContext ? `Project Context:\n${normalizedSystemContext}` : ''}`;
 
     const endpoint = stream ? 'streamGenerateContent' : 'generateContent';

@@ -151,7 +151,10 @@ export const useProjectStore = create<ProjectState>((set) => ({
     selectedLines: new Set(),
     setSelectedLines: (selectedLines) => set({ selectedLines }),
 
-    skillLevel: SKILL_LEVELS.BEGINNER,
+    // Default to ADVANCED: the artefact targets practising developers performing onboarding
+    // and maintenance tasks, and the evaluation study recruits that population. A beginner
+    // default answers in analogies, which would confound task time and perceived usefulness.
+    skillLevel: SKILL_LEVELS.ADVANCED,
     setSkillLevel: (skillLevel) => set({ skillLevel }),
     chatMessages: [],
     setChatMessages: (chatMessages) => set({ chatMessages }),

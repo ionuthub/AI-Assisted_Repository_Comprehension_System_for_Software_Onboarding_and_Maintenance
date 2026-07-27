@@ -58,14 +58,17 @@ export default defineConfig(({ mode }) => {
                 return;
               }
 
+              // Kept in parity with api/explain-code.ts so local development and the
+              // deployed Edge function produce comparable answers.
               const skillPrompts: Record<string, string> = {
                 beginner: "Explain like a friendly tutor using analogies.",
-                intermediate: "Focus on patterns and 'why'.",
-                advanced: "Senior architect view. Performance, trade-offs."
+                intermediate: "Focus on patterns and design rationale — the 'why' behind the code.",
+                advanced: "Respond as an experienced engineer to an experienced engineer: precise and technical, covering structure, control flow, trade-offs and maintenance impact. Do not use analogies or introductory framing."
               };
 
-              const systemPrompt = `You are a Code Tutor. Level: ${skillLevel}. 
-              ${skillPrompts[skillLevel] || skillPrompts.beginner}
+              const systemPrompt = `You are a repository comprehension assistant. You help developers onboard to and maintain an unfamiliar codebase. Level: ${skillLevel || 'advanced'}.
+              ${skillPrompts[skillLevel] || skillPrompts.advanced}
+              Ground every claim in the provided repository context and cite the file paths you relied on. If the context does not contain the answer, say so plainly rather than guessing, and never invent file paths, functions or behaviour.
               ${systemContext ? `Project Context:\n${systemContext}` : ''}`;
 
               const endpoint = stream ? 'streamGenerateContent' : 'generateContent';

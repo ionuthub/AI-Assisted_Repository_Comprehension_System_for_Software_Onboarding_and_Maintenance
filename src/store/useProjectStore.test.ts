@@ -10,7 +10,7 @@ describe('useProjectStore', () => {
             mode: TAB_MODES.GITHUB,
             selectedFile: null,
             chatMessages: [],
-            skillLevel: SKILL_LEVELS.BEGINNER,
+            skillLevel: SKILL_LEVELS.ADVANCED,
             project: null
         });
     });
@@ -18,7 +18,7 @@ describe('useProjectStore', () => {
     it('should have initial state', () => {
         const state = useProjectStore.getState();
         expect(state.mode).toBe(TAB_MODES.GITHUB);
-        expect(state.skillLevel).toBe(SKILL_LEVELS.BEGINNER);
+        expect(state.skillLevel).toBe(SKILL_LEVELS.ADVANCED);
     });
 
     it('should set mode', () => {

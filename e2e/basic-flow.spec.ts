@@ -1,27 +1,45 @@
 import { test, expect } from '@playwright/test';
 
-test.describe('Repository Comprehension System - Core Flow', () => {
-    test('should load the landing page and show the hero section', async ({ page }) => {
+/**
+ * Smoke coverage for the routes and controls a study session depends on.
+ * Deliberately avoids network-dependent assertions: analysing a real repository
+ * calls the GitHub API and Gemini, which would make the suite flaky and consume
+ * rate limit on every CI run.
+ */
+test.describe('Repository Comprehension System - core flow', () => {
+    test('landing page exposes the ingestion controls', async ({ page }) => {
         await page.goto('/');
 
-        // Check if the main title is visible
-        const title = page.locator('h1');
-        await expect(title).toBeVisible();
+        await expect(page.getByRole('heading', { level: 1 })).toContainText('Repository Comprehension System');
 
-        // Check if the Get Started button exists
-        const getStartedBtn = page.getByRole('button', { name: /Get Started Free|Începe gratuit/i });
-        await expect(getStartedBtn).toBeVisible();
+        const urlInput = page.locator('#github-url');
+        await expect(urlInput).toBeVisible();
+        await expect(urlInput).toHaveAttribute('placeholder', /github\.com/);
+
+        await expect(page.getByRole('button', { name: /Analyse Repository/i })).toBeVisible();
     });
 
-    test('should navigate to FAQ page', async ({ page }) => {
+    test('rejects a malformed repository URL without navigating away', async ({ page }) => {
         await page.goto('/');
 
-        // Click on FAQ link in the header
-        const faqLink = page.getByRole('link', { name: /FAQ|Întrebări frecvente/i }).first();
-        await faqLink.click();
+        await page.locator('#github-url').fill('not-a-github-url');
+        await page.getByRole('button', { name: /Analyse Repository/i }).click();
 
-        // Verify we are on the FAQ page
-        await expect(page).toHaveURL(/\/faq/);
-        await expect(page.locator('h1')).toContainText(/FAQ|Frequently Asked Questions|Întrebări frecvente/i);
+        // The workspace must not open; the ingestion form stays on screen.
+        await expect(page.locator('#github-url')).toBeVisible();
+    });
+
+    test('navigates to the evaluation page used to run study sessions', async ({ page }) => {
+        await page.goto('/');
+
+        await page.getByRole('link', { name: /Evaluation/i }).click();
+
+        await expect(page).toHaveURL(/\/evaluation/);
+        await expect(page.getByText(/participant/i).first()).toBeVisible();
+    });
+
+    test('unknown routes render the not-found page', async ({ page }) => {
+        await page.goto('/no-such-route');
+        await expect(page.getByText(/404|not found/i).first()).toBeVisible();
     });
 });

@@ -428,15 +428,20 @@ const findArrayBlock = (lines: string[], startIdx: number): CodeBlock => {
 // ============================================================================
 
 const findParentBlock = (lines: string[], lineIdx: number): CodeBlock | null => {
-  // Look backwards to find an opening brace
+  // Scanning backwards, closing braces increment and opening braces decrement, so an
+  // unmatched *enclosing* opening brace drives the counter negative. Testing for a
+  // positive value instead matched a preceding closing brace, which selected the previous
+  // sibling block and never matched a line genuinely inside one.
   let braceCount = 0;
 
-  for (let i = lineIdx; i >= 0; i--) {
-    const line = lines[i];
+  // Clamp the start: callers pass a 1-based line number that can exceed the document
+  // (a stale selection after the file changes), which previously dereferenced undefined.
+  for (let i = Math.min(lineIdx, lines.length - 1); i >= 0; i--) {
+    const line = lines[i] ?? "";
     braceCount -= (line.match(/{/g) || []).length;
     braceCount += (line.match(/}/g) || []).length;
 
-    if (braceCount > 0) {
+    if (braceCount < 0) {
       // Found an unmatched opening brace, now find its start
       for (let j = i; j >= 0; j--) {
         const checkLine = lines[j].trim();

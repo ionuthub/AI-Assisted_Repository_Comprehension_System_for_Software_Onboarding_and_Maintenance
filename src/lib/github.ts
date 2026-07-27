@@ -47,8 +47,12 @@ const validateGitHubIdentifier = (identifier: string, maxLength: number, type: s
   if (identifier.length > maxLength) {
     throw new Error(`${type} exceeds maximum length of ${maxLength}`);
   }
-  // Only allow alphanumeric, hyphens, and underscores
-  if (!/^[a-zA-Z0-9_-]+$/.test(identifier)) {
+  // Repository names legitimately contain dots (vercel/next.js, socketio/socket.io), so
+  // dots are permitted while "." and ".." are rejected outright to preclude traversal.
+  if (identifier === "." || identifier === "..") {
+    throw new Error(`${type} contains invalid characters`);
+  }
+  if (!/^[a-zA-Z0-9_.-]+$/.test(identifier)) {
     throw new Error(`${type} contains invalid characters`);
   }
   return identifier;

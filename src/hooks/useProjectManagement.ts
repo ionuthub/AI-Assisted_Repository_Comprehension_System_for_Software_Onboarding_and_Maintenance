@@ -33,9 +33,6 @@ export const useProjectManagement = () => {
     const folderInputRef = useRef<HTMLInputElement | null>(null);
 
     const processUploadedFiles = async (files: FileList | File[]) => {
-        console.log("processUploadedFiles called with:", files);
-
-        // Rate limit check
         const rateLimitKey = 'anonymous';
         if (!rateLimiters.upload.isAllowed(rateLimitKey)) {
             const waitTime = Math.ceil(rateLimiters.upload.getTimeUntilReset(rateLimitKey) / 1000);
@@ -48,7 +45,6 @@ export const useProjectManagement = () => {
         }
 
         if (!files || files.length === 0) {
-            console.log("No files provided");
             return;
         }
 
@@ -266,7 +262,14 @@ export const useProjectManagement = () => {
             setProject(next);
             if (next.files.length > 0) setSelectedFile(next.files[0].path);
         } catch (e) {
-            toast({ title: "Analysis failed", variant: "destructive" });
+            // github.ts distinguishes not-found, rate-limited, forbidden and validation
+            // failures; surfacing the message keeps that distinction visible to the user
+            // and to an observer logging an incident during a timed session.
+            toast({
+                title: "Analysis failed",
+                description: e instanceof Error ? e.message : "Unexpected error",
+                variant: "destructive",
+            });
         } finally {
             setIsLoading(false);
         }
@@ -300,7 +303,11 @@ export const useProjectManagement = () => {
                 const explanation = generateW3SchoolsFileExplanation(path, fetched.content || "", skillLevel);
                 setChatMessages([{ role: 'model', content: explanation }]);
             } catch (e) {
-                toast({ title: "Fetch failed", variant: "destructive" });
+                toast({
+                    title: "Fetch failed",
+                    description: e instanceof Error ? e.message : "Unexpected error",
+                    variant: "destructive",
+                });
             } finally {
                 setIsFileLoading(false);
             }

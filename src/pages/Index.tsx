@@ -654,6 +654,8 @@ const Index = () => {
                            answer={qaAnswer}
                            isLoading={isQaLoading}
                            evidence={qaEvidence}
+                           indexedFileCount={project.ingestion?.filesWithContent ?? project.files.length}
+                           totalFileCount={project.ingestion?.totalCandidateFiles ?? project.files.length}
                            onBackToOverview={() => setWorkspaceView('overview')}
                            onFileSelect={(path) => {
                              handleFileSelect(path, manualGithubToken || githubToken);

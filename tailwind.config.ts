@@ -14,6 +14,21 @@ export default {
       },
     },
     extend: {
+      // Design-system type scale (Claude Design sheet). Body text is never below 14px and
+      // 12px is metadata only, so the named steps encode the rule rather than leaving it to
+      // each call site.
+      fontSize: {
+        "meta": ["12px", { lineHeight: "1.5" }],        // secondary metadata only
+        "ui": ["14px", { lineHeight: "1.5" }],          // labels, list rows, buttons
+        "body": ["16px", { lineHeight: "1.65" }],       // answers and descriptions
+        "section": ["16px", { lineHeight: "1.4", fontWeight: "600" }],
+        "panel": ["20px", { lineHeight: "1.3", fontWeight: "600" }],
+        "code": ["15px", { lineHeight: "1.7" }],        // code blocks
+        "path": ["15px", { lineHeight: "1.5" }],        // file paths and identifiers
+      },
+      spacing: {
+        "1.5": "6px", "4.5": "18px",
+      },
       fontFamily: {
         // Inter for interface text and prose; JetBrains Mono reserved for code, file paths
         // and identifiers. Both are open-licensed and drawn for screen reading at small sizes.

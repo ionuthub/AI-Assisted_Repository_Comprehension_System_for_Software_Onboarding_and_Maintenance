@@ -24,7 +24,7 @@ import CodeViewer from "@/components/CodeViewer";
 import FolderTree from "@/components/FolderTree";
 import WorkspaceQAView, { type RetrievedEvidence } from "@/components/WorkspaceQAView";
 import WorkspaceSearchView from "@/components/WorkspaceSearchView";
-import WorkspaceInsightsPanel from "@/components/WorkspaceInsightsPanel";
+import FileInsightsPanel from "@/components/FileInsightsPanel";
 import DependencyGraph from "@/components/DependencyGraph";
 import CoveragePanel from "@/components/CoveragePanel";
 import SuggestedQuestions from "@/components/SuggestedQuestions";
@@ -37,7 +37,7 @@ import { useGitHubAuth } from "@/hooks/useGitHubAuth";
 import { useProjectManagement } from "@/hooks/useProjectManagement";
 import { searchRepository, selectExcerptRegion, SearchResult } from "@/lib/semanticSearch";
 import { detectCodeBlock } from "@/lib/blockDetector";
-import ProjectOverviewComponent from "@/components/ProjectOverview";
+import RepositoryOverview from "@/components/RepositoryOverview";
 import { analyzeProject } from "@/lib/projectAnalyzer";
 
 interface RecentRepoItem {
@@ -51,6 +51,41 @@ interface RecentRepoItem {
 
 /** Offered on the start screen so a first-time user is not facing an empty field. */
 const EXAMPLE_REPOSITORY = "https://github.com/expressjs/express";
+
+/** Ingestion stages in order, for the progress list on the analysing screen. */
+const INGESTION_STEPS = [
+  { phase: "metadata" as const, label: "Resolving repository metadata" },
+  { phase: "tree" as const, label: "Reading the file list" },
+  { phase: "fetching" as const, label: "Fetching file contents" },
+  { phase: "indexing" as const, label: "Building the search index and dependency graph" },
+];
+
+function ingestionStepState(
+  step: (typeof INGESTION_STEPS)[number]["phase"],
+  current?: string
+): "done" | "active" | "pending" {
+  if (!current) return step === "metadata" ? "active" : "pending";
+  const order = INGESTION_STEPS.map((s) => s.phase);
+  const stepIndex = order.indexOf(step);
+  const currentIndex = order.indexOf(current as (typeof order)[number]);
+  if (stepIndex < currentIndex) return "done";
+  if (stepIndex === currentIndex) return "active";
+  return "pending";
+}
+
+type WorkspaceView = 'overview' | 'code' | 'architecture' | 'search' | 'qa';
+
+/**
+ * The four views, in the order a user moves through them: orient, locate, read, ask.
+ * Search and answer results are reached from the Code tab rather than being tabs of their
+ * own, since both are entered from a field rather than by navigation.
+ */
+const WORKSPACE_TABS: { view: WorkspaceView; label: string; matches: WorkspaceView[] }[] = [
+  { view: 'overview', label: 'Overview', matches: ['overview'] },
+  { view: 'architecture', label: 'Architecture', matches: ['architecture'] },
+  { view: 'code', label: 'Code', matches: ['code'] },
+  { view: 'qa', label: 'Answers', matches: ['qa', 'search'] },
+];
 
 const Index = () => {
   const { toast } = useToast();
@@ -88,7 +123,7 @@ const Index = () => {
   }, [project]);
 
   // Workspace dynamic view states
-  const [workspaceView, setWorkspaceView] = useState<'overview' | 'code' | 'architecture' | 'search' | 'qa'>('overview');
+  const [workspaceView, setWorkspaceView] = useState<WorkspaceView>('overview');
   const [searchVal, setSearchVal] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
   const [searchResults, setSearchResults] = useState<SearchResult[]>([]);
@@ -316,48 +351,59 @@ const Index = () => {
         <main className="flex-1 container mx-auto px-4 py-8 md:px-8 flex flex-col">
           {!project ? (
             (isLoading || isFileLoading) ? (
-              // Screen 2: Analysing - Terminal style progress
-              <div className="max-w-xl w-full mx-auto px-6 py-16 flex flex-col justify-center min-h-[50vh] animate-fade-in">
-                <div className="bg-card border border-border rounded-[4px] p-6 shadow-none font-mono text-xs text-foreground space-y-2">
-                  <div className="text-muted-foreground mb-4 font-bold border-b border-border pb-2 flex items-center justify-between">
-                    <span>COMPILING INDEX</span>
-                    <span className="animate-pulse text-accent">●</span>
-                  </div>
-                  {/* Reports the actual ingestion stage. The previous version animated a
-                      fixed sequence ending in "ready" on a timer, which claimed completion
-                      while fetching was still in progress. */}
-                  <div className={ingestionProgress ? "text-accent" : ""}>&gt; resolving repository metadata...</div>
-                  {ingestionProgress && ingestionProgress.phase !== "metadata" && (
-                    <div className="text-accent">&gt; reading file tree...</div>
-                  )}
-                  {ingestionProgress?.phase === "fetching" && (
-                    <>
-                      <div>
-                        &gt; fetching file contents... {ingestionProgress.completed}/{ingestionProgress.total}
-                      </div>
-                      <div
-                        className="h-1 bg-secondary rounded-full overflow-hidden mt-2"
-                        role="progressbar"
-                        aria-valuemin={0}
-                        aria-valuemax={ingestionProgress.total || 1}
-                        aria-valuenow={ingestionProgress.completed}
-                        aria-label="Fetching repository files"
-                      >
-                        <div
-                          className="h-full bg-accent transition-all duration-200"
-                          style={{ width: `${Math.round((ingestionProgress.completed / (ingestionProgress.total || 1)) * 100)}%` }}
-                        />
-                      </div>
-                      {ingestionProgress.currentPath && (
-                        <div className="text-muted-foreground truncate">&gt; {ingestionProgress.currentPath}</div>
-                      )}
-                    </>
-                  )}
-                  {ingestionProgress?.phase === "indexing" && (
-                    <div>&gt; building search index and dependency graph...</div>
-                  )}
-                  <div className="animate-pulse inline-block w-1.5 h-3 bg-accent ml-1 mt-2" />
+              // Screen 2: Analysing
+              <div className="max-w-2xl w-full mx-auto py-12 animate-fade-in space-y-6">
+                <div className="space-y-2">
+                  <h1 className="text-panel text-foreground">Analysing repository</h1>
+                  <p className="text-body text-muted-foreground max-w-[54ch]">
+                    Reading the file list, fetching source, and building the search index.
+                    Larger repositories take longer.
+                  </p>
                 </div>
+
+                <ol className="space-y-3">
+                  {INGESTION_STEPS.map((step) => {
+                    const state = ingestionStepState(step.phase, ingestionProgress?.phase);
+                    return (
+                      <li key={step.phase} className="flex items-start gap-3">
+                        <span
+                          className={`mt-1 h-2 w-2 rounded-full shrink-0 ${
+                            state === "done" ? "bg-primary" : state === "active" ? "bg-primary animate-pulse" : "bg-secondary"
+                          }`}
+                          aria-hidden="true"
+                        />
+                        <div className="min-w-0 flex-1 space-y-1.5">
+                          <p className={`text-ui ${state === "pending" ? "text-muted-foreground" : "text-foreground"}`}>
+                            {step.label}
+                            {state === "done" && <span className="sr-only"> — complete</span>}
+                          </p>
+
+                          {step.phase === "fetching" && ingestionProgress?.phase === "fetching" && (
+                            <div className="space-y-1.5">
+                              <div
+                                className="h-2 rounded-full bg-secondary overflow-hidden"
+                                role="progressbar"
+                                aria-valuemin={0}
+                                aria-valuemax={ingestionProgress.total || 1}
+                                aria-valuenow={ingestionProgress.completed}
+                                aria-label="Fetching repository files"
+                              >
+                                <div
+                                  className="h-full bg-primary transition-all duration-200"
+                                  style={{ width: `${Math.round((ingestionProgress.completed / (ingestionProgress.total || 1)) * 100)}%` }}
+                                />
+                              </div>
+                              <p className="text-meta text-muted-foreground">
+                                {ingestionProgress.completed} of {ingestionProgress.total} files
+                                {ingestionProgress.currentPath && ` · ${ingestionProgress.currentPath}`}
+                              </p>
+                            </div>
+                          )}
+                        </div>
+                      </li>
+                    );
+                  })}
+                </ol>
               </div>
             ) : (
               // Screen 1: Start
@@ -495,108 +541,84 @@ const Index = () => {
             // Screen 3: Repository Workspace - Three-panel layout (Explorer | Content | Insights)
             <div className="flex flex-col h-[82vh] border border-border rounded-[4px] bg-card overflow-hidden shadow-none animate-fade-in">
               {/* Workspace Top Bar */}
-              <div className="bg-secondary/30 border-b border-border px-4 py-3 flex flex-col md:flex-row items-start md:items-center justify-between gap-4 shrink-0">
-                <div className="flex items-center gap-4 min-w-0">
-                  <div className="flex items-center gap-2">
-                    <GitBranch className="w-4 h-4 text-primary shrink-0" />
-                     <h2
-                       className="font-bold text-sm text-foreground truncate max-w-[150px] cursor-pointer hover:text-accent transition-colors"
-                       title="View Repository Overview"
-                       onClick={() => {
-                         setSelectedFile(null);
-                         setWorkspaceView('overview');
-                       }}
-                     >
-                       {project.summary.name}
-                     </h2>
-                     <Badge variant="outline" className="text-[9px] font-mono px-1.5 py-0 border-border/80 hidden sm:inline-flex">
-                       {project.summary.source}
-                     </Badge>
-                     <Button
-                       variant="ghost"
-                       size="icon"
-                       className="w-5 h-5 ml-1 hover:bg-secondary rounded-md"
-                       onClick={() => {
-                         setProject(null);
-                         setSelectedFile(null);
-                         setWorkspaceView('overview');
-                       }}
-                       title="Close workspace"
-                     >
-                       <span className="text-xs text-muted-foreground">✕</span>
-                     </Button>
-                   </div>
+              {/* Workspace chrome: repository identity, the four views, and a way out */}
+              <div className="border-b border-border px-4 py-2.5 flex flex-wrap items-center gap-x-6 gap-y-3 shrink-0 bg-card">
+                <div className="flex items-center gap-2 min-w-0">
+                  <GitBranch className="w-4 h-4 text-primary shrink-0" aria-hidden="true" />
+                  <span className="text-path font-mono text-foreground truncate max-w-[220px]">
+                    {project.summary.owner ? `${project.summary.owner}/${project.summary.name}` : project.summary.name}
+                  </span>
+                </div>
 
-                   {/* Unified Top Navigation Tabs */}
-                   <div className="flex items-center gap-1 border-l border-border pl-4">
-                     <button
-                       onClick={() => {
-                         setSelectedFile(null);
-                         setWorkspaceView('overview');
-                       }}
-                       className={`text-xs px-2.5 py-1 rounded transition-colors ${
-                         workspaceView === 'overview'
-                           ? 'bg-secondary text-foreground font-semibold font-mono'
-                           : 'text-muted-foreground hover:text-foreground font-mono'
-                       }`}
-                     >
-                       Repository Overview
-                     </button>
-                     <button
-                       onClick={() => {
-                         setWorkspaceView('architecture');
-                       }}
-                       className={`text-xs px-2.5 py-1 rounded transition-colors ${
-                         workspaceView === 'architecture'
-                           ? 'bg-secondary text-foreground font-semibold font-mono'
-                           : 'text-muted-foreground hover:text-foreground font-mono'
-                       }`}
-                     >
-                       Architecture
-                     </button>
-                     <button
-                       onClick={() => {
-                         if (!selectedFile && project.files.length > 0) {
-                           setSelectedFile(project.files[0].path);
-                         }
-                         setWorkspaceView('code');
-                       }}
-                       className={`text-xs px-2.5 py-1 rounded transition-colors ${
-                         workspaceView === 'code' || workspaceView === 'search' || workspaceView === 'qa'
-                           ? 'bg-secondary text-foreground font-semibold font-mono'
-                           : 'text-muted-foreground hover:text-foreground font-mono'
-                       }`}
-                     >
-                       Workspace
-                     </button>
-                   </div>
-                 </div>
+                <nav aria-label="Workspace views">
+                  <ul className="flex items-center gap-1">
+                    {WORKSPACE_TABS.map((tab) => {
+                      const isCurrent = tab.matches.includes(workspaceView);
+                      return (
+                        <li key={tab.view}>
+                          <button
+                            type="button"
+                            aria-current={isCurrent ? "page" : undefined}
+                            onClick={() => {
+                              if (tab.view === 'overview') setSelectedFile(null);
+                              if (tab.view === 'code' && !selectedFile && project.files.length > 0) {
+                                setSelectedFile(project.files[0].path);
+                              }
+                              setWorkspaceView(tab.view);
+                            }}
+                            className={`px-3 py-1.5 rounded text-ui transition-colors ${
+                              isCurrent
+                                ? "bg-surface-raised text-foreground font-semibold"
+                                : "text-muted-foreground hover:text-foreground"
+                            }`}
+                          >
+                            {tab.label}
+                          </button>
+                        </li>
+                      );
+                    })}
+                  </ul>
+                </nav>
 
-                 {/* Inputs: Search and Ask */}
-                 <div className="flex flex-wrap items-center gap-2.5 w-full md:w-auto">
-                   {/* Search Bar */}
-                   <form onSubmit={handleSearchSubmit} className="relative w-full sm:w-[180px]">
-                     <Search className="absolute left-2.5 top-2.5 h-3.5 w-3.5 text-muted-foreground" />
-                     <Input
-                       placeholder="Search repository..."
-                       value={searchVal}
-                       onChange={(e) => setSearchVal(e.target.value)}
-                       className="pl-8 h-8 text-xs bg-secondary/15 border-border/80"
-                     />
-                   </form>
+                <div className="flex flex-1 flex-wrap items-center justify-end gap-2.5 min-w-0">
+                  <form onSubmit={handleSearchSubmit} className="relative w-full sm:w-[200px]">
+                    <label htmlFor="workspace-search" className="sr-only">Search the indexed code</label>
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" aria-hidden="true" />
+                    <Input
+                      id="workspace-search"
+                      placeholder="Search the code"
+                      value={searchVal}
+                      onChange={(e) => setSearchVal(e.target.value)}
+                      className="pl-9 h-10 text-ui bg-input border-border rounded-md"
+                    />
+                  </form>
 
-                   {/* Ask Bar */}
-                   <form onSubmit={handleQASubmit} className="relative w-full sm:w-[200px]">
-                     <Sparkles className="absolute left-2.5 top-2.5 h-3.5 w-3.5 text-accent" />
-                     <Input
-                       placeholder="Ask about repository..."
-                       value={qaVal}
-                       onChange={(e) => setQaVal(e.target.value)}
-                       className="pl-8 h-8 text-xs bg-secondary/15 border-border/80"
-                     />
-                   </form>
-                 </div>
-               </div>
+                  <form onSubmit={handleQASubmit} className="relative w-full sm:w-[220px]">
+                    <label htmlFor="workspace-ask" className="sr-only">Ask a question about this repository</label>
+                    <Sparkles className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-primary" aria-hidden="true" />
+                    <Input
+                      id="workspace-ask"
+                      placeholder="Ask a question"
+                      value={qaVal}
+                      onChange={(e) => setQaVal(e.target.value)}
+                      className="pl-9 h-10 text-ui bg-input border-border rounded-md"
+                    />
+                  </form>
+
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => {
+                      setProject(null);
+                      setSelectedFile(null);
+                      setWorkspaceView('overview');
+                    }}
+                    className="h-10 px-4 text-ui rounded-md border-border bg-card text-foreground hover:border-primary/60 hover:bg-surface-raised"
+                  >
+                    New repository
+                  </Button>
+                </div>
+              </div>
 
                {/* Conditional Panels Layout */}
                <div className="flex-1 flex overflow-hidden">
@@ -604,15 +626,16 @@ const Index = () => {
                     // Screen 2: Repository Overview - Full width, no sidebars, no clutter
                     <div className="flex-1 h-full overflow-y-auto bg-background/30 flex justify-center">
                       <div className="max-w-5xl w-full p-6 animate-fade-in space-y-8">
-                        {overview && (
-                          <ProjectOverviewComponent
-                            overview={overview}
-                            project={project}
-                            onFileSelect={(path) => {
-                              handleFileSelect(path, manualGithubToken || githubToken);
-                            }}
-                          />
-                        )}
+                        <RepositoryOverview
+                          project={project}
+                          overview={overview}
+                          staticAnalyses={staticAnalyses}
+                          onFileSelect={(path) => {
+                            handleFileSelect(path, manualGithubToken || githubToken);
+                            setWorkspaceView('code');
+                          }}
+                          onOpenGraph={() => setWorkspaceView('architecture')}
+                        />
 
                         {project.ingestion && (
                           <CoveragePanel
@@ -724,15 +747,14 @@ const Index = () => {
 
                      {/* Right Panel: Contextual Insights (300px / 320px) */}
                      <div className="w-[300px] md:w-[320px] shrink-0 border-l border-border/80 h-full overflow-y-auto">
-                       <WorkspaceInsightsPanel
-                         selectedFile={selectedFile}
+                       <FileInsightsPanel
+                         path={selectedFile}
                          analysis={selectedFile ? staticAnalyses[selectedFile] : null}
-                         fileContent={currentFileContent}
-                         allFiles={project.files}
                          onFileSelect={(path) => {
                            handleFileSelect(path, manualGithubToken || githubToken);
                            setWorkspaceView('code');
                          }}
+                         onAsk={runQuestion}
                        />
                      </div>
                    </>

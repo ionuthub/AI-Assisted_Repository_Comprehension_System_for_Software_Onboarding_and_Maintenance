@@ -46,7 +46,7 @@ Run locally with `npm install && npm run dev`, or see the deployment link in the
 
 ```bash
 # Clone the repository
-git clone https://github.com/ionuthub/AI-Code-Tutor.git
+git clone https://github.com/ionuthub/AI-Assisted_Repository_Comprehension_System_for_Software_Onboarding_and_Maintenance.git
 
 # Install dependencies
 npm install

@@ -1,18 +1,43 @@
 import { Redis } from '@upstash/redis';
 
-// Security headers
-const getSecurityHeaders = (origin?: string) => {
-  const allowedOrigins = (process.env.ALLOWED_ORIGINS?.split(',') || ['http://localhost:8080', 'http://localhost:5173', 'http://localhost:3000', 'https://aicodetutor.vercel.app'])
+// Allowed origins are configured via ALLOWED_ORIGINS (comma-separated); the list below is
+// the fallback for local development plus this project's production Vercel domain.
+const DEFAULT_ALLOWED_ORIGINS = [
+  'http://localhost:8080',
+  'http://localhost:5173',
+  'http://localhost:3000',
+  'https://repo-comprehension-system.vercel.app',
+];
+
+const getAllowedOrigins = (): string[] =>
+  (process.env.ALLOWED_ORIGINS?.split(',') || DEFAULT_ALLOWED_ORIGINS)
     .map((value) => value.trim())
     .filter(Boolean);
-  const normalizedOrigin = origin ? (() => {
-    try {
-      return new URL(origin).origin;
-    } catch {
-      return undefined;
-    }
-  })() : undefined;
-  const isAllowed = normalizedOrigin ? allowedOrigins.includes(normalizedOrigin) : false;
+
+const normalizeOrigin = (origin?: string): string | undefined => {
+  if (!origin) return undefined;
+  try {
+    return new URL(origin).origin;
+  } catch {
+    return undefined;
+  }
+};
+
+// Trust this project's own Vercel deployments (production alias + preview URLs), which all
+// share the same subdomain prefix, so demos on preview deployments are not blocked.
+const isProjectVercelOrigin = (origin: string): boolean =>
+  /^https:\/\/repo-comprehension-system[a-z0-9-]*\.vercel\.app$/.test(origin);
+
+const isOriginAllowed = (normalizedOrigin?: string): boolean => {
+  if (!normalizedOrigin) return false;
+  return getAllowedOrigins().includes(normalizedOrigin) || isProjectVercelOrigin(normalizedOrigin);
+};
+
+// Security headers
+const getSecurityHeaders = (origin?: string) => {
+  const allowedOrigins = getAllowedOrigins();
+  const normalizedOrigin = normalizeOrigin(origin);
+  const isAllowed = isOriginAllowed(normalizedOrigin);
 
   return {
     'Access-Control-Allow-Origin': isAllowed && normalizedOrigin ? normalizedOrigin : allowedOrigins[0],
@@ -53,19 +78,8 @@ export default async function handler(req: Request): Promise<Response> {
     return new Response(JSON.stringify({ error: 'Method not allowed' }), { status: 405, headers: securityHeaders });
   }
 
-  const allowedOrigins = (process.env.ALLOWED_ORIGINS?.split(',') || ['http://localhost:8080', 'http://localhost:5173', 'http://localhost:3000', 'https://aicodetutor.vercel.app'])
-    .map((value) => value.trim())
-    .filter(Boolean);
-  if (origin) {
-    let normalizedOrigin: string | null = null;
-    try {
-      normalizedOrigin = new URL(origin).origin;
-    } catch {
-      normalizedOrigin = null;
-    }
-    if (!normalizedOrigin || !allowedOrigins.includes(normalizedOrigin)) {
-      return new Response(JSON.stringify({ error: 'Origin not allowed' }), { status: 403, headers: securityHeaders });
-    }
+  if (origin && !isOriginAllowed(normalizeOrigin(origin))) {
+    return new Response(JSON.stringify({ error: 'Origin not allowed' }), { status: 403, headers: securityHeaders });
   }
 
   // Basic IP rate limiting (15 requests per minute)

@@ -1,6 +1,6 @@
 import { test, expect } from '@playwright/test';
 
-test.describe('AI Code Tutor - Core Flow', () => {
+test.describe('Repository Comprehension System - Core Flow', () => {
     test('should load the landing page and show the hero section', async ({ page }) => {
         await page.goto('/');
 

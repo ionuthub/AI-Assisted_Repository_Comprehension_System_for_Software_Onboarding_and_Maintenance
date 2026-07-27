@@ -1,6 +1,7 @@
 import JSZip from "jszip";
 import { ProjectFile } from "@/types/project";
 import { inferLanguageFromFilename } from "@/lib/languages";
+import { isInIgnoredDirectory } from "@/lib/ingestionFilters";
 
 // Common text file extensions to include in the analysis
 const TEXT_FILE_EXTENSIONS = [
@@ -10,20 +11,16 @@ const TEXT_FILE_EXTENSIONS = [
   '.sh', '.bash', '.sql', '.graphql', '.vue', '.svelte'
 ];
 
-// Folders/files to exclude from extraction
-const IGNORED_PATTERNS = [
-  /node_modules/i,
-  /\.git/i,
-  /dist/i,
-  /build/i,
-  /\.next/i,
-  /\.vercel/i,
-  /package-lock\.json/i,
-  /bun\.lockb/i,
-  /yarn\.lock/i,
-  /\.npm-cache/i,
-  /\.gemini/i
-];
+// Lockfiles carry no comprehension value and are large. Directory exclusions come from the
+// shared ingestion filter, which matches whole path segments — the patterns here previously
+// matched substrings, so "dist" excluded src/utils/distance.ts, "build" excluded
+// src/lib/builder.ts, and ".git" excluded everything under .github/.
+const IGNORED_FILENAMES = new Set([
+  "package-lock.json",
+  "bun.lockb",
+  "yarn.lock",
+  "pnpm-lock.yaml",
+]);
 
 /**
  * Parses a zipped project folder and returns ProjectFiles
@@ -39,22 +36,24 @@ export const parseZipFile = async (file: File): Promise<ProjectFile[]> => {
     // Skip directories and check ignored directories/files
     if (zipEntry.dir) return;
     
-    const isIgnored = IGNORED_PATTERNS.some(pattern => pattern.test(path));
-    if (isIgnored) return;
+    if (isInIgnoredDirectory(path)) return;
+    if (IGNORED_FILENAMES.has(path.split("/").pop() ?? "")) return;
 
     const lowerPath = path.toLowerCase();
     const isTextFile = TEXT_FILE_EXTENSIONS.some(ext => lowerPath.endsWith(ext));
     if (!isTextFile) return;
 
     try {
-      const content = await zipEntry.async("string");
-      const uint8Array = await zipEntry.async("uint8array");
-      
+      // Decompressed once and decoded, rather than decompressing twice to obtain a byte
+      // length; the previous form doubled CPU and peak memory on large uploads.
+      const bytes = await zipEntry.async("uint8array");
+      const content = new TextDecoder().decode(bytes);
+
       projectFiles.push({
         path,
         language: inferLanguageFromFilename(path),
         content,
-        size: uint8Array.length,
+        size: bytes.length,
         rawUrl: null
       });
     } catch (err) {

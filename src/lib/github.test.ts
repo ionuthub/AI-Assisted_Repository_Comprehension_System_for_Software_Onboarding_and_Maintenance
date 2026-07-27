@@ -54,3 +54,24 @@ describe('partitionTreeFiles', () => {
     expect(partitionTreeFiles([])).toEqual({ included: [], excluded: [], totalCandidates: 0 });
   });
 });
+
+describe('partitionTreeFiles — vendored directories', () => {
+  it('excludes node_modules so the file budget is spent on the project itself', () => {
+    // Reproduces the observed failure: a repository with committed dependencies filled all
+    // 50 slots with vendored files, and the model reported the entry point as absent.
+    const tree = [
+      ...Array.from({ length: 60 }, (_, i) => blob(`node_modules/pkg${i}/index.js`)),
+      blob('src/index.ts'),
+      blob('src/app.ts'),
+    ];
+    const { included, excluded } = partitionTreeFiles(tree);
+
+    expect(included.map((f) => f.path)).toEqual(['src/index.ts', 'src/app.ts']);
+    expect(excluded.filter((e) => e.reason === 'In node_modules')).toHaveLength(60);
+  });
+
+  it('does not exclude source files whose names contain an ignored word', () => {
+    const { included } = partitionTreeFiles([blob('src/utils/distance.ts'), blob('src/lib/builder.ts')]);
+    expect(included).toHaveLength(2);
+  });
+});

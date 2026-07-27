@@ -1,121 +1,158 @@
-import React from "react";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { Search, FileCode2 } from "lucide-react";
-import type { SearchResult } from "@/lib/semanticSearch";
+import { useMemo } from "react";
+import { FileCode2 } from "lucide-react";
+import { tokenize, type SearchResult } from "@/lib/semanticSearch";
 import type { ProjectFile } from "@/types/project";
 
 interface WorkspaceSearchViewProps {
   query: string;
   results: SearchResult[];
   projectFiles: ProjectFile[];
+  indexedFileCount?: number;
+  totalFileCount?: number;
   onBackToOverview: () => void;
   onFileSelect?: (path: string) => void;
 }
 
+interface ResultDetail {
+  path: string;
+  totalLines: number;
+  matchCount: number;
+  matchedTerms: string[];
+  snippet: string;
+  snippetStartLine: number;
+}
+
+/**
+ * Results state why each file matched and how strongly, so a user can judge relevance
+ * without opening every one — and so a claim about search quality can be checked rather
+ * than taken on trust.
+ */
 export default function WorkspaceSearchView({
   query,
   results,
   projectFiles,
+  indexedFileCount,
+  totalFileCount,
   onBackToOverview,
-  onFileSelect
+  onFileSelect,
 }: WorkspaceSearchViewProps) {
-  // Helper to extract a 5-line snippet containing the query terms
-  const extractSnippet = (filePath: string): string => {
-    const file = projectFiles.find(f => f.path === filePath);
-    if (!file || !file.content) return "";
+  const fileByPath = useMemo(() => {
+    const map = new Map<string, ProjectFile>();
+    for (const file of projectFiles) map.set(file.path, file);
+    return map;
+  }, [projectFiles]);
 
-    const terms = query.toLowerCase().split(/\s+/).filter(t => t.length > 2);
-    if (terms.length === 0) return file.content.slice(0, 180) + "...";
+  const queryTerms = useMemo(() => tokenize(query), [query]);
 
-    const lines = file.content.split(/\r?\n/);
-    for (let i = 0; i < lines.length; i++) {
-      const lineLower = lines[i].toLowerCase();
-      if (terms.some(term => lineLower.includes(term))) {
-        const start = Math.max(0, i - 1);
-        const end = Math.min(lines.length, i + 4);
-        return lines.slice(start, end).join("\n") + (end < lines.length ? "\n..." : "");
-      }
-    }
-    return file.content.slice(0, 180) + "...";
-  };
+  const details: ResultDetail[] = useMemo(
+    () =>
+      results.map((result) => {
+        const file = fileByPath.get(result.path);
+        const content = file?.content ?? "";
+        const lines = content.split(/\r?\n/);
+
+        const matchedTerms = new Set<string>();
+        let matchCount = 0;
+        let bestLine = -1;
+
+        for (let i = 0; i < lines.length; i++) {
+          const lineTokens = new Set(tokenize(lines[i]));
+          let lineHits = 0;
+          for (const term of queryTerms) {
+            if (lineTokens.has(term)) {
+              matchedTerms.add(term);
+              lineHits += 1;
+            }
+          }
+          matchCount += lineHits;
+          if (lineHits > 0 && bestLine === -1) bestLine = i;
+        }
+
+        // Centre the snippet on the first matching line rather than showing the file head.
+        const start = bestLine >= 0 ? Math.max(0, bestLine - 1) : 0;
+        const end = Math.min(lines.length, start + 5);
+
+        return {
+          path: result.path,
+          totalLines: lines.length,
+          matchCount,
+          matchedTerms: [...matchedTerms],
+          snippet: lines.slice(start, end).join("\n"),
+          snippetStartLine: start + 1,
+        };
+      }),
+    [results, fileByPath, queryTerms]
+  );
 
   return (
-    <div className="h-full flex flex-col overflow-hidden bg-code-bg">
-      {/* VS Code style editor tab */}
-      <div className="bg-secondary/40 border-b border-border/80 h-9 flex items-center justify-between shrink-0 select-none px-1">
-        <div className="flex h-full items-center">
-          <div className="bg-code-bg text-foreground border-r border-border/80 h-full px-3.5 flex items-center gap-2 text-sm border-t-2 border-t-primary font-mono font-semibold">
-            <Search className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
-            <span>search-results.txt</span>
-          </div>
-        </div>
-        <Button
-          size="sm"
-          variant="ghost"
-          className="h-6 w-6 p-0 hover:bg-secondary/60 text-muted-foreground mr-2 rounded-[2px]"
+    <div className="h-full flex flex-col overflow-hidden bg-background">
+      <div className="flex items-center justify-between gap-4 px-6 py-3 border-b border-border shrink-0">
+        <h2 className="text-ui font-semibold text-foreground">Search results</h2>
+        <button
+          type="button"
           onClick={onBackToOverview}
+          className="text-ui text-muted-foreground hover:text-foreground underline underline-offset-2"
         >
-          ✕
-        </Button>
+          Close
+        </button>
       </div>
 
-      <div className="flex-1 overflow-y-auto p-6 space-y-4">
-        <div className="bg-secondary/15 p-4 rounded-[4px] border border-border">
-          <span className="text-xs font-bold tracking-wider font-mono text-muted-foreground block mb-1">Search Query</span>
-          <p className="text-xs font-mono font-semibold text-foreground leading-snug">"{query}"</p>
-        </div>
+      <div className="flex-1 overflow-y-auto p-6">
+        <div className="max-w-4xl mx-auto space-y-5">
+          <div className="flex items-baseline justify-between gap-4 flex-wrap border-b border-border pb-3">
+            <p className="text-ui text-foreground">
+              {results.length === 0
+                ? `No files match “${query}”`
+                : `${results.length} file${results.length === 1 ? "" : "s"} match “${query}”, best first`}
+            </p>
+            {indexedFileCount !== undefined && totalFileCount !== undefined && (
+              <p className="text-meta text-muted-foreground">
+                Searched {indexedFileCount} of {totalFileCount} files
+              </p>
+            )}
+          </div>
 
-        {results.length > 0 ? (
-          <div className="space-y-4 font-mono">
-            {results.map((res) => {
-              const snippet = extractSnippet(res.path);
-              return (
-                <div
-                  key={res.path}
-                  className="p-4 rounded-[4px] border border-border bg-secondary/5 hover:border-primary/30 transition-all space-y-3"
-                >
-                  <div className="flex items-center justify-between gap-2 flex-wrap">
-                    <div className="flex items-center gap-2 min-w-0">
-                      <FileCode2 className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
-                      <span className="text-xs font-mono font-bold text-foreground truncate" title={res.path}>
-                        {res.path}
-                      </span>
-                    </div>
-
-                    <div className="flex items-center gap-2 shrink-0">
-                      <span className="border border-border text-primary font-mono text-[9px] px-2 py-0.5 rounded">
-                        {(res.score * 100).toFixed(0)}% Match
-                      </span>
-                      {onFileSelect && (
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          className="h-7 text-xs font-mono border-border hover:border-accent hover:bg-secondary/20 hover:text-foreground bg-background rounded-[4px]"
-                          onClick={() => onFileSelect(res.path)}
-                        >
-                          Open File
-                        </Button>
-                      )}
-                    </div>
+          {results.length === 0 ? (
+            <p className="text-body text-muted-foreground max-w-[60ch]">
+              Nothing in the indexed files matched those terms. Only {indexedFileCount ?? "the indexed"} files
+              can be searched, so the answer may still exist in a part of the repository that was
+              not indexed.
+            </p>
+          ) : (
+            <ol className="space-y-5">
+              {details.map((detail) => (
+                <li key={detail.path} className="space-y-2">
+                  <div className="flex items-baseline gap-3 flex-wrap">
+                    <button
+                      type="button"
+                      onClick={() => onFileSelect?.(detail.path)}
+                      className="inline-flex items-center gap-2 text-path font-mono text-foreground hover:text-primary underline underline-offset-2"
+                    >
+                      <FileCode2 className="w-4 h-4 text-muted-foreground shrink-0" aria-hidden="true" />
+                      {detail.path}
+                    </button>
+                    <span className="text-meta text-muted-foreground">
+                      {detail.totalLines} lines
+                      {detail.matchCount > 0 && ` · ${detail.matchCount} match${detail.matchCount === 1 ? "" : "es"}`}
+                    </span>
                   </div>
 
-                  {snippet && (
-                    <div className="bg-background border border-border p-3 rounded-[4px] overflow-x-auto">
-                      <pre className="text-xs font-mono leading-relaxed text-foreground/90 whitespace-pre-wrap">
-                        <code>{snippet}</code>
-                      </pre>
-                    </div>
+                  {detail.matchedTerms.length > 0 && (
+                    <p className="text-ui text-foreground-secondary">
+                      Matched {detail.matchedTerms.join(" and ")} in the code.
+                    </p>
                   )}
-                </div>
-              );
-            })}
-          </div>
-        ) : (
-          <div className="text-center py-12 border border-dashed border-border rounded-[4px] bg-secondary/5 font-mono">
-            <p className="text-xs text-muted-foreground italic">No matching code files found for "{query}". Try different terms.</p>
-          </div>
-        )}
+
+                  {detail.snippet && (
+                    <pre className="text-code font-mono text-foreground/85 bg-code-bg border border-border rounded-md p-3 overflow-x-auto">
+                      {detail.snippet}
+                    </pre>
+                  )}
+                </li>
+              ))}
+            </ol>
+          )}
+        </div>
       </div>
     </div>
   );

@@ -44,7 +44,13 @@ interface RecentRepoItem {
   name: string;
   url?: string;
   date: string;
+  /** Coverage at the time it was analysed, so the list states what was actually read. */
+  indexed?: number;
+  total?: number;
 }
+
+/** Offered on the start screen so a first-time user is not facing an empty field. */
+const EXAMPLE_REPOSITORY = "https://github.com/expressjs/express";
 
 const Index = () => {
   const { toast } = useToast();
@@ -128,14 +134,14 @@ const Index = () => {
     }
   }, []);
 
-  const addRecentRepo = useCallback((name: string, url?: string) => {
+  const addRecentRepo = useCallback((name: string, url?: string, indexed?: number, total?: number) => {
     setRecentRepos((prev) => {
       const list = [...prev];
       const existingIndex = list.findIndex(r => r.name === name || (url && r.url === url));
       if (existingIndex !== -1) {
         list.splice(existingIndex, 1);
       }
-      list.unshift({ name, url, date: new Date().toLocaleDateString() });
+      list.unshift({ name, url, date: new Date().toLocaleDateString(), indexed, total });
       const trimmed = list.slice(0, 5);
       localStorage.setItem("recent_repos", JSON.stringify(trimmed));
       return trimmed;
@@ -147,7 +153,7 @@ const Index = () => {
     if (project) {
       const name = project.summary.name;
       const url = project.summary.source === 'github' ? githubUrl : undefined;
-      addRecentRepo(name, url);
+      addRecentRepo(name, url, project.ingestion?.filesWithContent, project.ingestion?.totalRepositoryFiles);
       setWorkspaceView('overview');
     }
   }, [project, githubUrl, addRecentRepo]);
@@ -307,7 +313,7 @@ const Index = () => {
         description="Understand unfamiliar codebases using static parsing, dependency graphing, semantic concept search, and grounded Q&A."
       />
       <div className="flex flex-col relative overflow-hidden min-h-[82vh]">
-        <main className="flex-1 container mx-auto px-4 py-8 md:px-8 flex flex-col justify-center">
+        <main className="flex-1 container mx-auto px-4 py-8 md:px-8 flex flex-col">
           {!project ? (
             (isLoading || isFileLoading) ? (
               // Screen 2: Analysing - Terminal style progress
@@ -354,113 +360,132 @@ const Index = () => {
                 </div>
               </div>
             ) : (
-              // Screen 1: Selection Screen
-              <div className="max-w-xl w-full mx-auto px-6 py-16 flex flex-col justify-center min-h-[50vh] animate-fade-in space-y-6">
-                <div className="space-y-1">
-                  <h1 className="text-2xl font-bold text-foreground font-sans tracking-tight">
-                    Repository Comprehension System
-                  </h1>
-                  <p className="text-xs text-muted-foreground">
-                    Automated codebase comprehension and dependency mapping.
+              // Screen 1: Start
+              <div className="max-w-2xl w-full mx-auto py-12 animate-fade-in space-y-8">
+                <div className="space-y-2">
+                  <h1 className="text-3xl font-semibold text-foreground tracking-tight">Analyse a repository</h1>
+                  <p className="text-body text-muted-foreground max-w-[54ch]">
+                    Paste a public GitHub URL. You get an overview, a searchable index, and
+                    answers with the files they came from.
                   </p>
                 </div>
 
-                <div className="bg-card border border-border p-6 rounded-[4px] space-y-4 shadow-none">
-                  <form onSubmit={handleGithubAnalyze} className="space-y-4">
-                    <div className="space-y-1.5">
-                      <Label htmlFor="github-url" className="text-xs font-bold text-muted-foreground tracking-wider font-mono">
-                        GitHub repository URL
-                      </Label>
-                      <Input
-                        id="github-url"
-                        placeholder="https://github.com/username/repository"
-                        value={githubUrl}
-                        onChange={(e) => setGithubUrl(e.target.value)}
-                        className="text-xs bg-background border-border rounded-[4px] focus-visible:ring-accent font-mono h-9"
-                        disabled={isLoading}
-                      />
-                    </div>
-
-                    <div className="flex flex-wrap gap-2.5">
-                      <Button
-                        type="submit"
-                        className="bg-accent hover:bg-accent-hover text-background font-bold text-xs h-9 rounded-[4px] px-5 transition-colors border-none"
-                        disabled={isLoading}
-                      >
-                        Analyse Repository
-                      </Button>
-                      
-                      <input
-                        type="file"
-                        accept=".zip"
-                        ref={zipInputRef}
-                        onChange={handleFileChange}
-                        className="hidden"
-                        disabled={isLoading}
-                      />
-                      <Button
-                        type="button"
-                        variant="outline"
-                        onClick={handleZipClick}
-                        className="border border-border bg-transparent text-muted-foreground hover:border-accent hover:bg-secondary/20 hover:text-foreground text-xs h-9 rounded-[4px] px-5 transition-colors"
-                        disabled={isLoading}
-                      >
-                        Upload ZIP
-                      </Button>
-
-                      <input
-                        type="file"
-                        multiple
-                        ref={folderInputRef}
-                        onChange={handleFileChange}
-                        className="hidden"
-                        disabled={isLoading}
-                        {...({ webkitdirectory: "true", directory: "true" } as Record<string, string>)}
-                      />
-                      <Button
-                        type="button"
-                        variant="outline"
-                        onClick={handleFolderClick}
-                        className="border border-border bg-transparent text-muted-foreground hover:border-accent hover:bg-secondary/20 hover:text-foreground text-xs h-9 rounded-[4px] px-5 transition-colors"
-                        disabled={isLoading}
-                      >
-                        Select Directory
-                      </Button>
-                    </div>
-                  </form>
-
-                  <div className="text-xs text-muted-foreground border-t border-border pt-3 font-mono">
-                    JS/TS only · Evaluation build · Static Analysis
+                <form onSubmit={handleGithubAnalyze} className="space-y-3">
+                  <Label htmlFor="github-url" className="block text-ui font-semibold text-foreground">
+                    Repository URL
+                  </Label>
+                  <div className="flex flex-col sm:flex-row gap-3">
+                    <Input
+                      id="github-url"
+                      placeholder="https://github.com/expressjs/express"
+                      value={githubUrl}
+                      onChange={(e) => setGithubUrl(e.target.value)}
+                      className="flex-1 h-12 text-path font-mono bg-input border-border rounded-md focus-visible:ring-primary"
+                      disabled={isLoading}
+                    />
+                    <Button
+                      type="submit"
+                      className="h-12 px-6 text-ui font-semibold rounded-md bg-primary text-primary-foreground hover:bg-primary-glow border-none"
+                      disabled={isLoading}
+                    >
+                      Analyse repository
+                    </Button>
                   </div>
+                  <p className="text-meta text-muted-foreground">
+                    Only JavaScript and TypeScript repositories are supported. Up to 50 source
+                    files are indexed.
+                  </p>
+                </form>
+
+                <div className="flex items-center gap-4" aria-hidden="true">
+                  <span className="h-px flex-1 bg-border" />
+                  <span className="text-meta text-muted-foreground">or</span>
+                  <span className="h-px flex-1 bg-border" />
                 </div>
 
-                {/* Recent Repositories */}
+                <div className="flex flex-wrap items-center gap-3">
+                  <input
+                    type="file"
+                    accept=".zip"
+                    ref={zipInputRef}
+                    onChange={handleFileChange}
+                    className="hidden"
+                    disabled={isLoading}
+                  />
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={handleZipClick}
+                    className="h-11 px-5 text-ui rounded-md border-border bg-card text-foreground hover:border-primary/60 hover:bg-surface-raised"
+                    disabled={isLoading}
+                  >
+                    Upload a .zip
+                  </Button>
+
+                  <input
+                    type="file"
+                    multiple
+                    ref={folderInputRef}
+                    onChange={handleFileChange}
+                    className="hidden"
+                    disabled={isLoading}
+                    {...({ webkitdirectory: "true", directory: "true" } as Record<string, string>)}
+                  />
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={handleFolderClick}
+                    className="h-11 px-5 text-ui rounded-md border-border bg-card text-foreground hover:border-primary/60 hover:bg-surface-raised"
+                    disabled={isLoading}
+                  >
+                    Choose a folder
+                  </Button>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setGithubUrl(EXAMPLE_REPOSITORY);
+                      setMode(TAB_MODES.GITHUB);
+                      handleAnalyze(EXAMPLE_REPOSITORY, "", manualGithubToken || githubToken);
+                    }}
+                    className="text-ui text-primary underline underline-offset-2 hover:text-primary-glow disabled:opacity-50"
+                    disabled={isLoading}
+                  >
+                    Try an example: expressjs/express
+                  </button>
+                </div>
+
                 {recentRepos.length > 0 && (
-                  <div className="space-y-2 font-mono">
-                    <h3 className="text-xs font-bold text-muted-foreground border-b border-border pb-1">
-                      Recent Repositories
-                    </h3>
-                    <div className="border border-border rounded-[4px] divide-y divide-border overflow-hidden bg-card">
+                  <section className="space-y-3" aria-label="Recent repositories">
+                    <h2 className="text-section text-foreground">Recent repositories</h2>
+                    <ul className="rounded-md border border-border divide-y divide-border overflow-hidden bg-card">
                       {recentRepos.map((repo) => (
-                        <button
-                          // Keyed by URL, not index: addRecentRepo moves an existing entry
-                          // to the front, so an index key would reuse the wrong node.
-                          key={repo.url ?? repo.name}
-                          onClick={() => {
-                            if (repo.url) {
-                              setGithubUrl(repo.url);
-                              setMode(TAB_MODES.GITHUB);
-                              handleAnalyze(repo.url, "", manualGithubToken || githubToken);
-                            }
-                          }}
-                          className="w-full flex items-center justify-between p-3 hover:bg-secondary/20 transition-colors text-left text-xs font-mono"
-                        >
-                          <span className="truncate pr-4 text-foreground">{repo.name}</span>
-                          <span className="text-[9px] text-muted-foreground shrink-0">{repo.date}</span>
-                        </button>
+                        <li key={repo.url ?? repo.name}>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              if (repo.url) {
+                                setGithubUrl(repo.url);
+                                setMode(TAB_MODES.GITHUB);
+                                handleAnalyze(repo.url, "", manualGithubToken || githubToken);
+                              }
+                            }}
+                            className="w-full flex items-center justify-between gap-4 px-4 py-3 text-left hover:bg-surface-raised transition-colors"
+                          >
+                            <span className="min-w-0">
+                              <span className="block text-path font-mono text-foreground truncate">{repo.name}</span>
+                              <span className="block text-meta text-muted-foreground">
+                                {repo.indexed !== undefined && repo.total !== undefined
+                                  ? `${repo.indexed} of ${repo.total} files indexed · ${repo.date}`
+                                  : repo.date}
+                              </span>
+                            </span>
+                            <span className="text-ui text-primary shrink-0" aria-hidden="true">Open</span>
+                          </button>
+                        </li>
                       ))}
-                    </div>
-                  </div>
+                    </ul>
+                  </section>
                 )}
               </div>
             )
@@ -666,6 +691,8 @@ const Index = () => {
                          <WorkspaceSearchView
                            query={searchQuery}
                            results={searchResults}
+                           indexedFileCount={project.ingestion?.filesWithContent ?? project.files.length}
+                           totalFileCount={project.ingestion?.totalRepositoryFiles ?? project.files.length}
                            projectFiles={project.files}
                            onBackToOverview={() => setWorkspaceView('overview')}
                            onFileSelect={(path) => {

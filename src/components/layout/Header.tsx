@@ -1,47 +1,45 @@
-import { motion } from "framer-motion";
 import { Link, useLocation } from "react-router-dom";
+
+const NAV_ITEMS = [
+    { label: "Analyse", path: "/" },
+    { label: "Evaluation", path: "/evaluation" },
+];
 
 const Header = () => {
     const location = useLocation();
 
-    const navItems = [
-        { label: "Analyze", path: "/" },
-        { label: "Evaluation", path: "/evaluation" },
-    ];
-
     return (
-        <header className="sticky top-0 z-50 w-full border-b border-border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-            <div className="container mx-auto flex h-16 items-center justify-between px-4 md:h-20 md:px-8">
-                <motion.div
-                    className="flex items-center gap-3"
-                    initial={{ opacity: 0, x: -20 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    transition={{ duration: 0.5 }}
-                >
-                    <Link to="/" className="flex items-center space-x-2">
-                        <span className="text-sm font-bold font-mono">Repository Comprehension</span>
-                    </Link>
-                </motion.div>
- 
-                <nav className="flex items-center gap-2 md:gap-8 font-mono">
-                    <div className="flex items-center gap-6 mr-4">
-                        {navItems.map((item, idx) => (
-                            <motion.div
-                                key={item.path}
-                                initial={{ opacity: 0, y: -10 }}
-                                animate={{ opacity: 1, y: 0 }}
-                                transition={{ duration: 0.3, delay: idx * 0.05 }}
-                            >
-                                <Link
-                                    to={item.path}
-                                    className={`text-sm font-bold transition-colors hover:text-primary ${location.pathname === item.path ? "text-primary" : "text-muted-foreground"
+        <header className="sticky top-0 z-50 w-full border-b border-border bg-background">
+            <div className="container mx-auto flex h-16 items-center justify-between px-4 md:px-8">
+                <Link to="/" className="flex items-center gap-2.5">
+                    <span className="h-4 w-4 rounded-sm bg-primary" aria-hidden="true" />
+                    <span className="text-ui font-semibold text-foreground">Codemap</span>
+                </Link>
+
+                <nav aria-label="Main">
+                    <ul className="flex items-center gap-6">
+                        {NAV_ITEMS.map((item) => {
+                            const isCurrent = location.pathname === item.path;
+                            return (
+                                <li key={item.path}>
+                                    <Link
+                                        to={item.path}
+                                        // aria-current carries the state for assistive technology and the
+                                        // underline carries it visually: the design system forbids
+                                        // signalling an active state by colour alone.
+                                        aria-current={isCurrent ? "page" : undefined}
+                                        className={`text-ui transition-colors hover:text-foreground ${
+                                            isCurrent
+                                                ? "text-foreground font-semibold underline underline-offset-8 decoration-primary decoration-2"
+                                                : "text-muted-foreground"
                                         }`}
-                                >
-                                    {item.label}
-                                </Link>
-                            </motion.div>
-                        ))}
-                    </div>
+                                    >
+                                        {item.label}
+                                    </Link>
+                                </li>
+                            );
+                        })}
+                    </ul>
                 </nav>
             </div>
         </header>

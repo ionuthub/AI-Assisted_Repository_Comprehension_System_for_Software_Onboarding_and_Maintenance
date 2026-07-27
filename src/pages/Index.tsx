@@ -181,9 +181,12 @@ const Index = () => {
     setIsQaLoading(true);
     setQaAnswer("");
 
+    // Timed from before retrieval to after the last streamed token, so the recorded figure
+    // is the latency the participant experiences rather than time-to-first-byte.
+    const qaStart = performance.now();
+
     let systemContext = `You are a technical code tutor. Answer the user's question about the codebase. Refer to the provided source code context. Always cite files and explain reasoning. Avoid hallucinated claims.`;
-    
-    // RAG retrieval
+
     if (searchIndex) {
       const matches = searchRepository(questionText, searchIndex, project.files, 3);
       if (matches.length > 0) {
@@ -198,7 +201,6 @@ const Index = () => {
     }
 
     try {
-      const qaStart = performance.now();
       const response = await fetch('/api/explain-code', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -211,19 +213,23 @@ const Index = () => {
       });
 
       if (!response.ok) throw new Error('Streaming failed');
-      recordMetric('qa_response', performance.now() - qaStart, `question ${questionText.length} chars`);
 
       const reader = response.body?.getReader();
       const decoder = new TextDecoder();
-      if (!reader) return;
+      if (!reader) throw new Error('Response body was empty');
 
       let fullText = "";
       while (true) {
         const { done, value } = await reader.read();
         if (done) break;
-        fullText += decoder.decode(value);
+        // stream: true keeps a multi-byte character split across chunk boundaries intact;
+        // without it such characters decode to U+FFFD in the answer the participant reads.
+        fullText += decoder.decode(value, { stream: true });
         setQaAnswer(fullText);
       }
+      fullText += decoder.decode();
+      setQaAnswer(fullText);
+      recordMetric('qa_response', performance.now() - qaStart, `question ${questionText.length} chars`);
     } catch (error) {
       console.error("QA error:", error);
       setQaAnswer("I'm sorry, I encountered an error communicating with the AI service. Please verify server keys and try again.");
@@ -360,9 +366,11 @@ const Index = () => {
                       Recent Repositories
                     </h3>
                     <div className="border border-border rounded-[4px] divide-y divide-border overflow-hidden bg-card">
-                      {recentRepos.map((repo, idx) => (
+                      {recentRepos.map((repo) => (
                         <button
-                          key={idx}
+                          // Keyed by URL, not index: addRecentRepo moves an existing entry
+                          // to the front, so an index key would reuse the wrong node.
+                          key={repo.url ?? repo.name}
                           onClick={() => {
                             if (repo.url) {
                               setGithubUrl(repo.url);

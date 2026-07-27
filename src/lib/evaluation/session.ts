@@ -114,33 +114,45 @@ export function tasksFromGroundTruth(gt: GroundTruthFile): StudyTask[] {
     answer: "",
     confidence: 3,
     isCorrect: null,
-    errorDetected: t.seededInaccurate ? false : null,
+    // null means "not administered". Defaulting seeded tasks to false would export an
+    // unasked probe as a genuine failure to detect, biasing the over-trust measure —
+    // the probe UI is only shown in the tool condition.
+    errorDetected: null,
   }));
 }
 
+// Leading =, +, -, @, tab or CR make a spreadsheet treat a cell as a formula, so a
+// participant answer beginning with one would be displayed as #NAME? rather than the
+// text they gave. The apostrophe forces text; strip it when loading the data.
+const FORMULA_TRIGGER = /^[=+\-@\t\r]/;
+
 function csvEscape(v: unknown): string {
-  const s = String(v ?? "");
-  return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
+  let s = String(v ?? "");
+  if (FORMULA_TRIGGER.test(s)) s = `'${s}`;
+  return /[",\n\r]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
 }
 
+// Tidy format: one row per task, with the session-level scores repeated on each row.
+// The previous implementation appended a summary row that placed the TLX score in the
+// elapsedSeconds column and the SUS score in seededInaccurate, so any dataframe load
+// silently mixed a workload score into the task durations.
 export function sessionToCsv(s: StudySession): string {
+  const susTotal = susScore(s.sus);
+  const tlxTotal = tlxScore(s.tlx);
   const head = [
     "participantId", "condition", "conditionOrder", "repository", "taskId", "taskKind",
     "taskName", "seededInaccurate", "errorDetected", "elapsedSeconds", "answer",
-    "confidence", "isCorrect", "startTimeIso", "completionTimeIso",
+    "confidence", "isCorrect", "startTimeIso", "completionTimeIso", "susScore", "tlxScore",
   ].join(",");
   const rows = s.tasks.map((t) =>
     [
       s.participantId, s.condition, s.conditionOrder, s.repository, t.id, t.kind,
       t.name, t.seededInaccurate ?? false, t.errorDetected ?? "", t.elapsedSeconds,
       t.answer, t.confidence, t.isCorrect ?? "", t.startTimeIso ?? "", t.completionTimeIso ?? "",
+      susTotal, tlxTotal,
     ].map(csvEscape).join(",")
   );
-  const summary = [
-    "", "", "", "", "", "summary", "SUS", susScore(s.sus), "TLX", tlxScore(s.tlx),
-    "", "", "", "", "",
-  ].map(csvEscape).join(",");
-  return [head, ...rows, summary].join("\n");
+  return [head, ...rows].join("\n");
 }
 
 export function download(filename: string, content: string, mime: string): void {

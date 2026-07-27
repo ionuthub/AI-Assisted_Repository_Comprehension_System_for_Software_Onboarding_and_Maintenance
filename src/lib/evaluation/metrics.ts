@@ -11,7 +11,10 @@
  */
 
 export interface MetricEntry {
-  kind: "indexing" | "qa_response";
+  // "indexing" is the one-off build for a newly loaded repository; "reindex" is the
+  // incidental rebuild triggered by opening a file. Kept distinct so analysis grouping
+  // by kind does not average hundreds of reindexes into the cold-start figure.
+  kind: "indexing" | "reindex" | "qa_response";
   ms: number;
   detail: string; // e.g. file count for indexing, question length for QA
   at: string; // ISO timestamp

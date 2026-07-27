@@ -95,7 +95,19 @@ export default function EvaluationPage() {
 
   const completeTask = (id: number) => {
     setActiveTaskId(null);
-    setTasks((prev) => prev.map((t) => (t.id === id ? { ...t, status: "completed", completionTimeIso: new Date().toISOString() } : t)));
+    const completionTimeIso = new Date().toISOString();
+    setTasks((prev) =>
+      prev.map((t) => {
+        if (t.id !== id) return t;
+        // Derive the duration from the two timestamps rather than the interval tick count:
+        // browsers throttle timers in background tabs, which would under-report task time —
+        // the study's primary dependent variable — by an amount correlated with condition.
+        const elapsedSeconds = t.startTimeIso
+          ? Math.max(0, Math.round((Date.parse(completionTimeIso) - Date.parse(t.startTimeIso)) / 1000))
+          : t.elapsedSeconds;
+        return { ...t, status: "completed", completionTimeIso, elapsedSeconds };
+      })
+    );
   };
 
   const setTaskField = <K extends keyof StudyTask>(id: number, key: K, value: StudyTask[K]) =>

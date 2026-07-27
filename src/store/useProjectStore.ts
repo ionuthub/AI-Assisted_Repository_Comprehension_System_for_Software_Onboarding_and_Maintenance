@@ -97,7 +97,7 @@ export const useProjectStore = create<ProjectState>((set) => ({
 
         const t0 = performance.now();
         const newIndex = buildSearchIndex(updatedFiles);
-        recordMetric('indexing', performance.now() - t0, `${updatedFiles.length} files (reindex)`);
+        recordMetric('reindex', performance.now() - t0, `${updatedFiles.length} files`);
 
         return {
             staticAnalyses: updatedAnalyses,

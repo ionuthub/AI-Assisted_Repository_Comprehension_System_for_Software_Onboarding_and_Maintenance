@@ -30,15 +30,12 @@ const normalizeOrigin = (origin?: string): string | undefined => {
   }
 };
 
-// Trust this project's own Vercel deployments (production alias + preview URLs), which all
-// share the same subdomain prefix, so demos on preview deployments are not blocked.
-const isProjectVercelOrigin = (origin: string): boolean =>
-  /^https:\/\/repo-comprehension-system[a-z0-9-]*\.vercel\.app$/.test(origin);
-
-const isOriginAllowed = (normalizedOrigin?: string): boolean => {
-  if (!normalizedOrigin) return false;
-  return getAllowedOrigins().includes(normalizedOrigin) || isProjectVercelOrigin(normalizedOrigin);
-};
+// Membership of ALLOWED_ORIGINS is the only test. A prefix pattern over *.vercel.app was
+// tried and removed: any account can register a project whose subdomain shares the prefix,
+// which would have had the function reflect an attacker-controlled origin. Preview
+// deployments are supported by adding their URL to ALLOWED_ORIGINS for that environment.
+const isOriginAllowed = (normalizedOrigin?: string): boolean =>
+  Boolean(normalizedOrigin) && getAllowedOrigins().includes(normalizedOrigin as string);
 
 // Security headers
 const getSecurityHeaders = (origin?: string) => {
@@ -85,7 +82,10 @@ export default async function handler(req: Request): Promise<Response> {
     return new Response(JSON.stringify({ error: 'Method not allowed' }), { status: 405, headers: securityHeaders });
   }
 
-  if (origin && !isOriginAllowed(normalizeOrigin(origin))) {
+  // Browsers always send Origin on a POST, so a request without one is not from the
+  // application. Previously the check was skipped when the header was absent, which left
+  // the endpoint — and the API key it holds — reachable by any non-browser client.
+  if (!isOriginAllowed(normalizeOrigin(origin))) {
     return new Response(JSON.stringify({ error: 'Origin not allowed' }), { status: 403, headers: securityHeaders });
   }
 

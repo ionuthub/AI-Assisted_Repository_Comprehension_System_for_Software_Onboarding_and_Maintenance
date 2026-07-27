@@ -26,6 +26,8 @@ import WorkspaceQAView, { type RetrievedEvidence } from "@/components/WorkspaceQ
 import WorkspaceSearchView from "@/components/WorkspaceSearchView";
 import WorkspaceInsightsPanel from "@/components/WorkspaceInsightsPanel";
 import DependencyGraph from "@/components/DependencyGraph";
+import CoveragePanel from "@/components/CoveragePanel";
+import SuggestedQuestions from "@/components/SuggestedQuestions";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { TAB_MODES, RETRIEVAL } from "@/constants/appConstants";
 import { useProjectStore } from "@/store/useProjectStore";
@@ -69,6 +71,15 @@ const Index = () => {
   }, [project]);
 
   const [searchParams] = useSearchParams();
+
+  // Path -> why it was not indexed. Lets a path the model names be reported with the reason
+  // it is absent ("Over the 50-file limit") rather than a bare "not retrieved", which is the
+  // difference between a user being able to act on the gap and merely noticing it.
+  const excludedPathReasons = useMemo(() => {
+    const map: Record<string, string> = {};
+    for (const item of project?.ingestion?.excluded ?? []) map[item.path] = item.reason;
+    return map;
+  }, [project]);
 
   // Workspace dynamic view states
   const [workspaceView, setWorkspaceView] = useState<'overview' | 'code' | 'architecture' | 'search' | 'qa'>('overview');
@@ -171,13 +182,18 @@ const Index = () => {
     setSearchResults(results);
   };
 
-  // RAG Q&A submit handler
   const handleQASubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!qaVal.trim() || !project) return;
-
     const questionText = qaVal;
     setQaVal("");
+    await runQuestion(questionText);
+  };
+
+  // Retrieval and generation for one question. Separated from the form handler so the
+  // suggested questions on the overview run exactly the same path.
+  const runQuestion = async (questionText: string) => {
+    if (!questionText.trim() || !project) return;
+
     setWorkspaceView('qa');
     setQaQuestion(questionText);
     setIsQaLoading(true);
@@ -560,7 +576,7 @@ const Index = () => {
                   {workspaceView === 'overview' ? (
                     // Screen 2: Repository Overview - Full width, no sidebars, no clutter
                     <div className="flex-1 h-full overflow-y-auto bg-background/30 flex justify-center">
-                      <div className="max-w-5xl w-full p-6 animate-fade-in">
+                      <div className="max-w-5xl w-full p-6 animate-fade-in space-y-8">
                         {overview && (
                           <ProjectOverviewComponent
                             overview={overview}
@@ -570,6 +586,17 @@ const Index = () => {
                             }}
                           />
                         )}
+
+                        {project.ingestion && (
+                          <CoveragePanel
+                            indexedFiles={project.ingestion.filesWithContent}
+                            totalRepositoryFiles={project.ingestion.totalRepositoryFiles}
+                            excluded={project.ingestion.excluded}
+                            treeTruncated={project.ingestion.treeTruncatedByGitHub}
+                          />
+                        )}
+
+                        <SuggestedQuestions onAsk={runQuestion} />
                       </div>
                     </div>
                   ) : (
@@ -654,8 +681,9 @@ const Index = () => {
                            answer={qaAnswer}
                            isLoading={isQaLoading}
                            evidence={qaEvidence}
+                           excludedPaths={excludedPathReasons}
                            indexedFileCount={project.ingestion?.filesWithContent ?? project.files.length}
-                           totalFileCount={project.ingestion?.totalCandidateFiles ?? project.files.length}
+                           totalFileCount={project.ingestion?.totalRepositoryFiles ?? project.files.length}
                            onBackToOverview={() => setWorkspaceView('overview')}
                            onFileSelect={(path) => {
                              handleFileSelect(path, manualGithubToken || githubToken);

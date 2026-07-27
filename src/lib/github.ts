@@ -1,4 +1,4 @@
-import type { Project, ProjectFile, ProjectSummary } from "@/types/project";
+import type { Project, ProjectFile, ProjectSummary, ExcludedFile } from "@/types/project";
 
 const GITHUB_API = "https://api.github.com";
 
@@ -147,27 +147,47 @@ const validateFilePath = (path: string): boolean => {
   return true;
 };
 
-const isAnalysableFile = (item: GitHubTreeItem): boolean =>
-  item.type === "blob" &&
-  CODE_FILE_PATTERN.test(item.path) &&
-  validateFilePath(item.path) &&
-  (item.size ?? 0) <= MAX_FILE_SIZE;
+/**
+ * Classifies every blob in the tree into the set that is indexed and the set that is not,
+ * recording why each exclusion happened.
+ *
+ * The reasons are the ones the code actually applies — nothing is inferred or invented — so
+ * the coverage figures the interface shows, and any statement made about them in the study,
+ * are traceable to the filter that produced them.
+ */
+export const partitionTreeFiles = (items: GitHubTreeItem[]) => {
+  const blobs = items.filter((item) => item.type === "blob");
+  const analysable: GitHubTreeItem[] = [];
+  const excluded: ExcludedFile[] = [];
 
-/** How many files the repository offered before the MAX_FILES_TO_ANALYZE cap applies. */
-const countCandidateFiles = (items: GitHubTreeItem[]): number => items.filter(isAnalysableFile).length;
+  for (const item of blobs) {
+    if (!validateFilePath(item.path)) {
+      excluded.push({ path: item.path, reason: "Unsafe path" });
+    } else if (!CODE_FILE_PATTERN.test(item.path)) {
+      excluded.push({ path: item.path, reason: "Not a supported source file" });
+    } else if ((item.size ?? 0) > MAX_FILE_SIZE) {
+      excluded.push({ path: item.path, reason: `Larger than ${MAX_FILE_SIZE / (1024 * 1024)} MB` });
+    } else {
+      analysable.push(item);
+    }
+  }
 
-const buildProjectFiles = (items: GitHubTreeItem[]): ProjectFile[] => {
-  return items
-    .filter(isAnalysableFile)
-    .slice(0, MAX_FILES_TO_ANALYZE)
-    .map((item) => ({
-      path: item.path,
-      language: inferLanguageFromFilename(item.path),
-      rawUrl: null,
-      size: item.size ?? null,
-      content: null
-    }));
+  const included = analysable.slice(0, MAX_FILES_TO_ANALYZE);
+  for (const item of analysable.slice(MAX_FILES_TO_ANALYZE)) {
+    excluded.push({ path: item.path, reason: `Over the ${MAX_FILES_TO_ANALYZE}-file limit` });
+  }
+
+  return { included, excluded, totalCandidates: analysable.length };
 };
+
+const buildProjectFiles = (items: GitHubTreeItem[]): ProjectFile[] =>
+  items.map((item) => ({
+    path: item.path,
+    language: inferLanguageFromFilename(item.path),
+    rawUrl: null,
+    size: item.size ?? null,
+    content: null,
+  }));
 
 /**
  * Fetches file contents with bounded concurrency.
@@ -233,8 +253,8 @@ export const fetchRepositoryProject = async (
   const treePayload = await treeResponse.json();
   const tree = treePayload.tree as GitHubTreeItem[];
 
-  const candidates = countCandidateFiles(tree);
-  const selected = buildProjectFiles(tree);
+  const { included, excluded, totalCandidates } = partitionTreeFiles(tree);
+  const selected = buildProjectFiles(included);
   onProgress?.({ phase: "fetching", completed: 0, total: selected.length });
 
   const files = await hydrateFileContents(
@@ -248,14 +268,22 @@ export const fetchRepositoryProject = async (
 
   onProgress?.({ phase: "indexing", completed: files.length, total: files.length });
 
+  // A file selected for indexing whose content could not be fetched is excluded in
+  // practice, so it is recorded as such rather than counted as covered.
+  const unreadable = files
+    .filter((f) => !f.content)
+    .map((f) => ({ path: f.path, reason: "Could not be read" }));
+
   return {
     summary: buildProjectSummary(repoData),
     files,
     ingestion: {
-      totalCandidateFiles: candidates,
+      totalCandidateFiles: totalCandidates,
+      totalRepositoryFiles: tree.filter((i) => i.type === "blob").length,
       includedFiles: files.length,
       filesWithContent: files.filter((f) => Boolean(f.content)).length,
       treeTruncatedByGitHub: Boolean(treePayload.truncated),
+      excluded: [...excluded, ...unreadable],
     },
   };
 };

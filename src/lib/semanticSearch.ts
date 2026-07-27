@@ -8,7 +8,11 @@ const STOPWORDS = new Set([
   "while", "do", "switch", "case", "break", "continue", "null", "undefined",
   "true", "false", "this", "super", "new", "throw", "typeof", "instanceof",
   "extends", "implements", "interface", "package", "private", "protected",
-  "public", "static", "yield", "from", "as", "api", "router", "route",
+  "public", "static", "yield", "from", "as",
+  // "api", "router" and "route" were previously listed here. They are domain terms, not
+  // language keywords: the query "api router" tokenised to nothing, retrieval returned no
+  // matches, and the question was then sent to the model with no repository context.
+  // Their discriminative power is already handled by IDF.
   // Common English words
   "the", "is", "at", "which", "on", "in", "to", "for", "with", "a", "an", "and",
   "or", "not", "that", "this", "these", "those", "it", "its", "of", "by", "from"
@@ -90,10 +94,15 @@ export const buildSearchIndex = (files: ProjectFile[]): SearchIndex => {
   });
 
   // 2. Compute Inverse Document Frequencies (IDF)
+  //
+  // Smoothed IDF: log((N + 1) / (df + 1)) + 1. The unsmoothed log(N / df) it replaces
+  // assigned zero weight to any term present in every document, and produced an entirely
+  // zero index for a single-document corpus — every query then returned no results with
+  // no error. The trailing +1 keeps weights strictly positive so a term common to all
+  // documents still contributes to ranking rather than being discarded.
   const idf: Record<string, number> = {};
   Object.entries(df).forEach(([token, count]) => {
-    // Standard IDF formula with smoothing to avoid division by zero
-    idf[token] = Math.log(totalDocs / count);
+    idf[token] = Math.log((totalDocs + 1) / (count + 1)) + 1;
   });
 
   // 3. Compute TF-IDF vectors for documents

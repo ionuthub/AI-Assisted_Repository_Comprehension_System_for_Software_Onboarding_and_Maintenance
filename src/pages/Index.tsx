@@ -27,7 +27,7 @@ import WorkspaceSearchView from "@/components/WorkspaceSearchView";
 import WorkspaceInsightsPanel from "@/components/WorkspaceInsightsPanel";
 import DependencyGraph from "@/components/DependencyGraph";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
-import { TAB_MODES } from "@/constants/appConstants";
+import { TAB_MODES, RETRIEVAL } from "@/constants/appConstants";
 import { useProjectStore } from "@/store/useProjectStore";
 import SEO from "@/components/SEO";
 import { recordMetric } from "@/lib/evaluation/metrics";
@@ -165,7 +165,7 @@ const Index = () => {
     if (!searchVal.trim() || !searchIndex || !project) return;
     setWorkspaceView('search');
     setSearchQuery(searchVal);
-    const results = searchRepository(searchVal, searchIndex, project.files, 10);
+    const results = searchRepository(searchVal, searchIndex, project.files, RETRIEVAL.SEARCH_RESULT_LIMIT);
     setSearchResults(results);
   };
 
@@ -187,17 +187,27 @@ const Index = () => {
 
     let systemContext = `You are a technical code tutor. Answer the user's question about the codebase. Refer to the provided source code context. Always cite files and explain reasoning. Avoid hallucinated claims.`;
 
+    let evidenceFileCount = 0;
     if (searchIndex) {
-      const matches = searchRepository(questionText, searchIndex, project.files, 3);
-      if (matches.length > 0) {
-        systemContext += "\n\n[Grounded Repository Context for RAG - Answer using this evidence and cite file paths]";
-        matches.forEach(res => {
-          const fileObj = project.files.find(f => f.path === res.path);
-          if (fileObj && fileObj.content) {
-            systemContext += `\n\n--- File: ${res.path} ---\n${fileObj.content.slice(0, 2500)}`;
+      const matches = searchRepository(questionText, searchIndex, project.files, RETRIEVAL.RAG_TOP_K);
+      matches.forEach(res => {
+        const fileObj = project.files.find(f => f.path === res.path);
+        if (fileObj && fileObj.content) {
+          if (evidenceFileCount === 0) {
+            systemContext += "\n\n[Grounded Repository Context for RAG - Answer using this evidence and cite file paths]";
           }
-        });
-      }
+          systemContext += `\n\n--- File: ${res.path} ---\n${fileObj.content.slice(0, RETRIEVAL.RAG_CONTEXT_CHARS)}`;
+          evidenceFileCount += 1;
+        }
+      });
+    }
+
+    // Retrieval can return nothing, or return files whose content was never loaded. The
+    // prompt was previously sent unchanged in that case, so an ungrounded answer was
+    // presented in a UI that implies grounding — the exact condition the study's
+    // over-trust probes are meant to measure deliberately, not to produce by accident.
+    if (evidenceFileCount === 0) {
+      systemContext += "\n\n[No repository context could be retrieved for this question. Say so explicitly in the first sentence of your answer, and do not describe specific files, functions or behaviour in this repository.]";
     }
 
     try {
@@ -229,7 +239,10 @@ const Index = () => {
       }
       fullText += decoder.decode();
       setQaAnswer(fullText);
-      recordMetric('qa_response', performance.now() - qaStart, `question ${questionText.length} chars`);
+      // The evidence count is recorded with the timing so an ungrounded answer is
+      // identifiable in the exported metrics rather than indistinguishable from a
+      // grounded one.
+      recordMetric('qa_response', performance.now() - qaStart, `question ${questionText.length} chars, ${evidenceFileCount} evidence files`);
     } catch (error) {
       console.error("QA error:", error);
       setQaAnswer("I'm sorry, I encountered an error communicating with the AI service. Please verify server keys and try again.");

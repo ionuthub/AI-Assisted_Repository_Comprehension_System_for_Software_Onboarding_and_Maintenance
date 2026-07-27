@@ -22,4 +22,15 @@ export interface Project {
   id?: string;
   summary: ProjectSummary;
   files: ProjectFile[];
+  /**
+   * Ingestion coverage. `files` is capped, so these record how much of the repository
+   * the analysis actually saw. Retrieval quality is bounded by this, and any result
+   * reported from a session should state it rather than imply whole-repository coverage.
+   */
+  ingestion?: {
+    totalCandidateFiles: number;
+    includedFiles: number;
+    filesWithContent: number;
+    treeTruncatedByGitHub: boolean;
+  };
 }

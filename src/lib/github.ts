@@ -18,6 +18,7 @@ const getGitHubHeaders = (token?: string | null): HeadersInit => {
 // Security limits
 const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
 const MAX_FILES_TO_ANALYZE = 50;
+const CONTENT_FETCH_CONCURRENCY = 6;
 const MAX_REPO_NAME_LENGTH = 255;
 const MAX_OWNER_NAME_LENGTH = 39;
 const REQUEST_TIMEOUT = 10000; // 10 seconds
@@ -132,14 +133,18 @@ const validateFilePath = (path: string): boolean => {
   return true;
 };
 
+const isAnalysableFile = (item: GitHubTreeItem): boolean =>
+  item.type === "blob" &&
+  CODE_FILE_PATTERN.test(item.path) &&
+  validateFilePath(item.path) &&
+  (item.size ?? 0) <= MAX_FILE_SIZE;
+
+/** How many files the repository offered before the MAX_FILES_TO_ANALYZE cap applies. */
+const countCandidateFiles = (items: GitHubTreeItem[]): number => items.filter(isAnalysableFile).length;
+
 const buildProjectFiles = (items: GitHubTreeItem[]): ProjectFile[] => {
   return items
-    .filter((item) =>
-      item.type === "blob" &&
-      CODE_FILE_PATTERN.test(item.path) &&
-      validateFilePath(item.path) &&
-      (item.size ?? 0) <= MAX_FILE_SIZE
-    )
+    .filter(isAnalysableFile)
     .slice(0, MAX_FILES_TO_ANALYZE)
     .map((item) => ({
       path: item.path,
@@ -148,6 +153,47 @@ const buildProjectFiles = (items: GitHubTreeItem[]): ProjectFile[] => {
       size: item.size ?? null,
       content: null
     }));
+};
+
+/**
+ * Fetches file contents with bounded concurrency.
+ *
+ * The search index is built from `file.content`, so a project whose files all carry
+ * `content: null` produces an index over path tokens alone — retrieval then degrades to
+ * filename matching and the RAG prompt is assembled with no evidence. Contents are
+ * therefore hydrated during ingestion rather than lazily as the user opens files.
+ *
+ * A file that fails to load is left with `content: null` rather than failing the whole
+ * analysis: a partially indexed repository is more useful than none, and the count of
+ * files actually carrying content is reported on the project.
+ */
+const hydrateFileContents = async (
+  owner: string,
+  repo: string,
+  branch: string,
+  files: ProjectFile[],
+  token?: string | null
+): Promise<ProjectFile[]> => {
+  const hydrated: ProjectFile[] = new Array(files.length);
+  let cursor = 0;
+
+  const worker = async (): Promise<void> => {
+    while (cursor < files.length) {
+      const index = cursor++;
+      const file = files[index];
+      try {
+        const fetched = await fetchFileContent(owner, repo, branch, file.path, token);
+        hydrated[index] = { ...file, content: fetched.content ?? null, size: fetched.size ?? file.size };
+      } catch {
+        hydrated[index] = file;
+      }
+    }
+  };
+
+  // Concurrency is capped to stay well inside GitHub's rate limits and to avoid opening
+  // fifty simultaneous connections from the browser.
+  await Promise.all(Array.from({ length: Math.min(CONTENT_FETCH_CONCURRENCY, files.length) }, worker));
+  return hydrated;
 };
 
 export const fetchRepositoryProject = async (repoUrl: string, token?: string | null): Promise<Project> => {
@@ -161,11 +207,26 @@ export const fetchRepositoryProject = async (repoUrl: string, token?: string | n
   const treeResponse = await fetch(`${GITHUB_API}/repos/${owner}/${repo}/git/trees/${repoData.default_branch}?recursive=1`, { headers });
   await handleGitHubError(treeResponse);
   const treePayload = await treeResponse.json();
-  const files = buildProjectFiles(treePayload.tree as GitHubTreeItem[]);
+  const tree = treePayload.tree as GitHubTreeItem[];
+
+  const candidates = countCandidateFiles(tree);
+  const files = await hydrateFileContents(
+    owner,
+    repo,
+    repoData.default_branch,
+    buildProjectFiles(tree),
+    token
+  );
 
   return {
     summary: buildProjectSummary(repoData),
-    files
+    files,
+    ingestion: {
+      totalCandidateFiles: candidates,
+      includedFiles: files.length,
+      filesWithContent: files.filter((f) => Boolean(f.content)).length,
+      treeTruncatedByGitHub: Boolean(treePayload.truncated),
+    },
   };
 };
 

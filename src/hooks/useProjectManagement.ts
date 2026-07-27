@@ -261,6 +261,25 @@ export const useProjectManagement = () => {
             const next = await fetchRepositoryProject(repoUrl.trim(), token);
             setProject(next);
             if (next.files.length > 0) setSelectedFile(next.files[0].path);
+
+            // Coverage is stated explicitly: the file list is capped, so a participant
+            // (and the observer recording the session) should be able to see that the
+            // answers are grounded in part of the repository rather than all of it.
+            const ingestion = next.ingestion;
+            if (ingestion) {
+                const omitted = ingestion.totalCandidateFiles - ingestion.includedFiles;
+                const failed = ingestion.includedFiles - ingestion.filesWithContent;
+                const notes = [
+                    omitted > 0 ? `${omitted} file${omitted === 1 ? "" : "s"} beyond the analysis cap were not included` : null,
+                    failed > 0 ? `${failed} could not be read` : null,
+                    ingestion.treeTruncatedByGitHub ? "GitHub truncated the file tree for this repository" : null,
+                ].filter(Boolean);
+                toast({
+                    title: `Indexed ${ingestion.filesWithContent} of ${ingestion.totalCandidateFiles} files`,
+                    description: notes.length > 0 ? notes.join(". ") + "." : undefined,
+                    variant: notes.length > 0 ? "default" : undefined,
+                });
+            }
         } catch (e) {
             // github.ts distinguishes not-found, rate-limited, forbidden and validation
             // failures; surfacing the message keeps that distinction visible to the user

@@ -3,12 +3,19 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Sparkles, FileCode2, HelpCircle, AlertTriangle } from "lucide-react";
 
-/** A file that was retrieved and supplied to the model as evidence for the answer. */
+/**
+ * A file that was retrieved and supplied to the model as evidence for the answer.
+ * Line numbers describe the region actually sent, so a citation can be checked against the
+ * file directly rather than being taken on trust.
+ */
 export interface RetrievedEvidence {
   path: string;
   score: number;
   excerpt: string;
-  truncated: boolean;
+  startLine: number;
+  endLine: number;
+  totalLines: number;
+  omittedLines: number;
 }
 
 interface WorkspaceQAViewProps {
@@ -78,7 +85,7 @@ export default function WorkspaceQAView({
       {/* VS Code style editor tab */}
       <div className="bg-secondary/40 border-b border-border/80 h-9 flex items-center justify-between shrink-0 select-none px-1">
         <div className="flex h-full items-center">
-          <div className="bg-code-bg text-foreground border-r border-border/80 h-full px-3.5 flex items-center gap-2 text-[11px] border-t-2 border-t-primary font-mono font-semibold">
+          <div className="bg-code-bg text-foreground border-r border-border/80 h-full px-3.5 flex items-center gap-2 text-sm border-t-2 border-t-primary font-mono font-semibold">
             <Sparkles className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
             <span>ai-explanation.md</span>
           </div>
@@ -95,7 +102,7 @@ export default function WorkspaceQAView({
 
       <div className="flex-1 overflow-y-auto p-6 space-y-6">
         <div className="bg-secondary/15 p-4 rounded-[4px] border border-border">
-          <span className="text-[10px] uppercase font-bold tracking-wider font-mono text-muted-foreground block mb-1">Question</span>
+          <span className="text-xs font-bold tracking-wider font-mono text-muted-foreground block mb-1">Question</span>
           <p className="text-xs font-mono font-semibold text-foreground leading-snug">"{question}"</p>
         </div>
 
@@ -114,7 +121,7 @@ export default function WorkspaceQAView({
         )}
 
         <div className="space-y-4">
-          <div className="flex items-center gap-1.5 text-[10px] font-bold text-muted-foreground uppercase tracking-wider font-mono">
+          <div className="flex items-center gap-1.5 text-xs font-bold text-muted-foreground font-mono">
             <Sparkles className="w-3.5 h-3.5 text-primary" />
             {isGrounded ? `Grounded AI Analysis — ${evidence.length} source file${evidence.length === 1 ? "" : "s"}` : "AI Analysis (ungrounded)"}
           </div>
@@ -134,7 +141,7 @@ export default function WorkspaceQAView({
 
         {evidence.length > 0 && (
           <div className="space-y-3">
-            <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider block font-mono">
+            <span className="text-xs font-bold text-muted-foreground block font-mono">
               Evidence used ({evidence.length}) — expand to see exactly what the model was given
             </span>
             <div className="grid gap-2">
@@ -147,15 +154,15 @@ export default function WorkspaceQAView({
                     <div className="flex items-center gap-2 min-w-0">
                       <FileCode2 className="w-3.5 h-3.5 text-muted-foreground shrink-0" aria-hidden="true" />
                       <span className="text-xs font-mono font-bold text-foreground truncate">{item.path}</span>
-                      <span className="text-[10px] font-mono text-muted-foreground shrink-0">
-                        #{rank + 1} · score {item.score.toFixed(3)}
+                      <span className="text-xs font-mono text-muted-foreground shrink-0">
+                        #{rank + 1} · {item.score.toFixed(2)} · lines {item.startLine}–{item.endLine} of {item.totalLines}
                       </span>
                     </div>
                     {onFileSelect && (
                       <Button
                         size="sm"
                         variant="outline"
-                        className="h-7 text-[10px] font-mono px-3 shrink-0 rounded-[4px] border-border hover:border-accent hover:bg-secondary/20 hover:text-foreground bg-background"
+                        className="h-7 text-xs font-mono px-3 shrink-0 rounded-[4px] border-border hover:border-accent hover:bg-secondary/20 hover:text-foreground bg-background"
                         onClick={(e) => { e.preventDefault(); onFileSelect(item.path); }}
                       >
                         Open file
@@ -163,12 +170,12 @@ export default function WorkspaceQAView({
                     )}
                   </summary>
                   <div className="border-t border-border bg-code-bg">
-                    <pre className="text-[10px] font-mono text-foreground/80 p-3 overflow-x-auto max-h-64 whitespace-pre-wrap">
+                    <pre className="text-xs font-mono text-foreground/80 p-3 overflow-x-auto max-h-64 whitespace-pre-wrap">
                       {item.excerpt}
                     </pre>
-                    {item.truncated && (
-                      <p className="text-[10px] font-mono text-muted-foreground px-3 pb-3">
-                        Truncated — only this excerpt was sent to the model, not the whole file.
+                    {item.omittedLines > 0 && (
+                      <p className="text-xs font-mono text-muted-foreground px-3 pb-3">
+                        Truncated — {item.omittedLines} of {item.totalLines} lines were not sent.
                       </p>
                     )}
                   </div>
@@ -180,10 +187,10 @@ export default function WorkspaceQAView({
 
         {!isLoading && unverifiedMentions.length > 0 && (
           <div className="space-y-2">
-            <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider block font-mono">
+            <span className="text-xs font-bold text-muted-foreground block font-mono">
               Mentioned but not retrieved
             </span>
-            <p className="text-[10px] font-mono text-muted-foreground leading-relaxed">
+            <p className="text-xs font-mono text-muted-foreground leading-relaxed">
               The answer refers to these paths, but they were not part of the evidence supplied to
               the model. Treat any claim about them as unverified.
             </p>
@@ -191,7 +198,7 @@ export default function WorkspaceQAView({
               {unverifiedMentions.map((path) => (
                 <span
                   key={path}
-                  className="text-[10px] font-mono px-2 py-1 rounded-[3px] border border-dashed border-muted-foreground/50 text-muted-foreground"
+                  className="text-xs font-mono px-2 py-1 rounded-[3px] border border-dashed border-muted-foreground/50 text-muted-foreground"
                 >
                   {path}
                 </span>

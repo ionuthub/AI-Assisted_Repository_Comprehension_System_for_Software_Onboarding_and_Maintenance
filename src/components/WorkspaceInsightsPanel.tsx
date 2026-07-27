@@ -66,7 +66,7 @@ export default function WorkspaceInsightsPanel({
           <HelpCircle className="w-5 h-5 text-muted-foreground" />
         </div>
         <h5 className="font-bold text-xs mb-1 text-foreground">No File Selected</h5>
-        <p className="text-[10px] text-muted-foreground max-w-[200px] leading-relaxed">
+        <p className="text-xs text-muted-foreground max-w-[200px] leading-relaxed">
           Select a file in the repository explorer tree to display contextual insights here.
         </p>
       </div>
@@ -77,10 +77,10 @@ export default function WorkspaceInsightsPanel({
     <div className="h-full flex flex-col bg-card border-l border-border/80 overflow-hidden text-xs">
       {/* Panel Header */}
       <div className="bg-secondary/20 border-b border-border px-4 py-3 shrink-0">
-        <h3 className="font-bold text-foreground flex items-center gap-1.5 uppercase tracking-wider text-[10px] text-muted-foreground">
+        <h3 className="font-bold text-foreground flex items-center gap-1.5 text-xs text-muted-foreground">
           <FileCode className="w-3.5 h-3.5 text-primary" /> Contextual Insights
         </h3>
-        <p className="text-[10px] text-muted-foreground mt-0.5 truncate" title={selectedFile}>
+        <p className="text-xs text-muted-foreground mt-0.5 truncate" title={selectedFile}>
           {selectedFile.split("/").pop()}
         </p>
       </div>
@@ -90,7 +90,7 @@ export default function WorkspaceInsightsPanel({
         {/* Purpose */}
         <div className="space-y-2">
           <h4 className="font-bold text-foreground text-xs">Purpose</h4>
-          <p className="text-[11px] text-foreground/80 leading-relaxed bg-secondary/10 p-3 rounded-[4px] border border-border/40 font-normal">
+          <p className="text-sm text-foreground/80 leading-relaxed bg-secondary/10 p-3 rounded-[4px] border border-border/40 font-normal">
             {filePurpose}
           </p>
         </div>
@@ -106,7 +106,7 @@ export default function WorkspaceInsightsPanel({
               {analysis.imports.map((imp, idx) => (
                 <div
                   key={idx}
-                  className="flex flex-col p-2 bg-secondary/10 rounded-[2px] border border-border/30 text-[10px] gap-1"
+                  className="flex flex-col p-2 bg-secondary/10 rounded-[2px] border border-border/30 text-xs gap-1"
                 >
                   <div className="flex items-center gap-1 truncate font-mono text-muted-foreground">
                     <span className="text-foreground font-semibold">{imp.name}</span>
@@ -128,7 +128,7 @@ export default function WorkspaceInsightsPanel({
               ))}
             </div>
           ) : (
-            <p className="text-[10px] text-muted-foreground italic pl-1">No outgoing imports.</p>
+            <p className="text-xs text-muted-foreground italic pl-1">No outgoing imports.</p>
           )}
         </div>
 
@@ -142,7 +142,7 @@ export default function WorkspaceInsightsPanel({
               {analysis.usedBy.map((filePath) => (
                 <div
                   key={filePath}
-                  className="flex items-center justify-between p-2 bg-secondary/10 rounded-[2px] border border-border/30 text-[10px] gap-2"
+                  className="flex items-center justify-between p-2 bg-secondary/10 rounded-[2px] border border-border/30 text-xs gap-2"
                 >
                   <span className="font-mono text-muted-foreground truncate" title={filePath}>
                     {filePath.split("/").pop()}
@@ -151,7 +151,7 @@ export default function WorkspaceInsightsPanel({
                     <Button
                       size="sm"
                       variant="link"
-                      className="h-auto p-0 text-[10px] text-primary font-semibold font-mono"
+                      className="h-auto p-0 text-xs text-primary font-semibold font-mono"
                       onClick={() => onFileSelect(filePath)}
                     >
                       Open
@@ -161,7 +161,7 @@ export default function WorkspaceInsightsPanel({
               ))}
             </div>
           ) : (
-            <p className="text-[10px] text-muted-foreground italic pl-1">Not referenced by other files.</p>
+            <p className="text-xs text-muted-foreground italic pl-1">Not referenced by other files.</p>
           )}
         </div>
 
@@ -173,7 +173,7 @@ export default function WorkspaceInsightsPanel({
               {relatedFiles.map((rf) => (
                 <div
                   key={rf.path}
-                  className="flex items-center justify-between p-2 bg-secondary/10 rounded-[2px] border border-border/30 text-[10px] gap-2"
+                  className="flex items-center justify-between p-2 bg-secondary/10 rounded-[2px] border border-border/30 text-xs gap-2"
                 >
                   <span className="font-mono text-muted-foreground truncate" title={rf.path}>
                     {rf.path.split("/").pop()}
@@ -182,7 +182,7 @@ export default function WorkspaceInsightsPanel({
                     <Button
                       size="sm"
                       variant="link"
-                      className="h-auto p-0 text-[10px] text-primary font-semibold font-mono"
+                      className="h-auto p-0 text-xs text-primary font-semibold font-mono"
                       onClick={() => onFileSelect(rf.path)}
                     >
                       Open
@@ -192,7 +192,7 @@ export default function WorkspaceInsightsPanel({
               ))}
             </div>
           ) : (
-            <p className="text-[10px] text-muted-foreground italic pl-1">No other files in this directory.</p>
+            <p className="text-xs text-muted-foreground italic pl-1">No other files in this directory.</p>
           )}
         </div>
       </div>

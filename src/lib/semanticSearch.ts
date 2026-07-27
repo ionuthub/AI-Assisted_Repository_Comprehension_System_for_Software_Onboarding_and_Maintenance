@@ -206,3 +206,118 @@ export const searchRepository = (
     .sort((a, b) => b.score - a.score)
     .slice(0, limit);
 };
+
+/**
+ * A contiguous region of a file selected as evidence for a question.
+ *
+ * Line numbers are 1-based and inclusive, matching what an editor shows, so a citation can
+ * be checked against the file directly.
+ */
+export interface ExcerptRegion {
+  text: string;
+  startLine: number;
+  endLine: number;
+  totalLines: number;
+  /** Lines of the file not included in this excerpt, and therefore never seen by the model. */
+  omittedLines: number;
+}
+
+/**
+ * Selects the region of a file most relevant to a query.
+ *
+ * Retrieval ranks whole files, but only a bounded excerpt is sent to the model. Taking the
+ * head of the file is cheap and was what this previously did, but for any file longer than
+ * the budget it usually sends imports and licence headers rather than the code the question
+ * is about — and the interface would then cite lines the model never saw.
+ *
+ * A fixed-size window is slid over the file and scored by how many distinct query terms it
+ * contains, with total occurrences breaking ties. Distinct-term coverage is preferred over
+ * raw frequency so a region mentioning several query terms once beats one repeating a
+ * single common term. Ties resolve to the earliest region, which keeps output stable for a
+ * given file and query — a requirement for reproducing a study run.
+ */
+export function selectExcerptRegion(
+  content: string,
+  query: string,
+  maxChars: number
+): ExcerptRegion {
+  const lines = content.split("\n");
+  const totalLines = lines.length;
+
+  const head = (): ExcerptRegion => {
+    let used = 0;
+    let endLine = 0;
+    for (let i = 0; i < lines.length; i++) {
+      const next = used + lines[i].length + 1;
+      if (next > maxChars && endLine > 0) break;
+      used = next;
+      endLine = i + 1;
+    }
+    return {
+      text: lines.slice(0, endLine).join("\n"),
+      startLine: 1,
+      endLine: Math.max(endLine, 1),
+      totalLines,
+      omittedLines: Math.max(totalLines - Math.max(endLine, 1), 0),
+    };
+  };
+
+  if (content.length <= maxChars) {
+    return { text: content, startLine: 1, endLine: totalLines, totalLines, omittedLines: 0 };
+  }
+
+  const queryTerms = new Set(tokenize(query));
+  if (queryTerms.size === 0) return head();
+
+  const lineTokens = lines.map((line) => tokenize(line));
+
+  let bestStart = 0;
+  let bestEnd = 0; // exclusive
+  let bestDistinct = -1;
+  let bestOccurrences = -1;
+
+  // Each candidate window is grown to the character budget and scored exactly as it will be
+  // emitted, so the region that wins is the region that is sent and cited. Scoring a larger
+  // window and trimming it afterwards can discard the match that selected it.
+  for (let start = 0; start < totalLines; start++) {
+    const distinct = new Set<string>();
+    let occurrences = 0;
+    let used = 0;
+    let end = start;
+
+    while (end < totalLines) {
+      const next = used + lines[end].length + (end > start ? 1 : 0);
+      if (next > maxChars && end > start) break;
+      used = next;
+      for (const token of lineTokens[end]) {
+        if (queryTerms.has(token)) {
+          distinct.add(token);
+          occurrences += 1;
+        }
+      }
+      end += 1;
+    }
+
+    if (distinct.size > bestDistinct || (distinct.size === bestDistinct && occurrences > bestOccurrences)) {
+      bestDistinct = distinct.size;
+      bestOccurrences = occurrences;
+      bestStart = start;
+      bestEnd = end;
+    }
+
+    if (end >= totalLines) break;
+  }
+
+  // No query term occurs anywhere in the file: the head is as defensible as any other region.
+  if (bestDistinct <= 0) return head();
+
+  const text = lines.slice(bestStart, bestEnd).join("\n");
+
+  return {
+    text: text.length > maxChars ? text.slice(0, maxChars) : text,
+    startLine: bestStart + 1,
+    endLine: bestEnd,
+    totalLines,
+    omittedLines: Math.max(totalLines - (bestEnd - bestStart), 0),
+  };
+}

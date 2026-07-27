@@ -19,7 +19,7 @@ const Header = () => {
                     transition={{ duration: 0.5 }}
                 >
                     <Link to="/" className="flex items-center space-x-2">
-                        <span className="text-sm font-bold font-mono tracking-wider uppercase">Repository Comprehension</span>
+                        <span className="text-sm font-bold font-mono">Repository Comprehension</span>
                     </Link>
                 </motion.div>
  
@@ -34,7 +34,7 @@ const Header = () => {
                             >
                                 <Link
                                     to={item.path}
-                                    className={`text-[11px] font-bold tracking-wider uppercase transition-colors hover:text-primary ${location.pathname === item.path ? "text-primary" : "text-muted-foreground"
+                                    className={`text-sm font-bold transition-colors hover:text-primary ${location.pathname === item.path ? "text-primary" : "text-muted-foreground"
                                         }`}
                                 >
                                     {item.label}

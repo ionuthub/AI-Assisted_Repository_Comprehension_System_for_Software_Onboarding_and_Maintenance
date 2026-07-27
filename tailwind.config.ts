@@ -14,8 +14,22 @@ export default {
       },
     },
     extend: {
+      fontFamily: {
+        // Inter for interface text and prose; JetBrains Mono reserved for code, file paths
+        // and identifiers. Both are open-licensed and drawn for screen reading at small sizes.
+        sans: ['Inter', 'ui-sans-serif', 'system-ui', 'sans-serif'],
+        mono: ['"JetBrains Mono"', 'ui-monospace', 'SFMono-Regular', 'monospace'],
+      },
       colors: {
         border: "hsl(var(--border))",
+        "border-strong": "hsl(var(--border-strong))",
+        "surface-raised": "hsl(var(--surface-raised))",
+        "foreground-secondary": "hsl(var(--foreground-secondary))",
+        "foreground-dim": "hsl(var(--foreground-dim))",
+        warning: {
+          DEFAULT: "hsl(var(--warning))",
+          foreground: "hsl(var(--warning-foreground))",
+        },
         input: "hsl(var(--input))",
         ring: "hsl(var(--ring))",
         background: "hsl(var(--background))",

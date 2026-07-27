@@ -8,51 +8,57 @@ All colors MUST be HSL.
 
 @layer base {
   :root {
-    --background: 165 15% 5%;
-    --foreground: 105 12% 95%;
+    /* Palette from the Codemap design (Claude Design). Hex source noted per token so the
+       values can be traced back to the design file. */
+    --background: 160 18% 3%;               /* #070a09 */
+    --foreground: 200 16% 93%;              /* #e9edef */
+    --foreground-secondary: 200 12% 81%;    /* #c8d0d4 */
+    --foreground-dim: 201 6% 57%;           /* #8a9398 */
 
-    --card: 160 15% 8%;
-    --card-foreground: 105 12% 95%;
+    --card: 160 19% 6%;                     /* #0d1311 */
+    --card-foreground: 200 16% 93%;
 
-    --popover: 160 15% 8%;
-    --popover-foreground: 105 12% 95%;
+    --popover: 158 18% 9%;                  /* #121a17 */
+    --popover-foreground: 200 16% 93%;
 
-    --primary: 86 100% 68%;
-    --primary-foreground: 165 15% 5%;
-    --primary-glow: 83 100% 76%;
+    --primary: 145 72% 67%;                 /* #6ee7a0 */
+    --primary-foreground: 160 18% 3%;
+    --primary-glow: 146 77% 78%;            /* #9df2c2 */
 
-    --secondary: 160 14% 10%;
-    --secondary-foreground: 105 12% 95%;
+    --secondary: 156 17% 12%;               /* #19231f */
+    --secondary-foreground: 200 16% 93%;
 
-    --muted: 160 14% 10%;
-    --muted-foreground: 145 6% 58%;
+    --muted: 156 17% 12%;
+    --muted-foreground: 200 9% 66%;         /* #a2acb1 */
 
-    --accent: 86 100% 68%;
-    --accent-foreground: 165 15% 5%;
-    --accent-glow: 83 100% 76%;
+    --accent: 145 72% 67%;
+    --accent-foreground: 160 18% 3%;
+    --accent-glow: 146 77% 78%;
 
-    --destructive: 0 100% 71%;
-    --destructive-foreground: 105 12% 95%;
+    --destructive: 8 79% 71%;               /* #ef8a7a */
+    --destructive-foreground: 160 18% 3%;
 
-    --border: 160 13% 17%;
-    --input: 160 15% 8%;
-    --ring: 86 100% 68%;
+    --warning: 37 71% 65%;                  /* #e5b567 */
+    --warning-foreground: 160 18% 3%;
 
-    --code-bg: 165 15% 5%;
-    --code-line: 160 15% 8%;
-    --code-number: 145 6% 58%;
+    --border: 155 14% 16%;                  /* #24302b */
+    --border-strong: 154 12% 22%;           /* #313f39 */
+    --input: 158 18% 9%;
+    --ring: 145 72% 67%;
 
-    --radius: 4px;
-    
-    /* Gradients (removed for clean UI) */
+    --code-bg: 156 20% 5%;                  /* #0a0f0d */
+    --code-line: 158 18% 9%;
+    --code-number: 201 6% 57%;
+
+    --surface-raised: 156 17% 12%;
+
+    --radius: 6px;
+
     --gradient-primary: transparent;
     --gradient-glow: transparent;
-    
-    /* Shadows (removed for clean UI) */
     --shadow-glow: none;
     --shadow-card: none;
-    
-    /* Transitions */
+
     --transition-base: all 0.15s ease;
     --transition-smooth: all 0.2s ease;
   }

@@ -45,7 +45,7 @@ export default function WorkspaceSearchView({
       {/* VS Code style editor tab */}
       <div className="bg-secondary/40 border-b border-border/80 h-9 flex items-center justify-between shrink-0 select-none px-1">
         <div className="flex h-full items-center">
-          <div className="bg-code-bg text-foreground border-r border-border/80 h-full px-3.5 flex items-center gap-2 text-[11px] border-t-2 border-t-primary font-mono font-semibold">
+          <div className="bg-code-bg text-foreground border-r border-border/80 h-full px-3.5 flex items-center gap-2 text-sm border-t-2 border-t-primary font-mono font-semibold">
             <Search className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
             <span>search-results.txt</span>
           </div>
@@ -62,7 +62,7 @@ export default function WorkspaceSearchView({
 
       <div className="flex-1 overflow-y-auto p-6 space-y-4">
         <div className="bg-secondary/15 p-4 rounded-[4px] border border-border">
-          <span className="text-[10px] uppercase font-bold tracking-wider font-mono text-muted-foreground block mb-1">Search Query</span>
+          <span className="text-xs font-bold tracking-wider font-mono text-muted-foreground block mb-1">Search Query</span>
           <p className="text-xs font-mono font-semibold text-foreground leading-snug">"{query}"</p>
         </div>
 
@@ -84,14 +84,14 @@ export default function WorkspaceSearchView({
                     </div>
 
                     <div className="flex items-center gap-2 shrink-0">
-                      <span className="border border-border text-primary font-mono text-[9px] uppercase tracking-wider px-2 py-0.5 rounded">
+                      <span className="border border-border text-primary font-mono text-[9px] px-2 py-0.5 rounded">
                         {(res.score * 100).toFixed(0)}% Match
                       </span>
                       {onFileSelect && (
                         <Button
                           size="sm"
                           variant="outline"
-                          className="h-7 text-[10px] font-mono border-border hover:border-accent hover:bg-secondary/20 hover:text-foreground bg-background rounded-[4px]"
+                          className="h-7 text-xs font-mono border-border hover:border-accent hover:bg-secondary/20 hover:text-foreground bg-background rounded-[4px]"
                           onClick={() => onFileSelect(res.path)}
                         >
                           Open File
@@ -102,7 +102,7 @@ export default function WorkspaceSearchView({
 
                   {snippet && (
                     <div className="bg-background border border-border p-3 rounded-[4px] overflow-x-auto">
-                      <pre className="text-[10px] font-mono leading-relaxed text-foreground/90 whitespace-pre-wrap">
+                      <pre className="text-xs font-mono leading-relaxed text-foreground/90 whitespace-pre-wrap">
                         <code>{snippet}</code>
                       </pre>
                     </div>

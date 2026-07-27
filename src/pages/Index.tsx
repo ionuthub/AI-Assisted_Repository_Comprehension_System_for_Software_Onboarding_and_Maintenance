@@ -33,7 +33,7 @@ import SEO from "@/components/SEO";
 import { recordMetric } from "@/lib/evaluation/metrics";
 import { useGitHubAuth } from "@/hooks/useGitHubAuth";
 import { useProjectManagement } from "@/hooks/useProjectManagement";
-import { searchRepository, SearchResult } from "@/lib/semanticSearch";
+import { searchRepository, selectExcerptRegion, SearchResult } from "@/lib/semanticSearch";
 import { detectCodeBlock } from "@/lib/blockDetector";
 import ProjectOverviewComponent from "@/components/ProjectOverview";
 import { analyzeProject } from "@/lib/projectAnalyzer";
@@ -202,13 +202,18 @@ const Index = () => {
           if (evidence.length === 0) {
             systemContext += "\n\n[Grounded Repository Context for RAG - Answer using this evidence and cite file paths]";
           }
-          const excerpt = fileObj.content.slice(0, RETRIEVAL.RAG_CONTEXT_CHARS);
-          systemContext += `\n\n--- File: ${res.path} ---\n${excerpt}`;
+          // The region most relevant to the question, not the head of the file, so the line
+          // range shown as a citation is the text the model actually received.
+          const region = selectExcerptRegion(fileObj.content, questionText, RETRIEVAL.RAG_CONTEXT_CHARS);
+          systemContext += `\n\n--- File: ${res.path} (lines ${region.startLine}-${region.endLine} of ${region.totalLines}) ---\n${region.text}`;
           evidence.push({
             path: res.path,
             score: res.score,
-            excerpt,
-            truncated: fileObj.content.length > RETRIEVAL.RAG_CONTEXT_CHARS,
+            excerpt: region.text,
+            startLine: region.startLine,
+            endLine: region.endLine,
+            totalLines: region.totalLines,
+            omittedLines: region.omittedLines,
           });
         }
       });
@@ -347,7 +352,7 @@ const Index = () => {
                 <div className="bg-card border border-border p-6 rounded-[4px] space-y-4 shadow-none">
                   <form onSubmit={handleGithubAnalyze} className="space-y-4">
                     <div className="space-y-1.5">
-                      <Label htmlFor="github-url" className="text-[10px] uppercase font-bold text-muted-foreground tracking-wider font-mono">
+                      <Label htmlFor="github-url" className="text-xs font-bold text-muted-foreground tracking-wider font-mono">
                         GitHub repository URL
                       </Label>
                       <Input
@@ -408,7 +413,7 @@ const Index = () => {
                     </div>
                   </form>
 
-                  <div className="text-[10px] text-muted-foreground border-t border-border pt-3 font-mono">
+                  <div className="text-xs text-muted-foreground border-t border-border pt-3 font-mono">
                     JS/TS only · Evaluation build · Static Analysis
                   </div>
                 </div>
@@ -416,7 +421,7 @@ const Index = () => {
                 {/* Recent Repositories */}
                 {recentRepos.length > 0 && (
                   <div className="space-y-2 font-mono">
-                    <h3 className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground border-b border-border pb-1">
+                    <h3 className="text-xs font-bold text-muted-foreground border-b border-border pb-1">
                       Recent Repositories
                     </h3>
                     <div className="border border-border rounded-[4px] divide-y divide-border overflow-hidden bg-card">
@@ -461,7 +466,7 @@ const Index = () => {
                      >
                        {project.summary.name}
                      </h2>
-                     <Badge variant="outline" className="text-[9px] uppercase font-mono px-1.5 py-0 border-border/80 hidden sm:inline-flex">
+                     <Badge variant="outline" className="text-[9px] font-mono px-1.5 py-0 border-border/80 hidden sm:inline-flex">
                        {project.summary.source}
                      </Badge>
                      <Button
@@ -475,7 +480,7 @@ const Index = () => {
                        }}
                        title="Close workspace"
                      >
-                       <span className="text-[10px] text-muted-foreground">✕</span>
+                       <span className="text-xs text-muted-foreground">✕</span>
                      </Button>
                    </div>
 
@@ -604,7 +609,7 @@ const Index = () => {
                            {/* VS Code style editor tab */}
                            <div className="bg-secondary/40 border-b border-border/80 h-9 flex items-center justify-between shrink-0 select-none px-1">
                              <div className="flex h-full items-center">
-                               <div className="bg-code-bg text-foreground border-r border-border/80 h-full px-3.5 flex items-center gap-2 text-[11px] border-t-2 border-t-accent font-mono font-semibold">
+                               <div className="bg-code-bg text-foreground border-r border-border/80 h-full px-3.5 flex items-center gap-2 text-sm border-t-2 border-t-accent font-mono font-semibold">
                                  <Layers className="w-3.5 h-3.5 text-accent shrink-0" />
                                  <span>architecture-map.svg</span>
                                </div>

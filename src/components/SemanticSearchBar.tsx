@@ -62,7 +62,7 @@ export const SemanticSearchBar = ({ onFileSelect }: SemanticSearchBarProps) => {
                 <div className="flex items-center gap-2 truncate pr-2">
                   <FileCode2 className="w-4 h-4 text-sky-500 shrink-0" />
                   <div className="flex flex-col truncate">
-                    <span className="text-[11px] font-semibold text-foreground truncate">
+                    <span className="text-sm font-semibold text-foreground truncate">
                       {result.path.split("/").pop()}
                     </span>
                     <span className="text-[9px] text-muted-foreground truncate">
@@ -73,11 +73,11 @@ export const SemanticSearchBar = ({ onFileSelect }: SemanticSearchBarProps) => {
 
                 <div className="flex items-center gap-2 shrink-0">
                   {result.language && (
-                    <Badge variant="outline" className="text-[9px] px-1.5 py-0.5 bg-background uppercase font-mono">
+                    <Badge variant="outline" className="text-[9px] px-1.5 py-0.5 bg-background font-mono">
                       {result.language}
                     </Badge>
                   )}
-                  <Badge className="bg-sky-500/10 text-sky-600 dark:bg-sky-500/20 dark:text-sky-400 border-none font-bold text-[10px]">
+                  <Badge className="bg-sky-500/10 text-sky-600 dark:bg-sky-500/20 dark:text-sky-400 border-none font-bold text-xs">
                     {(result.score * 100).toFixed(0)}% match
                   </Badge>
                 </div>

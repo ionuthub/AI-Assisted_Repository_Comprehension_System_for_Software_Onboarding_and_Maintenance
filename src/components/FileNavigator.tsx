@@ -29,7 +29,7 @@ const FileNavigator = ({ files, selectedFile, onFileSelect }: FileNavigatorProps
               <div className="flex flex-col text-left truncate">
                 <span className="truncate">{file.path}</span>
                 {(file.language || file.size) && (
-                  <span className="text-[10px] text-muted-foreground">
+                  <span className="text-xs text-muted-foreground">
                     {file.language ?? "Unknown"}
                     {typeof file.size === "number" && `· ${(file.size / 1024).toFixed(1)} KB`}
                   </span>

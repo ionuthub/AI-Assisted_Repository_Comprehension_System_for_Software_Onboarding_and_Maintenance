@@ -52,7 +52,7 @@ const CodeLine = memo(({
                 : "border-transparent hover:bg-primary/5 active:bg-primary/10"
             }`}
         >
-          <span className="select-none text-code-number w-8 md:w-12 pr-2 md:pr-4 text-right flex-shrink-0 text-[10px] md:text-sm">
+          <span className="select-none text-code-number w-8 md:w-12 pr-2 md:pr-4 text-right flex-shrink-0 text-xs md:text-sm">
             {lineNumber}
           </span>
           <code className="flex-1 text-foreground/90 whitespace-pre-wrap break-words">{line}</code>
@@ -117,8 +117,8 @@ const CodeViewer = ({
       <Code2 className="w-10 h-10 text-muted-foreground/30 mb-1" />
       <div className="space-y-1.5 text-center px-4">
         <p className="font-medium text-foreground/80">Select a file from the explorer to inspect its code.</p>
-        <p className="text-[11px]">Click any line to analyze the containing code block.</p>
-        <p className="text-[11px] text-muted-foreground/60">Hover to preview block • Ctrl/Cmd+Click for custom selection</p>
+        <p className="text-sm">Click any line to analyze the containing code block.</p>
+        <p className="text-sm text-muted-foreground/60">Hover to preview block • Ctrl/Cmd+Click for custom selection</p>
       </div>
     </div>
   );
@@ -128,12 +128,12 @@ const CodeViewer = ({
       {/* VS Code style editor tab */}
       <div className="bg-secondary/40 border-b border-border/80 h-9 flex items-center justify-between shrink-0 select-none px-1">
         <div className="flex h-full items-center">
-          <div className="bg-code-bg text-foreground border-r border-border/80 h-full px-3.5 flex items-center gap-2 text-[11px] border-t-2 border-t-primary font-mono font-semibold">
+          <div className="bg-code-bg text-foreground border-r border-border/80 h-full px-3.5 flex items-center gap-2 text-sm border-t-2 border-t-primary font-mono font-semibold">
             <Code2 className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
             <span className="truncate max-w-[160px]">{effectiveFileName.split('/').pop()}</span>
           </div>
         </div>
-        <div className="px-3 text-[10px] font-mono text-muted-foreground/50 select-none hidden sm:block truncate max-w-[320px]">
+        <div className="px-3 text-xs font-mono text-muted-foreground/50 select-none hidden sm:block truncate max-w-[320px]">
           {effectiveFileName}
         </div>
       </div>
@@ -147,7 +147,7 @@ const CodeViewer = ({
           </div>
         ) : fileContent ? (
           <TooltipProvider>
-            <pre className="text-[11px] md:text-[13px] font-mono leading-relaxed">
+            <pre className="text-sm md:text-[13px] font-mono leading-relaxed">
               {contentLines.map((line, idx) => {
                 const lineNumber = idx + 1;
                 const complexity = complexityMap[idx];

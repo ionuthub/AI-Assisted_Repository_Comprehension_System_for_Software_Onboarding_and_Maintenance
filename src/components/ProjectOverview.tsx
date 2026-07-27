@@ -66,7 +66,7 @@ const formatSummaryText = (text?: string) => {
         return (
           <span 
             key={idx} 
-            className="font-semibold text-foreground px-1.5 py-0.5 rounded bg-primary/10 border border-primary/20 text-[11px] font-mono shrink-0 inline-block"
+            className="font-semibold text-foreground px-1.5 py-0.5 rounded bg-primary/10 border border-primary/20 text-sm font-mono shrink-0 inline-block"
           >
             {part.slice(2, -2)}
           </span>
@@ -222,8 +222,8 @@ export default function ProjectOverviewComponent({ overview, project, onFileSele
               <Layers className="w-5 h-5 text-primary" />
             </div>
             <div>
-              <h2 className="text-sm font-bold text-foreground font-mono uppercase tracking-wider">Repository Specs</h2>
-              <p className="text-[11px] text-muted-foreground font-mono">Index details and architecture mappings</p>
+              <h2 className="text-sm font-bold text-foreground font-mono">Repository Specs</h2>
+              <p className="text-sm text-muted-foreground font-mono">Index details and architecture mappings</p>
             </div>
           </div>
 
@@ -232,7 +232,7 @@ export default function ProjectOverviewComponent({ overview, project, onFileSele
               <Button
                 variant="outline"
                 size="sm"
-                className="gap-2 text-[10px] font-mono h-8 rounded-[4px] border-border hover:border-accent hover:bg-secondary/20 hover:text-foreground bg-background hidden md:flex"
+                className="gap-2 text-xs font-mono h-8 rounded-[4px] border-border hover:border-accent hover:bg-secondary/20 hover:text-foreground bg-background hidden md:flex"
                 onClick={() => downloadProject(project)}
               >
                 <Download className="w-3.5 h-3.5" /> Download ZIP
@@ -241,19 +241,19 @@ export default function ProjectOverviewComponent({ overview, project, onFileSele
             <TabsList className="bg-background border border-border rounded-[4px] p-0.5">
               <TabsTrigger 
                 value="overview" 
-                className="gap-1 text-[10px] uppercase font-mono h-7 px-3 rounded-[4px] data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:font-bold"
+                className="gap-1 text-xs font-mono h-7 px-3 rounded-[4px] data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:font-bold"
               >
                 Overview
               </TabsTrigger>
               <TabsTrigger 
                 value="tech" 
-                className="gap-1 text-[10px] uppercase font-mono h-7 px-3 rounded-[4px] data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:font-bold"
+                className="gap-1 text-xs font-mono h-7 px-3 rounded-[4px] data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:font-bold"
               >
                 Tech Stack
               </TabsTrigger>
               <TabsTrigger 
                 value="graph" 
-                className="gap-1 text-[10px] uppercase font-mono h-7 px-3 rounded-[4px] data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:font-bold"
+                className="gap-1 text-xs font-mono h-7 px-3 rounded-[4px] data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:font-bold"
               >
                 Project Map
               </TabsTrigger>
@@ -266,28 +266,28 @@ export default function ProjectOverviewComponent({ overview, project, onFileSele
           {scanResult && (
             <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mb-6">
               <Card className="bg-secondary/10 border-border p-4 rounded-[4px] shadow-none flex flex-col justify-between h-20">
-                <p className="text-[9px] uppercase font-bold text-muted-foreground tracking-wider font-mono">Files</p>
+                <p className="text-[9px] font-bold text-muted-foreground tracking-wider font-mono">Files</p>
                 <p className="text-xl font-bold font-mono text-foreground">{scanResult.fileCount}</p>
               </Card>
 
               <Card className="bg-secondary/10 border-border p-4 rounded-[4px] shadow-none flex flex-col justify-between h-20">
-                <p className="text-[9px] uppercase font-bold text-muted-foreground tracking-wider font-mono">Components</p>
+                <p className="text-[9px] font-bold text-muted-foreground tracking-wider font-mono">Components</p>
                 <p className="text-xl font-bold font-mono text-foreground">{totalComponents}</p>
               </Card>
 
               <Card className="bg-secondary/10 border-border p-4 rounded-[4px] shadow-none flex flex-col justify-between h-20">
-                <p className="text-[9px] uppercase font-bold text-muted-foreground tracking-wider font-mono">Functions</p>
+                <p className="text-[9px] font-bold text-muted-foreground tracking-wider font-mono">Functions</p>
                 <p className="text-xl font-bold font-mono text-foreground">{totalFunctions}</p>
               </Card>
 
               <Card className="bg-secondary/10 border-border p-4 rounded-[4px] shadow-none flex flex-col justify-between h-20">
-                <p className="text-[9px] uppercase font-bold text-muted-foreground tracking-wider font-mono">Repo Size</p>
+                <p className="text-[9px] font-bold text-muted-foreground tracking-wider font-mono">Repo Size</p>
                 <p className="text-lg font-bold font-mono text-foreground">{formatBytes(scanResult.totalSize)}</p>
               </Card>
 
               <Card className="bg-secondary/10 border-border p-4 rounded-[4px] shadow-none flex flex-col justify-between h-20 col-span-2 md:col-span-1">
-                <p className="text-[9px] uppercase font-bold text-muted-foreground tracking-wider font-mono">Complexity</p>
-                <p className="text-sm font-bold font-mono text-foreground uppercase">{scanResult.complexityScore}</p>
+                <p className="text-[9px] font-bold text-muted-foreground tracking-wider font-mono">Complexity</p>
+                <p className="text-sm font-bold font-mono text-foreground">{scanResult.complexityScore}</p>
               </Card>
             </div>
           )}
@@ -298,7 +298,7 @@ export default function ProjectOverviewComponent({ overview, project, onFileSele
               {/* Left Column: Repository Summary */}
               <div className="space-y-6">
                 <div className="space-y-2">
-                  <span className="text-[10px] font-mono font-bold text-muted-foreground uppercase tracking-wider block">
+                  <span className="text-xs font-mono font-bold text-muted-foreground block">
                     Summary
                   </span>
                   <div className="bg-secondary/5 p-5 border border-border rounded-[4px]">
@@ -309,7 +309,7 @@ export default function ProjectOverviewComponent({ overview, project, onFileSele
                 {/* Key Files Registry */}
                 {scanResult && scanResult.keyFiles.length > 0 && (
                   <div className="space-y-2.5">
-                    <span className="text-[10px] font-mono font-bold text-muted-foreground uppercase tracking-wider block">
+                    <span className="text-xs font-mono font-bold text-muted-foreground block">
                       Code Landmarks
                     </span>
                     <div className="space-y-1.5 max-h-[300px] overflow-y-auto pr-1">
@@ -322,7 +322,7 @@ export default function ProjectOverviewComponent({ overview, project, onFileSele
                             <span className="text-xs font-mono font-bold text-primary truncate">
                               {file.path}
                             </span>
-                            <span className="text-[10px] font-mono text-muted-foreground truncate mt-1">
+                            <span className="text-xs font-mono text-muted-foreground truncate mt-1">
                               {file.purpose}
                             </span>
                           </div>
@@ -330,7 +330,7 @@ export default function ProjectOverviewComponent({ overview, project, onFileSele
                             <Button
                               size="sm"
                               variant="outline"
-                              className="h-7 text-[10px] font-mono px-3 shrink-0 rounded-[4px] border-border hover:border-accent hover:bg-secondary/20 hover:text-foreground bg-background"
+                              className="h-7 text-xs font-mono px-3 shrink-0 rounded-[4px] border-border hover:border-accent hover:bg-secondary/20 hover:text-foreground bg-background"
                               onClick={() => onFileSelect(file.path)}
                             >
                               Explore
@@ -348,7 +348,7 @@ export default function ProjectOverviewComponent({ overview, project, onFileSele
                 {/* GitHub-style Language Distribution */}
                 {languageData.length > 0 && (
                   <Card className="p-4 bg-secondary/10 border-border rounded-[4px] shadow-none">
-                    <h4 className="text-[10px] font-bold font-mono uppercase tracking-wider text-muted-foreground mb-4">Languages</h4>
+                    <h4 className="text-xs font-bold font-mono text-muted-foreground mb-4">Languages</h4>
                     <div className="space-y-3">
                       {/* Unified Bar */}
                       <div className="w-full flex h-1.5 rounded-full overflow-hidden bg-secondary/50">
@@ -378,8 +378,8 @@ export default function ProjectOverviewComponent({ overview, project, onFileSele
                                 className="w-2 h-2 rounded-full inline-block shrink-0" 
                                 style={{ backgroundColor: color }}
                               />
-                              <span className="font-semibold text-foreground text-[11px]">{lang.name}</span>
-                              <span className="text-muted-foreground text-[10px]">
+                              <span className="font-semibold text-foreground text-sm">{lang.name}</span>
+                              <span className="text-muted-foreground text-xs">
                                 {lang.percentage.toFixed(1)}%
                               </span>
                             </div>
@@ -393,13 +393,13 @@ export default function ProjectOverviewComponent({ overview, project, onFileSele
                 {/* Tech context & level */}
                 <Card className="p-4 bg-secondary/10 border-border rounded-[4px] shadow-none space-y-4 font-mono text-xs">
                   <div className="flex justify-between items-center pb-3 border-b border-border/60">
-                    <span className="text-muted-foreground text-[10px] uppercase tracking-wider font-bold">Framework</span>
+                    <span className="text-muted-foreground text-xs font-bold">Framework</span>
                     <span className="text-foreground font-bold">{scanResult?.techStack[0]?.name || "Vanilla Setup"}</span>
                   </div>
 
                   <div className="flex justify-between items-center">
-                    <span className="text-muted-foreground text-[10px] uppercase tracking-wider font-bold">Difficulty</span>
-                    <span className="text-primary font-bold uppercase">{overview.difficulty}</span>
+                    <span className="text-muted-foreground text-xs font-bold">Difficulty</span>
+                    <span className="text-primary font-bold">{overview.difficulty}</span>
                   </div>
                 </Card>
               </div>
@@ -410,8 +410,8 @@ export default function ProjectOverviewComponent({ overview, project, onFileSele
           <TabsContent value="tech" className="mt-0">
             <div className="space-y-4">
               <div className="border-b border-border pb-3">
-                <h4 className="text-xs font-bold font-mono uppercase tracking-wider text-foreground">Libraries Registry</h4>
-                <p className="text-[10px] text-muted-foreground font-mono">Detected frameworks and dependencies</p>
+                <h4 className="text-xs font-bold font-mono text-foreground">Libraries Registry</h4>
+                <p className="text-xs text-muted-foreground font-mono">Detected frameworks and dependencies</p>
               </div>
               
               {scanResult && scanResult.techStack.length > 0 ? (
@@ -420,13 +420,13 @@ export default function ProjectOverviewComponent({ overview, project, onFileSele
                     <Card key={tech.name} className="p-4 bg-secondary/10 border-border rounded-[4px] shadow-none space-y-2">
                       <div className="flex items-center justify-between">
                         <span className="font-mono text-xs font-bold text-primary">{tech.name}</span>
-                        <span className="text-[9px] text-muted-foreground uppercase font-mono border border-border px-1.5 py-0.5 rounded bg-background">
+                        <span className="text-[9px] text-muted-foreground font-mono border border-border px-1.5 py-0.5 rounded bg-background">
                           {tech.category}
                         </span>
                       </div>
-                      <p className="text-[11px] text-foreground/80 leading-relaxed font-sans">{tech.description}</p>
-                      <div className="text-[10px] text-muted-foreground bg-background/50 p-2 border border-border/40 rounded-[4px] font-mono">
-                        <span className="text-foreground font-bold text-[9px] uppercase tracking-wider block mb-0.5">Role</span>
+                      <p className="text-sm text-foreground/80 leading-relaxed font-sans">{tech.description}</p>
+                      <div className="text-xs text-muted-foreground bg-background/50 p-2 border border-border/40 rounded-[4px] font-mono">
+                        <span className="text-foreground font-bold text-[9px] block mb-0.5">Role</span>
                         {tech.whyUsed}
                       </div>
                     </Card>

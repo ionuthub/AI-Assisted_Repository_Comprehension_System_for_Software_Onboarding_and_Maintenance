@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { buildSearchIndex, searchRepository, tokenize } from './semanticSearch';
+import { buildSearchIndex, searchRepository, tokenize, selectExcerptRegion } from './semanticSearch';
 import type { ProjectFile } from '@/types/project';
 
 const file = (path: string, content: string | null): ProjectFile => ({
@@ -90,5 +90,78 @@ describe('searchRepository', () => {
     const index = buildSearchIndex(withNull);
     const results = searchRepository('payment', index, withNull, 5);
     expect(results.map((r) => r.path)).not.toContain('src/lib/missing.ts');
+  });
+});
+
+describe('selectExcerptRegion', () => {
+  const long = (marker: string, atLine: number, total = 200) =>
+    Array.from({ length: total }, (_, i) => (i + 1 === atLine ? marker : `const filler${i} = ${i};`)).join('\n');
+
+  it('returns the whole file when it fits the budget', () => {
+    const r = selectExcerptRegion('const a = 1;\nconst b = 2;', 'a', 10_000);
+    expect(r.startLine).toBe(1);
+    expect(r.endLine).toBe(2);
+    expect(r.omittedLines).toBe(0);
+    expect(r.text).toContain('const b = 2;');
+  });
+
+  it('selects the region containing the query term rather than the head', () => {
+    // The previous behaviour always sent the first N characters, so for a long file the
+    // excerpt shown as a citation was rarely the code the answer was about.
+    const content = long('function handleAuthentication() {}', 150);
+    const r = selectExcerptRegion(content, 'authentication', 800);
+    expect(r.startLine).toBeGreaterThan(100);
+    expect(r.text).toContain('handleAuthentication');
+    expect(r.endLine).toBeGreaterThanOrEqual(r.startLine);
+  });
+
+  it('reports the lines omitted so truncation can be stated honestly', () => {
+    const content = long('function handleAuthentication() {}', 150);
+    const r = selectExcerptRegion(content, 'authentication', 800);
+    expect(r.totalLines).toBe(200);
+    expect(r.omittedLines).toBe(200 - (r.endLine - r.startLine + 1));
+  });
+
+  it('never exceeds the character budget', () => {
+    const content = long('function handleAuthentication() {}', 150);
+    const r = selectExcerptRegion(content, 'authentication', 400);
+    expect(r.text.length).toBeLessThanOrEqual(400);
+  });
+
+  it('falls back to the head when no query term appears in the file', () => {
+    const content = long('const nothing = 0;', 150);
+    const r = selectExcerptRegion(content, 'zzzznomatch', 400);
+    expect(r.startLine).toBe(1);
+  });
+
+  it('falls back to the head when the query is only stopwords', () => {
+    const content = long('const nothing = 0;', 150);
+    const r = selectExcerptRegion(content, 'const return', 400);
+    expect(r.startLine).toBe(1);
+  });
+
+  it('is deterministic for the same file and query', () => {
+    const content = long('function handleAuthentication() {}', 150);
+    const a = selectExcerptRegion(content, 'authentication', 600);
+    const b = selectExcerptRegion(content, 'authentication', 600);
+    expect(a).toEqual(b);
+  });
+
+  it('prefers a region covering more distinct query terms', () => {
+    const lines = Array.from({ length: 120 }, (_, i) => `const filler${i} = ${i};`);
+    lines[20] = 'const router = 1; const router2 = 2; const router3 = 3;';
+    lines[80] = 'const router = makeRouter();';
+    lines[81] = 'const middleware = useMiddleware();';
+    const r = selectExcerptRegion(lines.join('\n'), 'router middleware', 500);
+    // Assert on content rather than a line number: the region covering both terms wins over
+    // the earlier one that repeats a single term.
+    expect(r.text).toContain('makeRouter');
+    expect(r.text).toContain('useMiddleware');
+  });
+
+  it('handles an empty file', () => {
+    const r = selectExcerptRegion('', 'anything', 100);
+    expect(r.text).toBe('');
+    expect(r.totalLines).toBe(1);
   });
 });

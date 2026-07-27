@@ -100,7 +100,7 @@ const TreeNode = ({ node, selectedFile, onFileSelect, depth }: TreeNodeProps) =>
               {getFileIcon(node.name)}
             </>
           )}
-          <span className="truncate text-[11px] font-mono">{node.name}</span>
+          <span className="truncate text-sm font-mono">{node.name}</span>
         </div>
 
         {!isFolder && node.size !== undefined && (
@@ -130,7 +130,7 @@ const TreeNode = ({ node, selectedFile, onFileSelect, depth }: TreeNodeProps) =>
 export const FolderTree = ({ tree, selectedFile, onFileSelect }: FolderTreeProps) => {
   return (
     <div className="h-full flex flex-col p-4 bg-background/50">
-      <div className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground/80 mb-4 pl-1">
+      <div className="text-xs font-bold text-muted-foreground/80 mb-4 pl-1">
         Project Explorer
       </div>
       <ScrollArea className="flex-1 -mx-2 px-2">

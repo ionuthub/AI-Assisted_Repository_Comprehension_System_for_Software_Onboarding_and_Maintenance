@@ -124,6 +124,10 @@ const Index = () => {
 
   // Workspace dynamic view states
   const [workspaceView, setWorkspaceView] = useState<WorkspaceView>('overview');
+  // The file explorer and the per-file panel are only meaningful when a file is the
+  // subject. An answer or a result list is the whole task and takes the full width;
+  // nested inside three columns the answer prose collapsed to roughly 250px.
+  const showsFileChrome = workspaceView === 'code' || workspaceView === 'architecture';
   const [searchVal, setSearchVal] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
   const [searchResults, setSearchResults] = useState<SearchResult[]>([]);
@@ -652,7 +656,10 @@ const Index = () => {
                   ) : (
                    // Screen 3: Repository Workspace - Three-panel layout (Explorer | Content | Insights)
                    <>
-                     {/* Left Panel: File Explorer (260px) */}
+                     {/* The explorer and the file panel belong to file-centred views. An
+                         answer or a result list is the whole task, so they take the full
+                         width rather than being squeezed into the middle column. */}
+                     {showsFileChrome && (
                      <div className="w-[260px] md:w-[280px] shrink-0 border-r border-border/80 h-full overflow-y-auto bg-secondary/5">
                        <FolderTree
                          tree={scanResult?.folderTree || { name: "Root", path: "", type: "folder", children: [] }}
@@ -663,6 +670,7 @@ const Index = () => {
                          }}
                        />
                      </div>
+                     )}
 
                      {/* Middle Panel: Workspace Content (Flex 1) */}
                      <div className="flex-1 h-full overflow-hidden bg-background/30 flex flex-col">
@@ -745,7 +753,7 @@ const Index = () => {
                        )}
                      </div>
 
-                     {/* Right Panel: Contextual Insights (300px / 320px) */}
+                     {showsFileChrome && (
                      <div className="w-[300px] md:w-[320px] shrink-0 border-l border-border/80 h-full overflow-y-auto">
                        <FileInsightsPanel
                          path={selectedFile}
@@ -757,6 +765,7 @@ const Index = () => {
                          onAsk={runQuestion}
                        />
                      </div>
+                     )}
                    </>
                  )}
                </div>

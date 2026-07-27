@@ -84,13 +84,26 @@ export const useProjectStore = create<ProjectState>((set) => ({
     updateStaticAnalysis: (path, content) => set((state) => {
         if (!state.project) return {};
 
+        const existing = state.project.files.find(f => f.path === path);
+        const contentUnchanged = existing?.content === content;
+
+        // Since ingestion hydrates content up front, opening a file usually supplies the
+        // same text the index already holds. Rebuilding then costs a full synchronous pass
+        // over every file — a visible freeze during a timed task — and produces an
+        // identical index. Only the analysis for this file is refreshed in that case.
+        if (contentUnchanged && state.searchIndex) {
+            const filePaths = state.project.files.map(f => f.path);
+            const analyses = { ...state.staticAnalyses };
+            analyses[path] = analyzeCodeFile(path, content, filePaths);
+            return { staticAnalyses: computeWorkspaceReferences(analyses) };
+        }
+
         const filePaths = state.project.files.map(f => f.path);
         const newAnalyses = { ...state.staticAnalyses };
         newAnalyses[path] = analyzeCodeFile(path, content, filePaths);
 
         const updatedAnalyses = computeWorkspaceReferences(newAnalyses);
 
-        // Update file inside project files for indexing
         const updatedFiles = state.project.files.map(f =>
             f.path === path ? { ...f, content } : f
         );

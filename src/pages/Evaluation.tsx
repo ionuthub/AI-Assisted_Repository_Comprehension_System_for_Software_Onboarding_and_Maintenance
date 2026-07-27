@@ -14,6 +14,9 @@ import {
   tasksFromGroundTruth, susScore, tlxScore, sessionToCsv, download,
 } from "@/lib/evaluation/session";
 import { readMetrics } from "@/lib/evaluation/metrics";
+import {
+  loadSession, saveSession, clearSession, hasResumableWork, type PersistedSession,
+} from "@/lib/evaluation/sessionStorage";
 
 const SUS_QUESTIONS = [
   "I think that I would like to use this system frequently.",
@@ -60,6 +63,9 @@ export default function EvaluationPage() {
   const [tlx, setTlx] = useState<TlxRatings>({ mental: 50, physical: 50, temporal: 50, performance: 50, effort: 50, frustration: 50 });
   const [sus, setSus] = useState<Record<number, number>>(Object.fromEntries(Array.from({ length: 10 }, (_, i) => [i, 3])));
   const [notes, setNotes] = useState("");
+
+  // Restore offer is decided once on mount so it does not reappear after being dismissed.
+  const [restorable, setRestorable] = useState<PersistedSession | null>(null);
   const startedAtIso = useMemo(() => new Date().toISOString(), []);
 
   useEffect(() => {
@@ -85,6 +91,40 @@ export default function EvaluationPage() {
       }
     };
     reader.readAsText(file);
+  };
+
+  useEffect(() => {
+    const stored = loadSession();
+    if (hasResumableWork(stored)) setRestorable(stored);
+  }, []);
+
+  // Persisted on every change rather than at phase boundaries: a session lost between
+  // boundaries is exactly the case worth protecting against.
+  useEffect(() => {
+    saveSession({
+      phase, participantId, condition, order, repository, tasks, activeTaskId,
+      retentionAnswer, retentionConfidence, tlx, sus, notes,
+    });
+  }, [phase, participantId, condition, order, repository, tasks, activeTaskId,
+      retentionAnswer, retentionConfidence, tlx, sus, notes]);
+
+  const restoreSession = (stored: PersistedSession) => {
+    setPhase(stored.phase as Phase);
+    setParticipantId(stored.participantId);
+    setCondition(stored.condition);
+    setOrder(stored.order);
+    setRepository(stored.repository);
+    setTasks(stored.tasks);
+    // The timer is not resumed: elapsed time is derived from the recorded timestamps, and
+    // restarting it would attribute the interruption to the participant.
+    setActiveTaskId(null);
+    setRetentionAnswer(stored.retentionAnswer);
+    setRetentionConfidence(stored.retentionConfidence);
+    setTlx(stored.tlx);
+    setSus(stored.sus);
+    setNotes(stored.notes);
+    setRestorable(null);
+    toast({ title: "Session restored", description: `Saved ${new Date(stored.savedAtIso).toLocaleTimeString()}.` });
   };
 
   const startTask = (id: number) => {
@@ -142,6 +182,28 @@ export default function EvaluationPage() {
   return (
     <div className="min-h-screen bg-background p-6 max-w-3xl mx-auto space-y-6">
       <SEO title="Evaluation Session" description="Controlled study session runner" />
+      {restorable && (
+        <div className="rounded-md border border-warning/60 bg-warning/10 p-4 space-y-3">
+          <div className="flex items-start gap-2">
+            <AlertTriangle className="w-4 h-4 text-warning shrink-0 mt-0.5" aria-hidden="true" />
+            <div className="space-y-1">
+              <p className="text-ui font-semibold text-foreground">An unfinished session is saved on this device</p>
+              <p className="text-meta text-muted-foreground">
+                Participant {restorable.participantId || "unassigned"} · {restorable.condition} ·
+                saved {new Date(restorable.savedAtIso).toLocaleString()}. Restoring replaces
+                anything entered since this page loaded.
+              </p>
+            </div>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            <Button size="sm" onClick={() => restoreSession(restorable)}>Restore it</Button>
+            <Button size="sm" variant="outline" onClick={() => { clearSession(); setRestorable(null); }}>
+              Discard and start fresh
+            </Button>
+          </div>
+        </div>
+      )}
+
       <header className="flex items-center justify-between">
         <h1 className="text-2xl font-bold">Evaluation Session</h1>
         <Badge variant="outline">{phase.toUpperCase()}</Badge>
@@ -313,6 +375,15 @@ export default function EvaluationPage() {
           <div className="flex gap-2">
             <Button onClick={exportJson}><Download className="w-4 h-4 mr-2" />Export JSON</Button>
             <Button variant="outline" onClick={exportCsv}><Download className="w-4 h-4 mr-2" />Export CSV</Button>
+            <Button
+              variant="outline"
+              onClick={() => {
+                clearSession();
+                toast({ title: "Saved session cleared", description: "Export first if you have not already." });
+              }}
+            >
+              Clear saved session
+            </Button>
           </div>
           <p className="text-xs text-muted-foreground">
             The JSON export includes the retention answer, SUS and TLX scores, and the pilot metrics

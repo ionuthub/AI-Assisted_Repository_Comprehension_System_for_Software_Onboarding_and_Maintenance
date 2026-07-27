@@ -196,9 +196,11 @@ export default defineConfig(({ mode }) => {
       },
       rollupOptions: {
         output: {
+          // Only the framework is split out. A 'ui' chunk previously force-bundled three
+          // Radix packages that no reachable component imported, shipping 40 kB of code no
+          // user executed; the components that used them have been removed.
           manualChunks: {
             'vendor': ['react', 'react-dom', 'react-router-dom'],
-            'ui': ['@radix-ui/react-dialog', '@radix-ui/react-dropdown-menu', '@radix-ui/react-select'],
           },
           chunkFileNames: 'assets/[name]-[hash].js',
           entryFileNames: 'assets/[name]-[hash].js',

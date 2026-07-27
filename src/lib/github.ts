@@ -19,6 +19,20 @@ const getGitHubHeaders = (token?: string | null): HeadersInit => {
 const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
 const MAX_FILES_TO_ANALYZE = 50;
 const CONTENT_FETCH_CONCURRENCY = 6;
+
+/**
+ * Ingestion is multi-stage and, since contents are fetched up front, the slowest part of
+ * the product. Progress is reported so the interface can show what is happening rather
+ * than an unqualified spinner.
+ */
+export interface IngestionProgress {
+  phase: "metadata" | "tree" | "fetching" | "indexing";
+  completed: number;
+  total: number;
+  currentPath?: string;
+}
+
+export type IngestionProgressHandler = (progress: IngestionProgress) => void;
 const MAX_REPO_NAME_LENGTH = 255;
 const MAX_OWNER_NAME_LENGTH = 39;
 const REQUEST_TIMEOUT = 10000; // 10 seconds
@@ -172,10 +186,12 @@ const hydrateFileContents = async (
   repo: string,
   branch: string,
   files: ProjectFile[],
-  token?: string | null
+  token?: string | null,
+  onProgress?: IngestionProgressHandler
 ): Promise<ProjectFile[]> => {
   const hydrated: ProjectFile[] = new Array(files.length);
   let cursor = 0;
+  let completed = 0;
 
   const worker = async (): Promise<void> => {
     while (cursor < files.length) {
@@ -187,6 +203,8 @@ const hydrateFileContents = async (
       } catch {
         hydrated[index] = file;
       }
+      completed += 1;
+      onProgress?.({ phase: "fetching", completed, total: files.length, currentPath: file.path });
     }
   };
 
@@ -196,27 +214,39 @@ const hydrateFileContents = async (
   return hydrated;
 };
 
-export const fetchRepositoryProject = async (repoUrl: string, token?: string | null): Promise<Project> => {
+export const fetchRepositoryProject = async (
+  repoUrl: string,
+  token?: string | null,
+  onProgress?: IngestionProgressHandler
+): Promise<Project> => {
   const { owner, repo } = parseGitHubUrl(repoUrl);
   const headers = getGitHubHeaders(token);
 
+  onProgress?.({ phase: "metadata", completed: 0, total: 0 });
   const repoResponse = await fetch(`${GITHUB_API}/repos/${owner}/${repo}`, { headers });
   await handleGitHubError(repoResponse);
   const repoData = (await repoResponse.json()) as GitHubRepoResponse;
 
+  onProgress?.({ phase: "tree", completed: 0, total: 0 });
   const treeResponse = await fetch(`${GITHUB_API}/repos/${owner}/${repo}/git/trees/${repoData.default_branch}?recursive=1`, { headers });
   await handleGitHubError(treeResponse);
   const treePayload = await treeResponse.json();
   const tree = treePayload.tree as GitHubTreeItem[];
 
   const candidates = countCandidateFiles(tree);
+  const selected = buildProjectFiles(tree);
+  onProgress?.({ phase: "fetching", completed: 0, total: selected.length });
+
   const files = await hydrateFileContents(
     owner,
     repo,
     repoData.default_branch,
-    buildProjectFiles(tree),
-    token
+    selected,
+    token,
+    onProgress
   );
+
+  onProgress?.({ phase: "indexing", completed: files.length, total: files.length });
 
   return {
     summary: buildProjectSummary(repoData),

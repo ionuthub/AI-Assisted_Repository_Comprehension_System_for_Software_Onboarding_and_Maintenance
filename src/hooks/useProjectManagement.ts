@@ -3,7 +3,7 @@ import { useRef, useState, ChangeEvent } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { useProjectStore } from "@/store/useProjectStore";
 import { TAB_MODES } from "@/constants/appConstants";
-import { fetchRepositoryProject, fetchFileContent } from "@/lib/github";
+import { fetchRepositoryProject, fetchFileContent, type IngestionProgress } from "@/lib/github";
 import { inferLanguageFromFilename } from "@/lib/languages";
 import { generateW3SchoolsFileExplanation } from "@/lib/w3schoolsExplainer";
 import { ProjectFile } from "@/types/project";
@@ -31,6 +31,7 @@ export const useProjectManagement = () => {
 
     const [uploadedFolderName, setUploadedFolderName] = useState<string | null>(null);
     const folderInputRef = useRef<HTMLInputElement | null>(null);
+    const [ingestionProgress, setIngestionProgress] = useState<IngestionProgress | null>(null);
 
     const processUploadedFiles = async (files: FileList | File[]) => {
         const rateLimitKey = 'anonymous';
@@ -258,7 +259,7 @@ export const useProjectManagement = () => {
 
         setIsLoading(true);
         try {
-            const next = await fetchRepositoryProject(repoUrl.trim(), token);
+            const next = await fetchRepositoryProject(repoUrl.trim(), token, setIngestionProgress);
             setProject(next);
             if (next.files.length > 0) setSelectedFile(next.files[0].path);
 
@@ -291,6 +292,7 @@ export const useProjectManagement = () => {
             });
         } finally {
             setIsLoading(false);
+            setIngestionProgress(null);
         }
     };
 
@@ -339,6 +341,7 @@ export const useProjectManagement = () => {
         handleFolderInputChange,
         processUploadedFiles,
         handleAnalyze,
-        handleFileSelect
+        handleFileSelect,
+        ingestionProgress
     };
 };

@@ -22,7 +22,7 @@ import {
 } from "lucide-react";
 import CodeViewer from "@/components/CodeViewer";
 import FolderTree from "@/components/FolderTree";
-import WorkspaceQAView from "@/components/WorkspaceQAView";
+import WorkspaceQAView, { type RetrievedEvidence } from "@/components/WorkspaceQAView";
 import WorkspaceSearchView from "@/components/WorkspaceSearchView";
 import WorkspaceInsightsPanel from "@/components/WorkspaceInsightsPanel";
 import DependencyGraph from "@/components/DependencyGraph";
@@ -78,6 +78,7 @@ const Index = () => {
   const [qaVal, setQaVal] = useState("");
   const [qaQuestion, setQaQuestion] = useState("");
   const [qaAnswer, setQaAnswer] = useState("");
+  const [qaEvidence, setQaEvidence] = useState<RetrievedEvidence[]>([]);
   const [isQaLoading, setIsQaLoading] = useState(false);
 
   const [githubUrl, setGithubUrl] = useState("");
@@ -89,7 +90,8 @@ const Index = () => {
   const {
     processUploadedFiles,
     handleAnalyze,
-    handleFileSelect
+    handleFileSelect,
+    ingestionProgress
   } = useProjectManagement();
 
   const handleLineSelect = (lineNumber: number) => {
@@ -180,6 +182,7 @@ const Index = () => {
     setQaQuestion(questionText);
     setIsQaLoading(true);
     setQaAnswer("");
+    setQaEvidence([]);
 
     // Timed from before retrieval to after the last streamed token, so the recorded figure
     // is the latency the participant experiences rather than time-to-first-byte.
@@ -187,20 +190,31 @@ const Index = () => {
 
     let systemContext = `You are a technical code tutor. Answer the user's question about the codebase. Refer to the provided source code context. Always cite files and explain reasoning. Avoid hallucinated claims.`;
 
-    let evidenceFileCount = 0;
+    // The evidence actually sent to the model is recorded here and handed to the answer
+    // view. Citations must be derived from this, never from parsing the answer text:
+    // a path the model invents would otherwise be presented to the reader as a source.
+    const evidence: RetrievedEvidence[] = [];
     if (searchIndex) {
       const matches = searchRepository(questionText, searchIndex, project.files, RETRIEVAL.RAG_TOP_K);
       matches.forEach(res => {
         const fileObj = project.files.find(f => f.path === res.path);
         if (fileObj && fileObj.content) {
-          if (evidenceFileCount === 0) {
+          if (evidence.length === 0) {
             systemContext += "\n\n[Grounded Repository Context for RAG - Answer using this evidence and cite file paths]";
           }
-          systemContext += `\n\n--- File: ${res.path} ---\n${fileObj.content.slice(0, RETRIEVAL.RAG_CONTEXT_CHARS)}`;
-          evidenceFileCount += 1;
+          const excerpt = fileObj.content.slice(0, RETRIEVAL.RAG_CONTEXT_CHARS);
+          systemContext += `\n\n--- File: ${res.path} ---\n${excerpt}`;
+          evidence.push({
+            path: res.path,
+            score: res.score,
+            excerpt,
+            truncated: fileObj.content.length > RETRIEVAL.RAG_CONTEXT_CHARS,
+          });
         }
       });
     }
+    const evidenceFileCount = evidence.length;
+    setQaEvidence(evidence);
 
     // Retrieval can return nothing, or return files whose content was never loaded. The
     // prompt was previously sent unchanged in that case, so an ungrounded answer was
@@ -282,12 +296,39 @@ const Index = () => {
                     <span>COMPILING INDEX</span>
                     <span className="animate-pulse text-accent">●</span>
                   </div>
-                  <div>&gt; reading repository...</div>
-                  <div className="animate-fade-in delay-200">&gt; indexing files...</div>
-                  <div className="animate-fade-in delay-500">&gt; extracting imports...</div>
-                  <div className="animate-fade-in delay-1000">&gt; building dependency graph...</div>
-                  <div className="animate-fade-in delay-1500">&gt; generating summaries...</div>
-                  <div className="animate-fade-in delay-2000 text-accent font-bold">✓ ready</div>
+                  {/* Reports the actual ingestion stage. The previous version animated a
+                      fixed sequence ending in "ready" on a timer, which claimed completion
+                      while fetching was still in progress. */}
+                  <div className={ingestionProgress ? "text-accent" : ""}>&gt; resolving repository metadata...</div>
+                  {ingestionProgress && ingestionProgress.phase !== "metadata" && (
+                    <div className="text-accent">&gt; reading file tree...</div>
+                  )}
+                  {ingestionProgress?.phase === "fetching" && (
+                    <>
+                      <div>
+                        &gt; fetching file contents... {ingestionProgress.completed}/{ingestionProgress.total}
+                      </div>
+                      <div
+                        className="h-1 bg-secondary rounded-full overflow-hidden mt-2"
+                        role="progressbar"
+                        aria-valuemin={0}
+                        aria-valuemax={ingestionProgress.total || 1}
+                        aria-valuenow={ingestionProgress.completed}
+                        aria-label="Fetching repository files"
+                      >
+                        <div
+                          className="h-full bg-accent transition-all duration-200"
+                          style={{ width: `${Math.round((ingestionProgress.completed / (ingestionProgress.total || 1)) * 100)}%` }}
+                        />
+                      </div>
+                      {ingestionProgress.currentPath && (
+                        <div className="text-muted-foreground truncate">&gt; {ingestionProgress.currentPath}</div>
+                      )}
+                    </>
+                  )}
+                  {ingestionProgress?.phase === "indexing" && (
+                    <div>&gt; building search index and dependency graph...</div>
+                  )}
                   <div className="animate-pulse inline-block w-1.5 h-3 bg-accent ml-1 mt-2" />
                 </div>
               </div>
@@ -607,6 +648,7 @@ const Index = () => {
                            question={qaQuestion}
                            answer={qaAnswer}
                            isLoading={isQaLoading}
+                           evidence={qaEvidence}
                            onBackToOverview={() => setWorkspaceView('overview')}
                            onFileSelect={(path) => {
                              handleFileSelect(path, manualGithubToken || githubToken);

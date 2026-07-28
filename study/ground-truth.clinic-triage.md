@@ -8,9 +8,20 @@ Each question carries a status:
 - **CROSS-CHECKED** — drafted with AI assistance, then independently reviewed against the
   repository by a second pass, with every factual claim verified by grep or by reading the
   cited lines. Still needs the researcher's sign-off before use.
+- **CROSS-CHECKED and re-verified** — as above, and then challenged a third time because the
+  answer makes an absolute claim ("exactly three", "nothing ever"). One claim did not survive
+  that pass and was withdrawn; see Q7.
 - **NOT CHECKED** — draft only. Not ground truth.
 
-Progress: **2 confirmed, 10 cross-checked and awaiting sign-off.**
+Progress: **2 confirmed, 10 cross-checked and awaiting sign-off**, of which the four carrying
+absolute claims have been re-verified.
+
+A note on the retraction in Q7, because it is the useful one. The second pass explained the
+inert clinician preference by saying a trailing sort destroyed it. Challenged, that explanation
+proved wrong — the seed data gives every clinician's Nth slot an identical timestamp, so ties
+are universal and a stable sort would have preserved the preference completely. The conclusion
+held; the reason given for it did not. An answer can be right for a reason that is wrong, and
+only a question aimed at the reason will find it.
 
 Do not open the tool until all twelve are confirmed. Once an answer is seen from the tool it
 cannot be unseen, and the gate stops measuring anything.
@@ -23,9 +34,9 @@ To validate every line reference in this file, from the artefact repository:
 
 The cross-check found a consistent gap in the original drafts: they described what the code
 *declares* and under-reported where the declared intent never reaches the running application.
-Four instances, all verified — the API pipeline has no callers, the continuity finder's
-clinician preference is destroyed by a later sort, the calculated priority band is always
-overridden by the interface, and a set written by the scheduling listener is never read.
+Four instances, all verified — the API pipeline is never loaded, the continuity finder's
+clinician preference is never supplied, the calculated priority band is always overridden by
+the interface, and a set written by the scheduling listener is never read.
 
 Those facts are now in the answers, which raises the standard the tool is being measured
 against. A tool that sees three files of 2,500 characters cannot perform reachability analysis
@@ -138,13 +149,14 @@ independently asserts that four handlers register.
 
 ## Q4 — cross-cutting concern
 
-**Status: CROSS-CHECKED — awaiting sign-off. Notes were factually wrong and have been replaced.**
+**Status: CROSS-CHECKED and re-verified — awaiting sign-off. Notes were factually wrong and
+have been replaced.**
 
 > Everywhere eligibility is checked — list every place it happens.
 
 **Answer**
 
-The common check is `checkEligibility`. It is called from exactly three places: when accepting a
+The common check is `checkEligibility`. It is called from exactly three places in `src/`: when accepting a
 referral, when booking an appointment, and during reverification of accepted or booked
 referrals. Each caller emits an `eligibility:failed` event on failure with a phase identifying
 acceptance, booking, or nightly processing.
@@ -160,9 +172,14 @@ src/pages/AuditLogPage.tsx:27-34
 **Notes**
 
 The previous note claimed that tests call `checkEligibility` directly. They do not.
-`grep -rn checkEligibility src` returns four hits: the definition and the three call sites
-named above. `eligibility.test.ts` reaches it only indirectly, through
+`grep -rn checkEligibility src` returns seven lines: three imports, the definition, and the
+three call sites named above. `eligibility.test.ts` reaches it only indirectly, through
 `useClinicStore.acceptReferral`.
+
+The claim is absolute, so the ways it could be evaded were checked as well. There is no
+`import *`, no re-export, and no `require` anywhere in the tree, and the only dynamic import is
+the `import.meta.glob` in `loadRoutes.ts`, scoped to `./*.ts` within `src/triage/routes/`.
+Nothing can reach the function under another name.
 
 Despite its name, the "nightly" reverification is not scheduled. It runs only when an operator
 presses the verify button on the audit log page.
@@ -171,7 +188,8 @@ presses the verify button on the audit log page.
 
 ## Q5 — interceptor / pipeline chain
 
-**Status: CROSS-CHECKED — awaiting sign-off. One range corrected; two facts added.**
+**Status: CROSS-CHECKED and re-verified — awaiting sign-off. One range corrected; two facts
+added, one of them strengthened on re-verification.**
 
 > What happens to an outgoing API request before it is sent?
 
@@ -198,10 +216,16 @@ then redact.
 Redaction is narrower than "conditionally" suggests: `redactBody` returns the body untouched
 unless it is a referral whose `type` is `safeguarding` *and* which carries a `patient` object.
 
-Nothing in the application ever exercises this pipeline. `submitReferral` and `recordBooking`
-are the only functions that call `apiRequest`, and neither has an importer anywhere in the
-repository. `transport` is a stub that echoes the request body. The pipeline is complete,
-correct and unreachable.
+Nothing in the application ever exercises this pipeline, and the reason is stronger than an
+absence of calls. `submitReferral` and `recordBooking` are the only functions that call
+`apiRequest`, and neither has an importer. `api-client.ts` has exactly one importer,
+`referrals-api.ts` itself, and no module outside `src/api/` imports anything from `src/api/` at
+all. The module graph rooted at `main.tsx` therefore never reaches the directory, so the
+`reduceRight` composition does not merely go uncalled — it never executes, because the module
+is never loaded. No test imports it either. `transport` is a stub that echoes the request body.
+
+One qualifier, because the distinction matters: this is unreachable, not dead. `tsconfig.app.json`
+includes `src`, so these files are still type-checked and a break in them still fails the build.
 
 ---
 
@@ -230,7 +254,8 @@ operation.
 
 ## Q7 — legacy path
 
-**Status: CROSS-CHECKED — awaiting sign-off. Two ranges corrected; four facts added.**
+**Status: CROSS-CHECKED and re-verified — awaiting sign-off. Two ranges corrected; four facts
+added, one of which was withdrawn on re-verification and replaced with a firmer one.**
 
 > Which slot-finding implementation runs for a follow-up referral, and why that one?
 
@@ -258,14 +283,23 @@ The comment at oldSlotFinder.ts:3 says slots are grouped by site before continui
 considered. There is no site grouping anywhere in the function. This is the same species of
 misleading comment as the Internet Explorer shim in Q1.
 
-The clinician preference has almost no effect on the output. The clinician sort at lines 14-18
-is followed by a global `.sort()` by `startsAt` at line 24, so the preference survives only as
-a stable-sort tiebreak between slots with identical start times.
+The clinician preference never operates, but not because of the trailing sort. `startsAt` is
+derived from `slotIndex` alone in the seed data — `clinicianIndex` affects only
+`durationMinutes` — so every clinician's Nth slot carries an identical timestamp, ties are
+universal rather than exceptional, and `Array.prototype.sort` is stable. The preference at
+lines 14-18 would therefore survive the sort at line 24 intact.
 
-`preferredClinicianId` is `referral.assignedClinicianId` (service.ts:18), and
-`grep -n assignedClinicianId src/data/seed.ts` returns nothing — no seed referral sets that
-field — it is populated only at booking time. With seed data the preference is
-therefore inert.
+What makes it inert is that `preferredClinicianId` is `referral.assignedClinicianId`, and that
+field is undefined at every call site in the repository. It appears three times in `src/`: the
+optional declaration, the read in the scheduling service, and a single write in the store during
+booking. Every caller of `availableSlots` — the slot picker and three tests — passes a
+seed-derived referral, and no seed referral sets it, so the comparator evaluates 0 for every
+pair.
+
+It is unreachable by construction rather than merely unseeded. The only write sets
+`status: "booked"` at the same time; the slot picker renders only while `showBooking` is set or
+the status is `accepted`; and the Accept button is disabled once the status is `booked`. There
+is no path back into the booking flow for a referral that has an assigned clinician.
 
 Unlike `findSlots`, the legacy finder has no `isAfter(now)` filter, so it can return slots in
 the past. All seed slots are in the future, so this does not surface, but it is a real
@@ -275,7 +309,8 @@ behavioural divergence between the two paths.
 
 ## Q8 — event emitter
 
-**Status: CROSS-CHECKED — awaiting sign-off. One range corrected; two facts added.**
+**Status: CROSS-CHECKED and re-verified — awaiting sign-off. One range corrected; two facts
+added, one of them strengthened on re-verification.**
 
 > What reacts when a scheduling event is emitted?
 
@@ -350,7 +385,7 @@ automatically, so the hook itself needs no change — only the hardcoded options
 
 ## Q10 — applied
 
-**Status: CROSS-CHECKED — awaiting sign-off. Substantially reframed.**
+**Status: CROSS-CHECKED and re-verified — awaiting sign-off. Substantially reframed.**
 
 > If the priority rules changed, what else would be affected?
 
@@ -387,6 +422,15 @@ src/tests/banding.test.ts:13
 
 `PriorityPanel.tsx:16` is where `calculateBand` is actually called; a citation starting at 18
 shows only the consumption of the result.
+
+The precise claim is that the stored band is always the panel's local state and never the
+computed one — not that it is always green. Green is the particular outcome when an operator
+accepts an unbanded referral without touching the panel, which is the case worth citing because
+`PriorityPanel` labels the calculated band "Suggested" against a control that was never
+preselected from it.
+
+`calculateBand` does determine a stored band in exactly one place in the repository:
+`eligibility.test.ts:11` calls `acceptReferral` without the override argument. No UI path does.
 
 `setPriority` can change a stored band after acceptance, and is the only path by which a band
 other than the seeded one is stored without operator input at the panel.

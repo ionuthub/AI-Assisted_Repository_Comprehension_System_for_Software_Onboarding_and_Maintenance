@@ -47,3 +47,30 @@ export function ignoredDirectoryFor(path: string): string | null {
 export function isInIgnoredDirectory(path: string): boolean {
   return ignoredDirectoryFor(path) !== null;
 }
+
+/**
+ * Generated dependency manifests. They are machine output rather than source a developer
+ * reads, and they are large: a lockfile consumes one of the fifty index slots and fills the
+ * term index with package names, which then compete with the repository's own identifiers
+ * during retrieval.
+ */
+const GENERATED_FILES = new Set([
+  "package-lock.json",
+  "yarn.lock",
+  "pnpm-lock.yaml",
+  "bun.lockb",
+  "npm-shrinkwrap.json",
+  "composer.lock",
+  "Cargo.lock",
+  "poetry.lock",
+  "Gemfile.lock",
+]);
+
+export function isGeneratedFile(path: string): boolean {
+  return GENERATED_FILES.has(path.split("/").pop() ?? "");
+}
+
+/** True for any path the ingestion layer should not index, whatever its extension. */
+export function isExcludedFromIngestion(path: string): boolean {
+  return isInIgnoredDirectory(path) || isGeneratedFile(path);
+}

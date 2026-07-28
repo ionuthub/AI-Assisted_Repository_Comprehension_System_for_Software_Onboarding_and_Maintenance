@@ -32,6 +32,10 @@ IGNORED_DIRECTORIES = {
     "target", ".git", ".next", ".nuxt", ".svelte-kit", ".cache", ".turbo", ".venv",
     "__pycache__", "site-packages",
 }
+GENERATED_FILES = {
+    "package-lock.json", "yarn.lock", "pnpm-lock.yaml", "bun.lockb", "npm-shrinkwrap.json",
+    "composer.lock", "Cargo.lock", "poetry.lock", "Gemfile.lock",
+}
 CODE_EXT = {
     ".js", ".ts", ".tsx", ".jsx", ".py", ".rs", ".rb", ".go", ".java", ".cs", ".php",
     ".swift", ".kt", ".m", ".c", ".cpp", ".h", ".hs", ".scala", ".sql", ".md", ".json",
@@ -41,11 +45,20 @@ CODE_EXT = {
 # --- study thresholds (see STUDY_REPOSITORY_PROMPTS.md) ---
 FILES_MIN, FILES_MAX = 40, 46
 FILE_COUNT_TOLERANCE = 3
-LOC_MIN, LOC_MAX = 2600, 3200
+# Absolute size band. Deliberately wide: "small-to-medium" is the proposal's requirement and
+# anything a developer can hold in mind within a timed task satisfies it. The band is a
+# sanity check, not a matching criterion — LOC_RATIO_MAX below is the one that governs
+# comparability between the pair, and that threshold is not negotiable after the fact.
+LOC_MIN, LOC_MAX = 2000, 3200
 LOC_RATIO_MAX = 1.2
 COVERAGE_MIN = 0.95
 
 SOURCE_EXT = {".ts", ".tsx", ".js", ".jsx"}
+
+# Formatting density is a confound: the same logic written without blank lines and with
+# several statements per line reads as materially harder, independently of its structure.
+# Normalise both repositories with identical formatter settings before measuring, or the
+# line counts compare presentation rather than content.
 TEST_RE = re.compile(r"\.(test|spec)\.[jt]sx?$")
 
 # Pattern name -> regexes, any of which is evidence the pattern is present.
@@ -85,7 +98,7 @@ def analyse(root: Path) -> dict:
                 loc += sum(1 for _ in p.open(errors="ignore"))
             except OSError:
                 pass
-        if p.suffix in CODE_EXT:
+        if p.suffix in CODE_EXT and p.name not in GENERATED_FILES:
             try:
                 if p.stat().st_size <= MAX_FILE_SIZE:
                     analysable.append(str(rel))

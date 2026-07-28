@@ -52,7 +52,7 @@ interface GitHubTreeItem {
 }
 
 import { inferLanguageFromFilename } from "@/lib/languages";
-import { ignoredDirectoryFor } from "@/lib/ingestionFilters";
+import { ignoredDirectoryFor, isGeneratedFile } from "@/lib/ingestionFilters";
 
 const CODE_FILE_PATTERN = /\.(js|ts|tsx|jsx|py|rs|rb|go|java|cs|php|swift|kt|m|c|cpp|h|hs|scala|sql|md|json|yml|yaml|html|css)$/i;
 
@@ -167,6 +167,8 @@ export const partitionTreeFiles = (items: GitHubTreeItem[]) => {
       excluded.push({ path: item.path, reason: "Unsafe path" });
     } else if (ignoredDirectory) {
       excluded.push({ path: item.path, reason: `In ${ignoredDirectory}` });
+    } else if (isGeneratedFile(item.path)) {
+      excluded.push({ path: item.path, reason: "Generated dependency manifest" });
     } else if (!CODE_FILE_PATTERN.test(item.path)) {
       excluded.push({ path: item.path, reason: "Not a supported source file" });
     } else if ((item.size ?? 0) > MAX_FILE_SIZE) {

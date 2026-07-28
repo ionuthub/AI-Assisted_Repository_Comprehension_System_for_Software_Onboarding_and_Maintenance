@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { ignoredDirectoryFor, isInIgnoredDirectory } from './ingestionFilters';
+import { ignoredDirectoryFor, isInIgnoredDirectory, isGeneratedFile, isExcludedFromIngestion } from './ingestionFilters';
 
 describe('ignoredDirectoryFor', () => {
   it('excludes installed dependencies at any depth', () => {
@@ -36,5 +36,28 @@ describe('ignoredDirectoryFor', () => {
     expect(ignoredDirectoryFor('src/pages/Index.tsx')).toBeNull();
     expect(ignoredDirectoryFor('index.js')).toBeNull();
     expect(ignoredDirectoryFor('lib/router/index.js')).toBeNull();
+  });
+});
+
+describe('isGeneratedFile', () => {
+  it('excludes lockfiles, which are machine output and consume an index slot', () => {
+    // A lockfile is thousands of lines of package names. Indexed, it takes one of the fifty
+    // slots and its terms compete with the repository's own identifiers during retrieval.
+    expect(isGeneratedFile('package-lock.json')).toBe(true);
+    expect(isGeneratedFile('apps/web/yarn.lock')).toBe(true);
+    expect(isGeneratedFile('Cargo.lock')).toBe(true);
+  });
+
+  it('does not exclude source files with similar names', () => {
+    expect(isGeneratedFile('src/lib/lock.ts')).toBe(false);
+    expect(isGeneratedFile('src/package.json')).toBe(false);
+  });
+});
+
+describe('isExcludedFromIngestion', () => {
+  it('covers both vendored directories and generated files', () => {
+    expect(isExcludedFromIngestion('node_modules/x/index.js')).toBe(true);
+    expect(isExcludedFromIngestion('package-lock.json')).toBe(true);
+    expect(isExcludedFromIngestion('src/app.ts')).toBe(false);
   });
 });

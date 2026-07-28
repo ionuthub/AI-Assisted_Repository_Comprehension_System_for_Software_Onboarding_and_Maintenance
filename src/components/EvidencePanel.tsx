@@ -20,6 +20,26 @@ export interface UnverifiedMention {
   reason: string;
 }
 
+/**
+ * Score at which the relevance bar is drawn full.
+ *
+ * Scores are cosine similarity between sparse TF-IDF vectors, where a short natural-language
+ * query shares few terms with any one file. They are therefore small in absolute terms even
+ * when retrieval has worked perfectly, and drawing the bar at `score * 100%` rendered a
+ * correct top-ranked result as a near-empty bar.
+ *
+ * That is not a cosmetic problem. A reader who sees an empty bar above a correct answer
+ * discounts a result they should have accepted, and under-trust is as much a calibration
+ * failure as over-trust.
+ *
+ * The value is the 90th percentile of top-ranked scores measured over the 24 accuracy-gate
+ * question stems across both study repositories (p50 = 0.27, p90 = 0.59, max = 0.67). It is
+ * fixed and recorded here rather than tuned per query, so a given score always draws the same
+ * bar and two answers can be compared by eye. Changing it changes what participants see and
+ * must not be done once data collection has begun.
+ */
+const SCORE_BAR_FULL_SCALE = 0.6;
+
 interface EvidencePanelProps {
   evidence: RetrievedEvidence[];
   unverifiedMentions: UnverifiedMention[];
@@ -31,11 +51,18 @@ interface EvidencePanelProps {
 
 /**
  * The evidence behind an answer, in the three states the design system defines: retrieving,
- * grounded, and not grounded.
+ * evidence present, and no evidence.
  *
- * The not-grounded state is marked by an icon, a border weight, a hatched background and the
- * word itself — never by colour alone — because a participant must be able to tell a
- * grounded answer from an ungrounded one, and that distinction is what the study measures.
+ * The no-evidence state is marked by an icon, a border weight, a hatched background and the
+ * wording itself — never by colour alone — because a reader must be able to tell an answer
+ * with supporting files from one without, and that distinction is what the study measures.
+ *
+ * The headings state what the panel can actually establish, which is what was retrieved and
+ * sent to the model. They deliberately do not characterise the answer. An earlier wording
+ * read "Grounded", which was read as a verdict that the answer was supported — it appeared
+ * above answers that were outright refusals, since retrieval had returned files but the model
+ * had found nothing in them. Whether an answer follows from its evidence is a judgement only
+ * the reader can make, and inviting them to make it is the point of the panel.
  */
 export default function EvidencePanel({
   evidence,
@@ -45,7 +72,7 @@ export default function EvidencePanel({
   totalFileCount,
   onFileSelect,
 }: EvidencePanelProps) {
-  const isGrounded = evidence.length > 0;
+  const hasEvidence = evidence.length > 0;
 
   if (isLoading) {
     return (
@@ -68,16 +95,17 @@ export default function EvidencePanel({
 
   return (
     <section aria-label="Evidence" className="space-y-4">
-      {isGrounded ? (
+      {hasEvidence ? (
         <div className="rounded-md border border-primary/60 bg-card overflow-hidden">
           <header className="flex items-center gap-2 px-4 py-3 border-b border-primary/40 bg-primary/10">
             <CheckCircle2 className="w-4 h-4 text-primary shrink-0" aria-hidden="true" />
             <h3 className="text-ui font-semibold text-foreground">
-              Grounded · {evidence.length} file{evidence.length === 1 ? "" : "s"} retrieved
+              Evidence · {evidence.length} file{evidence.length === 1 ? "" : "s"} retrieved
             </h3>
           </header>
           <p className="px-4 pt-3 text-meta text-muted-foreground">
-            These files were sent to the model, in rank order. Nothing else was seen.
+            These files were sent to the model, in rank order. Nothing else was seen. Whether
+            the answer follows from them is for you to check.
           </p>
           <ol className="p-3 space-y-2">
             {evidence.map((item, rank) => (
@@ -92,11 +120,16 @@ export default function EvidencePanel({
                     <span
                       className="h-1.5 w-16 rounded-full bg-secondary shrink-0 overflow-hidden"
                       role="img"
-                      aria-label={`Relevance ${item.score.toFixed(2)}`}
+                      aria-label={`Keyword match score ${item.score.toFixed(2)}`}
                     >
                       <span
                         className="block h-full bg-primary"
-                        style={{ width: `${Math.max(4, Math.min(100, item.score * 100))}%` }}
+                        style={{
+                          width: `${Math.max(
+                            4,
+                            Math.min(100, (item.score / SCORE_BAR_FULL_SCALE) * 100)
+                          )}%`,
+                        }}
                       />
                     </span>
                     <span className="text-meta font-mono text-foreground-secondary shrink-0 w-10 text-right">
@@ -138,7 +171,7 @@ export default function EvidencePanel({
         >
           <header className="flex items-center gap-2 px-4 py-3 border-b border-destructive/50 bg-destructive/20">
             <AlertTriangle className="w-4 h-4 text-destructive shrink-0" aria-hidden="true" />
-            <h3 className="text-ui font-semibold text-foreground">Not grounded · 0 files retrieved</h3>
+            <h3 className="text-ui font-semibold text-foreground">No evidence · 0 files retrieved</h3>
           </header>
           <p className="px-4 py-3 text-ui text-foreground leading-relaxed">
             Nothing in this repository supports the answer below. Check it against the source
@@ -178,6 +211,10 @@ export default function EvidencePanel({
           Retrieved by keyword match over {indexedFileCount} of {totalFileCount} indexed files.
           {totalFileCount > indexedFileCount &&
             ` ${totalFileCount - indexedFileCount} files could not be searched.`}
+          {hasEvidence &&
+            ` Scores measure shared wording, not correctness; a bar is full at ${SCORE_BAR_FULL_SCALE.toFixed(
+              2
+            )}.`}
         </p>
       )}
     </section>

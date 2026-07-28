@@ -1,0 +1,110 @@
+{
+  "repository": "warehouse-dispatch",
+  "date": "",
+  "toolVersion": "77e39cb",
+  "model": "gemini-3.5-flash",
+  "retrieval": {
+    "topK": 3,
+    "excerptChars": 2500,
+    "fileCap": 50
+  },
+  "items": [
+    {
+      "id": 1,
+      "pattern": "orientation",
+      "question": "Where does execution start in this project?",
+      "correctAnswer": "",
+      "toolAnswer": "",
+      "correct": null
+    },
+    {
+      "id": 2,
+      "pattern": "config-driven behaviour",
+      "question": "How is an order assigned to a warehouse zone?",
+      "correctAnswer": "",
+      "toolAnswer": "",
+      "correct": null
+    },
+    {
+      "id": 3,
+      "pattern": "handler registry",
+      "question": "Which code decides how a given order type is processed?",
+      "correctAnswer": "",
+      "toolAnswer": "",
+      "correct": null
+    },
+    {
+      "id": 4,
+      "pattern": "cross-cutting concern",
+      "question": "Everywhere stock is reserved \u2014 list every place it happens.",
+      "correctAnswer": "",
+      "toolAnswer": "",
+      "correct": null
+    },
+    {
+      "id": 5,
+      "pattern": "interceptor chain",
+      "question": "What happens to an outgoing API request before it is sent?",
+      "correctAnswer": "",
+      "toolAnswer": "",
+      "correct": null
+    },
+    {
+      "id": 6,
+      "pattern": "misleading name",
+      "question": "Does validateShipment change any state, or does it only check?",
+      "correctAnswer": "",
+      "toolAnswer": "",
+      "correct": null
+    },
+    {
+      "id": 7,
+      "pattern": "legacy path",
+      "question": "Which pricing implementation runs for a bulk order, and why that one?",
+      "correctAnswer": "",
+      "toolAnswer": "",
+      "correct": null
+    },
+    {
+      "id": 8,
+      "pattern": "event emitter",
+      "question": "What reacts when a dispatch event is emitted?",
+      "correctAnswer": "",
+      "toolAnswer": "",
+      "correct": null
+    },
+    {
+      "id": 9,
+      "pattern": "applied",
+      "question": "Where would a new order type be added, and what else would need changing?",
+      "correctAnswer": "",
+      "toolAnswer": "",
+      "correct": null
+    },
+    {
+      "id": 10,
+      "pattern": "applied",
+      "question": "If the zone rules changed, what else would be affected?",
+      "correctAnswer": "",
+      "toolAnswer": "",
+      "correct": null
+    },
+    {
+      "id": 11,
+      "pattern": "interceptor chain",
+      "question": "Are hazardous orders treated differently anywhere? Where?",
+      "correctAnswer": "",
+      "toolAnswer": "",
+      "correct": null
+    },
+    {
+      "id": 12,
+      "pattern": "misleading name",
+      "question": "Where is a dock assigned to a shipment?",
+      "correctAnswer": "",
+      "toolAnswer": "",
+      "correct": null
+    }
+  ],
+  "notes": "QUESTION STEMS ONLY. correctAnswer must be written by the researcher from reading the code, BEFORE the tool is asked anything. toolAnswer is pasted verbatim from the tool afterwards. 'correct' is the researcher's marking. Questions may be reworded or replaced; they are drafted to cover each architectural pattern once so the gate exercises the same structures the study tasks will target."
+}

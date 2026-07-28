@@ -72,6 +72,11 @@ def construct_end(lines: list[str], start: int) -> int | None:
                 depth -= 1
         if opened and depth <= 0:
             return n + 1
+        # A declaration that opens nothing on its own first line is complete on that line —
+        # `export type ReferralType = "routine" | "urgent";` is the whole thing. Without this,
+        # the scan ran on into the *next* declaration and reported the citation as too short.
+        if n == start - 1 and not opened:
+            return None
     return None if not opened else len(lines)
 
 
@@ -107,9 +112,34 @@ def check_reference(ref: str, root: Path) -> tuple[str, str]:
             f"{rel}:{start}-{end} stops short — the declaration on line {start} "
             f"closes on line {actual_end}"
         )
+
+    # The range runs past its first declaration. That is only a defect if it also stops
+    # part-way through a later one. Citing a whole file, or a group of related exports, is
+    # legitimate and common — `registry.ts:8-18` covering the handler map and both functions
+    # that use it says something a single declaration cannot. So walk forward through the
+    # declarations the range contains and accept it if the last one closes exactly on `end`.
+    spanned, cursor = 1, actual_end + 1
+    while cursor <= end:
+        if not DECLARATION_RE.match(lines[cursor - 1]):
+            cursor += 1
+            continue
+        cursor_end = construct_end(lines, cursor)
+        if cursor_end is None:
+            cursor += 1
+            continue
+        spanned += 1
+        if cursor_end == end:
+            return "PASS", f"{rel}:{start}-{end} (spans {spanned} declarations)"
+        if cursor_end > end:
+            return "FAIL", (
+                f"{rel}:{start}-{end} ends inside the declaration beginning on line "
+                f"{cursor}, which closes on line {cursor_end}"
+            )
+        cursor = cursor_end + 1
+
     return "FAIL", (
-        f"{rel}:{start}-{end} overruns — the declaration on line {start} closes on "
-        f"line {actual_end}, so this range covers more than one declaration"
+        f"{rel}:{start}-{end} ends on line {end}, which does not close any declaration "
+        f"the range contains"
     )
 
 
@@ -167,11 +197,15 @@ export const thresholds = [
         assert status == "FAIL" and "closes on line 10" in msg, msg
         assert check_reference("f.ts:5-10", root)[0] == "PASS"
 
-        # Two separate exports merged into one range, as priorityRules.ts:33-76 did.
+        # A range spanning several whole declarations is legitimate: citing a group of
+        # related exports says something no single one does.
         status, msg = check_reference("f.ts:12-19", root)
-        assert status == "FAIL" and "overruns" in msg, msg
+        assert status == "PASS" and "spans 2" in msg, msg
         assert check_reference("f.ts:12-15", root)[0] == "PASS"
         assert check_reference("f.ts:17-19", root)[0] == "PASS"
+        # But a range that stops part-way through a later declaration is still a defect.
+        status, msg = check_reference("f.ts:12-18", root)
+        assert status == "FAIL" and "ends inside" in msg, msg
 
         # Braces inside strings must not be counted, or every range containing a template
         # literal would be misjudged.

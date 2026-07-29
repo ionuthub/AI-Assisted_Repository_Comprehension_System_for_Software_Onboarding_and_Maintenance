@@ -110,11 +110,12 @@ def compare(a_path: Path, b_path: Path) -> bool:
         notes = []
         if not same_evidence:
             notes.append("RETRIEVAL CHANGED")
-        # A capture defect fixed between runs shows up as a field gaining content.
+        # State only the observable difference. A field can become non-empty because answer
+        # wording changed, so calling it "now captured" would wrongly diagnose a selector fix.
         for field in ("toolUnverifiedMentions", "toolCoverage"):
             before, after = ia.get(field), ib.get(field)
             if not before and after:
-                notes.append(f"{field} now captured")
+                notes.append(f"{field} now non-empty")
         print(
             f"{qid:3d}   {ratio:5.0%}     {overlap:5.0%}       "
             f"{'same' if same_evidence else 'DIFFERENT':9}   {'; '.join(notes)}"

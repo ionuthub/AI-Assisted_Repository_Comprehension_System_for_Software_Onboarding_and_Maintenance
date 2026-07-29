@@ -164,6 +164,76 @@ async function readEvidence() {
   return { heading, retrieved, unverified: unverified.map((u) => u.replace(/\s+/g, " ").trim()), coverage };
 }
 
+/**
+ * Screenshots the whole answer, however tall it is.
+ *
+ * Two earlier attempts failed for the same reason. `fullPage` captures the document, and the
+ * document is only ever one viewport tall because the answer scrolls inside its own container.
+ * Growing the viewport to the element's bounding box does not help either: a box is what is
+ * *visible*, so on a clipped element it reports the clipped height and the shot is the same
+ * size as before. Both attempts produced a plausible-looking image that stopped mid-answer.
+ *
+ * So the clipping is removed rather than worked around. Every scrolling ancestor of the answer
+ * has its overflow and height constraints lifted, the viewport is grown to the resulting
+ * document height, and the styles are restored afterwards.
+ *
+ * The check at the end is the part that matters. It compares scroll height to client height on
+ * the same elements after the override: if anything can still scroll, content is still hidden,
+ * and the script says so rather than leaving it to be found by a spot-check later.
+ */
+async function captureFullAnswer(answerPanel, path) {
+  const handle = await answerPanel.elementHandle();
+  if (!handle) {
+    await page.screenshot({ path, fullPage: true });
+    return { complete: false, reason: "answer element not found" };
+  }
+
+  const before = await page.evaluate((el) => {
+    const saved = [];
+    for (let node = el; node && node !== document.documentElement; node = node.parentElement) {
+      const css = getComputedStyle(node);
+      const scrolls = /auto|scroll|hidden/.test(css.overflowY) && node.scrollHeight > node.clientHeight + 1;
+      const capped = css.maxHeight !== "none" || css.height !== "auto";
+      if (!scrolls && !capped) continue;
+      saved.push({ node, overflowY: node.style.overflowY, maxHeight: node.style.maxHeight, height: node.style.height });
+      node.style.overflowY = "visible";
+      node.style.maxHeight = "none";
+      node.style.height = "auto";
+    }
+    window.__gateRestore = saved;
+    return document.documentElement.scrollHeight;
+  }, handle);
+
+  const height = Math.min(12000, Math.max(900, Math.ceil(before) + 80));
+  await page.setViewportSize({ width: 1440, height });
+  await page.waitForTimeout(250);
+  await page.screenshot({ path, fullPage: true });
+
+  const leftover = await page.evaluate((el) => {
+    let worst = null;
+    for (let node = el; node && node !== document.documentElement; node = node.parentElement) {
+      const hidden = node.scrollHeight - node.clientHeight;
+      if (hidden > 4 && (!worst || hidden > worst.hidden)) {
+        worst = { hidden, tag: node.tagName.toLowerCase(), cls: (node.className || "").toString().slice(0, 40) };
+      }
+    }
+    for (const s of window.__gateRestore || []) {
+      s.node.style.overflowY = s.overflowY;
+      s.node.style.maxHeight = s.maxHeight;
+      s.node.style.height = s.height;
+    }
+    delete window.__gateRestore;
+    return worst;
+  }, handle);
+
+  await handle.dispose();
+  await page.setViewportSize({ width: 1440, height: 900 });
+
+  return leftover
+    ? { complete: false, reason: `${leftover.hidden}px still hidden in <${leftover.tag} class="${leftover.cls}">` }
+    : { complete: true };
+}
+
 const results = [];
 for (const { id, question } of questions) {
   process.stdout.write(`Q${id} … `);
@@ -177,16 +247,10 @@ for (const { id, question } of questions) {
   // Take the answer body only, not the panel chrome, so the recorded text is what a reader saw.
   const answer = (await answerPanel.innerText()).trim();
   const shot = join(SHOTS, `${gate.repository}-q${String(id).padStart(2, "0")}.png`);
-  // fullPage does not help here: the answer sits in a container that scrolls internally, so the
-  // document itself is only ever one viewport tall and the capture stops mid-answer. Grow the
-  // viewport to the answer's own height first, so the whole thing is on screen when the shot is
-  // taken. The recorded text was always complete — innerText ignores scroll — but a screenshot
-  // that shows two thirds of an answer is not appendix evidence.
-  const box = await answerPanel.boundingBox().catch(() => null);
-  const needed = Math.min(4000, Math.ceil((box?.height ?? 0) + 400));
-  if (needed > 900) await page.setViewportSize({ width: 1440, height: needed });
-  await page.screenshot({ path: shot, fullPage: true });
-  await page.setViewportSize({ width: 1440, height: 900 });
+  const shotCheck = await captureFullAnswer(answerPanel, shot);
+  if (!shotCheck.complete) {
+    console.log(`\n  ! Q${id} screenshot may be truncated: ${shotCheck.reason}`);
+  }
 
   results.push({ id, question, answer, ...evidence, screenshot: shot });
   console.log(`${evidence.retrieved.length} files, ${answer.length} chars`);

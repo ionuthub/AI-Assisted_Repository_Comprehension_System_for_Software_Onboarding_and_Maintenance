@@ -24,7 +24,24 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent))
 from gate_worksheet import parse  # noqa: E402
 
-VERDICT_RE = re.compile(r"^## Q(\d+)\b.*?^\*\*Verdict:\*\*\s*(\w+)", re.M | re.S)
+# Blocks are split first, then searched, rather than matching question and verdict in one
+# expression. A single non-greedy pattern spanning the document reads *past* an unmarked
+# question to the next verdict it can find, so an untouched Q2 silently inherits Q3's mark. The
+# self-test below covers that case, which is how it was caught.
+BLOCK_SPLIT_RE = re.compile(r"^## Q(\d+)\b", re.M)
+VERDICT_RE = re.compile(r"^\*\*Verdict:\*\*[ \t]*(\w+)", re.M)
+
+
+def read_verdicts(markdown: str) -> dict[int, str]:
+    """Maps question id to the verdict written in that question's own block."""
+    marks = list(BLOCK_SPLIT_RE.finditer(markdown))
+    out: dict[int, str] = {}
+    for i, m in enumerate(marks):
+        end = marks[i + 1].start() if i + 1 < len(marks) else len(markdown)
+        found = VERDICT_RE.search(markdown, m.end(), end)
+        if found:
+            out[int(m.group(1))] = found.group(1).lower()
+    return out
 
 HEADER = """\
 # Marking sheet — {repo}
@@ -117,9 +134,7 @@ def build(gate_path: Path, truth_path: Path) -> Path:
 
 def collect(gate_path: Path, sheet_path: Path) -> bool:
     gate = json.loads(gate_path.read_text())
-    verdicts = {
-        int(m.group(1)): m.group(2).lower() for m in VERDICT_RE.finditer(sheet_path.read_text())
-    }
+    verdicts = read_verdicts(sheet_path.read_text())
 
     missing, bad = [], []
     for item in gate["items"]:
@@ -162,10 +177,12 @@ def self_test() -> None:
 
 **Verdict:** incorrect
 """
-    got = {m.group(1): m.group(2) for m in VERDICT_RE.finditer(sample)}
-    # Q2 is untouched: the placeholder is an HTML comment, so no word follows the marker.
-    assert got == {"1": "correct", "3": "incorrect"}, got
-    print("self-test OK: filled verdicts parse, untouched ones are absent rather than false")
+    got = read_verdicts(sample)
+    # Q2 is untouched: the placeholder is an HTML comment, so no word follows the marker on its
+    # line. It must be absent, not inherited from Q3 and not silently false.
+    assert got == {1: "correct", 3: "incorrect"}, got
+    assert 2 not in got, got
+    print("self-test OK: filled verdicts parse, an unmarked question stays unmarked")
 
 
 if __name__ == "__main__":

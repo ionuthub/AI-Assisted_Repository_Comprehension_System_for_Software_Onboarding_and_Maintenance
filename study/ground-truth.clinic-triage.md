@@ -156,9 +156,11 @@ implementation, and two in `ReferralDetailPage` that are the component's own `us
 not the store action — a name collision, and the reason an earlier version of this answer
 presented the action as a live path.
 
-The absence was confirmed by enumeration rather than by the grep alone. `useClinicStore` is
-referenced twenty-seven times across five pages, `Layout` and `eligibility.test.ts`; no
-selector and no `getState()` call anywhere reaches `state.setPriority`. The audit entry the
+The absence was confirmed by enumeration rather than by the grep alone. `useClinicStore` appears on
+twenty-seven lines across seven files — five pages, `Layout` and `eligibility.test.ts` — and no
+selector and no `getState()` call among them reaches `state.setPriority`. (A count of distinct
+references rather than matching lines gives fifteen; both routes agree that none is the one in
+question.) The audit entry the
 action writes, "Priority changed", can therefore never appear in the application.
 
 ---

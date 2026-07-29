@@ -31,7 +31,7 @@
  *   --force       skip the interlock entirely (records why in the output)
  */
 import { chromium } from "playwright";
-import { readFileSync, writeFileSync, mkdirSync } from "node:fs";
+import { readFileSync, writeFileSync, mkdirSync, existsSync, renameSync, readdirSync } from "node:fs";
 import { join } from "node:path";
 
 const argv = process.argv.slice(2);
@@ -97,6 +97,27 @@ if (TRUTH && !flag("force")) {
 const gate = JSON.parse(readFileSync(GATE, "utf8"));
 const questions = gate.items.map((item) => ({ id: item.id, question: item.question }));
 mkdirSync(SHOTS, { recursive: true });
+
+// A previous capture is archived rather than overwritten. Two reasons. The model is not
+// deterministic, so a second run answers the same question differently, and silently replacing
+// the first run would destroy the only evidence of by how much — which is a reproducibility
+// limitation worth reporting rather than losing. And a re-run prompted by a defect in this
+// script needs the earlier data kept, or the claim that the defect changed nothing cannot be
+// checked.
+const ARCHIVE = "study/gate-runs";
+if (gate.items.some((i) => i.toolAnswer)) {
+  mkdirSync(ARCHIVE, { recursive: true });
+  const previous = readdirSync(ARCHIVE).filter((f) => f.startsWith(`${gate.repository}-run`));
+  const n = previous.length + 1;
+  writeFileSync(join(ARCHIVE, `${gate.repository}-run${n}.json`), JSON.stringify(gate, null, 1) + "\n");
+  const stale = readdirSync(SHOTS).filter((f) => f.startsWith(`${gate.repository}-q`));
+  if (stale.length) {
+    const dir = join(ARCHIVE, `${gate.repository}-run${n}-screenshots`);
+    mkdirSync(dir, { recursive: true });
+    for (const f of stale) renameSync(join(SHOTS, f), join(dir, f));
+  }
+  console.log(`Archived the previous capture as ${gate.repository}-run${n}.`);
+}
 
 const browser = await chromium.launch({ headless: !flag("headed") });
 const page = await browser.newPage({ viewport: { width: 1440, height: 900 } });

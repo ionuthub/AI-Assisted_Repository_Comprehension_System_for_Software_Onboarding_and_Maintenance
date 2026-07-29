@@ -1,13 +1,28 @@
 # Ground truth — warehouse-dispatch (Repo A)
 
-**This is the list of correct answers for the accuracy gate.** Twelve questions. Each one is
-either checked or not checked, and the status line says which.
+**This is the list of correct answers for the accuracy gate.** Twelve questions.
 
-The starting text for every answer was drafted with AI assistance. **A draft answer is not
-ground truth.** It becomes ground truth only once the researcher has opened the files and
-confirmed it. Until then the status line reads NOT CHECKED and the answer must not be used.
+Each question carries a status:
 
-Progress: **0 of 12 checked.**
+- **CONFIRMED** — the researcher has read the code and signed it off. Usable.
+- **CROSS-CHECKED** — drafted with AI assistance, then independently reviewed against the
+  repository by a second pass, with every factual claim verified by grep or by reading the
+  cited lines. Still needs the researcher's sign-off before use.
+- **NOT CHECKED** — draft only. Not ground truth.
+
+Progress: **0 confirmed, 12 cross-checked and awaiting sign-off.**
+
+The independent review found one outright factual error, in Q1, and four places where the
+answer was correct but under-cited. Every claim it made was re-verified here before being
+accepted.
+
+One observation that belongs outside any single answer: this repository installs its listeners
+and creates its router differently from clinic-triage. Here the router is built once at module
+scope and the listeners are installed inside an effect; there the routes are declared inside
+the component and the listeners arrive through bare side-effect imports. Question 1 therefore
+has a structurally different answer in each repository. The orientation question is already
+known to fail retrieval in both, so nothing in the study turns on it, but it should be recorded
+rather than discovered later.
 
 Do not open the tool until all twelve are checked. Once an answer is seen from the tool it
 cannot be unseen, and the gate stops measuring anything.
@@ -20,22 +35,28 @@ To validate every line reference in this file:
 
 ## Q1 — orientation
 
-**Status: NOT CHECKED**
+**Status: CROSS-CHECKED — awaiting sign-off. One sentence was factually wrong and is corrected.**
 
 > Where does execution start in this project?
 
 **Answer**
 
 Browser execution starts in `src/main.tsx`, which finds the `root` element and renders `App`
-inside React strict mode. `App` then creates the router, installs notification listeners, and
-initializes the warehouse store.
+inside React strict mode. The router is not created by `App`: it is built once at module scope
+when `App.tsx` is first imported. `App` itself installs the notification listeners, calls the
+store's `initialize`, and renders the `RouterProvider` around the router that already exists.
 
 **Files and lines**
 
 src/main.tsx:1-10
-src/App.tsx:11-30
+src/App.tsx:11-22
+src/App.tsx:24-31
 
 **Notes**
+
+The distinction matters for a question about where execution starts: the route table is
+constructed at import time, before any component renders, whereas the listeners and the store
+initialisation run inside an effect after the first render.
 
 This is the client entry point; there is no separate application server because API behaviour
 is mocked in-process.
@@ -44,7 +65,7 @@ is mocked in-process.
 
 ## Q2 — config-driven behaviour
 
-**Status: NOT CHECKED**
+**Status: CROSS-CHECKED — awaiting sign-off. Verified exact; no change.**
 
 > How is an order assigned to a warehouse zone?
 
@@ -59,10 +80,10 @@ still available and updates reserved stock in a cloned zone set.
 
 **Files and lines**
 
-src/dispatch/allocator.ts:17-64
+src/dispatch/allocator.ts:17-73
 src/config/zoneRules.ts:14-19
 src/config/zoneRules.ts:28-85
-src/stock/reservation.ts:9-44
+src/stock/reservation.ts:9-45
 
 **Notes**
 
@@ -74,7 +95,7 @@ result is `held` if the accepted allocations do not cover every line completely
 
 ## Q3 — handler registry
 
-**Status: NOT CHECKED**
+**Status: CROSS-CHECKED — awaiting sign-off. Verified exact; one fact added.**
 
 > Which code decides how a given order type is processed?
 
@@ -87,24 +108,25 @@ shipment-default methods.
 
 **Files and lines**
 
-src/dispatch/handlers/registry.ts:3-31
+src/dispatch/handlers/registry.ts:3-32
 src/dispatch/handlers/standardHandler.ts:1-22
 src/dispatch/handlers/expressHandler.ts:1-31
 src/dispatch/handlers/bulkHandler.ts:1-37
 src/dispatch/handlers/hazardousHandler.ts:1-27
-src/dispatch/allocator.ts:17-23
-src/dispatch/releaseService.ts:12-18
+src/dispatch/allocator.ts:21
+src/dispatch/releaseService.ts:17
 
 **Notes**
 
 The registry selects processing behaviour; zone selection is a separate, configuration-driven
-decision.
+decision. Registering a second handler for the same type throws, so the glob cannot silently
+shadow one handler with another.
 
 ---
 
 ## Q4 — cross-cutting concern
 
-**Status: NOT CHECKED**
+**Status: CROSS-CHECKED — awaiting sign-off. Verified complete.**
 
 > Everywhere stock is reserved — list every place it happens.
 
@@ -118,22 +140,27 @@ initialization.
 
 **Files and lines**
 
-src/stock/reservation.ts:9-44
+src/stock/reservation.ts:9-45
 src/dispatch/allocator.ts:56-72
-src/dispatch/releaseService.ts:31-36
-src/jobs/revalidation.ts:10-48
-src/store/useWarehouseStore.ts:88-116
+src/dispatch/releaseService.ts:31
+src/jobs/revalidation.ts:10-49
+src/store/useWarehouseStore.ts:88-125
 
 **Notes**
 
 `commitReleasedStock` does not create a reservation; it consumes on-hand stock and removes the
-corresponding reservation (src/stock/stockService.ts:16-36).
+corresponding reservation (src/stock/stockService.ts:16-37).
+
+The list is complete by two independent routes. `applyStockReservation` has exactly three call
+sites, named above, plus the store's installation of the revalidation job. Grepping instead for
+every direct write to `item.reserved` returns three: the reservation function itself, the reset
+inside revalidation, and the release path in `commitReleasedStock`. Both searches agree.
 
 ---
 
 ## Q5 — interceptor / pipeline chain
 
-**Status: NOT CHECKED**
+**Status: CROSS-CHECKED — awaiting sign-off. Under-stated; two facts added.**
 
 > What happens to an outgoing API request before it is sent?
 
@@ -142,27 +169,34 @@ corresponding reservation (src/stock/stockService.ts:16-36).
 The client builds a request with an `Accept` header and empty metadata, then applies three
 interceptors in order. Authentication adds the bearer token; audit adds a request timestamp,
 source, and correlation ID; and the hazardous interceptor conditionally rewrites `/orders` to
-`/controlled/orders` while adding controlled-load routing metadata. The transformed request is
-then passed to the mock transport.
+`/controlled/orders`, adds an `x-controlled-load` header and sets `routing` metadata to
+`dangerous-goods`. The transformed request is then passed to the mock transport.
 
 **Files and lines**
 
-src/api/api-client.ts:5-18
-src/api/interceptors/index.ts:7-18
+src/api/api-client.ts:5-19
+src/api/interceptors/index.ts:7-11
+src/api/interceptors/index.ts:13-19
 src/api/interceptors/auth-interceptor.ts:3-9
 src/api/interceptors/audit-interceptor.ts:3-11
 src/api/interceptors/hazardous-interceptor.ts:4-13
-src/api/mock-server.ts:7-16
+src/api/mock-server.ts:7-9
+src/api/mock-server.ts:15
 
 **Notes**
 
 The hazardous transformation only occurs when the request body itself has `type: "hazardous"`.
 
+The path rewrite has no effect on the response. `mock-server.ts:7-9` normalises
+`/controlled/orders` straight back to `/orders` before dispatching, so the rewritten path
+reaches nothing that treats it differently. The header and the metadata survive; the new path
+does not.
+
 ---
 
 ## Q6 — misleading name
 
-**Status: NOT CHECKED**
+**Status: CROSS-CHECKED — awaiting sign-off. Verified exact; one fact added.**
 
 > Does `validateShipment` change any state, or does it only check?
 
@@ -174,17 +208,20 @@ D1–D3 deterministically from the order ID.
 
 **Files and lines**
 
-src/dispatch/validation.ts:11-39
+src/dispatch/validation.ts:12-40
 
 **Notes**
 
 This is an in-place mutation, contrary to both the function name and its documentation comment.
 
+The dock list holds four entries, but the non-hazardous branch indexes it modulo 3, so D4 is
+unreachable except through the hazardous branch. "D1-D3" is exact rather than approximate.
+
 ---
 
 ## Q7 — legacy path
 
-**Status: NOT CHECKED**
+**Status: CROSS-CHECKED — awaiting sign-off. Verified exact; no change.**
 
 > Which pricing implementation runs for a bulk order, and why that one?
 
@@ -199,7 +236,7 @@ calculation adds per-pallet handling and applies tiered volume discounts.
 src/config/zoneRules.ts:21-26
 src/config/zoneRules.ts:76-78
 src/pricing/pricing.ts:1-8
-src/pricing/legacyPricing.ts:3-20
+src/pricing/legacyPricing.ts:3-21
 
 **Notes**
 
@@ -210,7 +247,7 @@ does.
 
 ## Q8 — event emitter
 
-**Status: NOT CHECKED**
+**Status: CROSS-CHECKED — awaiting sign-off. Under-cited; emitter and registration timing added.**
 
 > What reacts when a dispatch event is emitted?
 
@@ -225,20 +262,29 @@ registered listener for `order.allocated` or `notification.created` in this repo
 
 src/events/bus.ts:3-34
 src/notifications/listener.ts:4-23
-src/stock/stockService.ts:4-9
-src/dispatch/allocator.ts:65-72
-src/dispatch/releaseService.ts:53-58
+src/stock/stockService.ts:6-9
+src/dispatch/allocator.ts:71
+src/dispatch/releaseService.ts:57
+src/stock/stockService.ts:16-37
 src/notifications/service.ts:16
 
 **Notes**
 
 Listeners are synchronous: `emit` immediately iterates the registered callbacks.
 
+`stock.low` has a single emitter, `commitReleasedStock`, which raises it when available stock
+falls to or below the reorder point after a release.
+
+The two listener sets register at different moments. The stock service subscribes at module
+import time, as a side effect of loading the file. The notification listeners subscribe only
+when `installNotificationListeners` is called from `App`. A question about what reacts to an
+event therefore has a different answer before that call than after it.
+
 ---
 
 ## Q9 — applied
 
-**Status: NOT CHECKED**
+**Status: CROSS-CHECKED — awaiting sign-off. Under-cited; the hardcoded type filter added.**
 
 > Where would a new order type be added, and what else would need changing?
 
@@ -254,20 +300,24 @@ appear and be verified.
 
 src/types/domain.ts:1
 src/config/zoneRules.ts:14-26
-src/dispatch/handlers/registry.ts:3-31
+src/dispatch/handlers/registry.ts:3-32
 src/dispatch/handlers/standardHandler.ts:1-22
-src/data/seedData.ts:167
+src/data/seedData.ts:167-324
+src/pages/OrderListPage.tsx:15-21
 
 **Notes**
 
 TypeScript's `Record<OrderType, ...>` maps force configuration additions at compile time. A new
 module is discovered by the registry glob without editing a central import list.
 
+The order list's type filter is a hardcoded array rather than a derivation from `OrderType`, so
+a new type would be unfilterable in the interface and the compiler would not object.
+
 ---
 
 ## Q10 — applied
 
-**Status: NOT CHECKED**
+**Status: CROSS-CHECKED — awaiting sign-off. The decoy is confirmed dead.**
 
 > If the zone rules changed, what else would be affected?
 
@@ -282,22 +332,24 @@ configuration file changes, the calculated order total also changes.
 **Files and lines**
 
 src/config/zoneRules.ts:14-85
-src/dispatch/allocator.ts:26-72
-src/stock/reservation.ts:9-44
-src/jobs/revalidation.ts:10-48
+src/dispatch/allocator.ts:17-73
+src/stock/reservation.ts:9-45
+src/jobs/revalidation.ts:10-49
 src/dispatch/releaseService.ts:31-56
-src/pricing/pricing.ts:5-20
+src/pricing/pricing.ts:5-21
 
 **Notes**
 
-The `pricing` property present on individual `ZoneRule` objects is not read by current pricing
-code; pricing actually comes from `pricingByType` through `pricingStrategyFor`.
+The `pricing` property present on individual `ZoneRule` objects is not read by any code in the
+repository. It is declared on the interface, written on all four rules, and never read:
+`pricingStrategyFor` consults `pricingByType`, and grepping for `.pricing` outside the
+configuration file returns nothing. Pricing is decided by order type, not by zone.
 
 ---
 
 ## Q11 — interceptor / pipeline chain
 
-**Status: NOT CHECKED**
+**Status: CROSS-CHECKED — awaiting sign-off. Verified exact; no change.**
 
 > Are hazardous orders treated differently anywhere? Where?
 
@@ -313,9 +365,9 @@ dock D4. Current pricing also adds a hazardous fee when a line is hazardous.
 
 src/dispatch/handlers/hazardousHandler.ts:3-27
 src/config/zoneRules.ts:14-19
-src/config/zoneRules.ts:28-36
+src/config/zoneRules.ts:34
 src/api/interceptors/hazardous-interceptor.ts:4-13
-src/dispatch/validation.ts:29-38
+src/dispatch/validation.ts:29-30
 src/pricing/pricing.ts:16-20
 
 **Notes**
@@ -327,7 +379,7 @@ surcharge can also be triggered by a hazardous line in another order type.
 
 ## Q12 — misleading name
 
-**Status: NOT CHECKED**
+**Status: CROSS-CHECKED — awaiting sign-off. Verified exact; one site added.**
 
 > Where is a dock assigned to a shipment?
 
@@ -339,9 +391,11 @@ that function and then copies the resulting dock to `releasedOrder.assignedDock`
 
 **Files and lines**
 
-src/dispatch/validation.ts:9-12
-src/dispatch/validation.ts:35-39
-src/dispatch/releaseService.ts:23-41
+src/dispatch/validation.ts:9
+src/dispatch/validation.ts:35-37
+src/dispatch/validation.ts:38
+src/dispatch/releaseService.ts:35
+src/dispatch/releaseService.ts:41
 
 **Notes**
 

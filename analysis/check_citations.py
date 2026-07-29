@@ -39,10 +39,15 @@ CITATION_RE = re.compile(r"^([\w./-]+\.\w+)\s*:\s*(\d+)(?:\s*-\s*(\d+))?\s*$")
 # `acceptReferral: (id, override) => {` and `emit<K>(event, payload): void {` — which is how
 # most of a Zustand store and every class method is written, and which the answers cite
 # constantly.
+#
+# The second alternative excludes control-flow keywords: `if (`, `for (` and `switch (` all
+# look like a member declaration to a pattern matching "word, then bracket", and a citation
+# beginning on a conditional was being measured against the enclosing function.
 DECLARATION_RE = re.compile(
     r"^\s*(?:export\s+)?(?:default\s+)?"
     r"(?:async\s+)?(?:function|const|let|var|class|interface|type|enum)\s+\w+"
-    r"|^\s*\w+\s*(?::\s*(?:async\s*)?(?:<[^>]*>\s*)?\(|\()"
+    r"|^\s*(?!(?:if|for|while|switch|catch|return|throw|await|do|else)\b)"
+    r"\w+\s*(?::\s*(?:async\s*)?(?:<[^>]*>\s*)?\(|\()"
 )
 OPENERS, CLOSERS = "{[(", "}])"
 

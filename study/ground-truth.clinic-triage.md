@@ -17,7 +17,7 @@ Each question carries a status:
   it.
 - **NOT CHECKED** — draft only. Not ground truth.
 
-Progress: **0 confirmed. 9 verified by tool, 3 corrected and awaiting re-check.** Nothing here
+Progress: **0 confirmed. 12 verified by tool.** Nothing here
 has yet been read and signed off by the researcher, which is the only status that permits the
 gate to run.
 
@@ -60,6 +60,11 @@ other two could not.
    its binding and count only those reaching the imported or store-held symbol. Warehouse-dispatch
    carries the same hazard in a milder form: `ZoneCard` declares a local `const reserved`
    alongside the `item.reserved` the stock code writes.
+
+   A grep also misses what a line break hides. `eligibility.test.ts:12-14` splits
+   `useClinicStore`, `.getState()` and `.referrals.find(...)` across three lines, so a
+   line-oriented search sees the identifier and not the member access. The check has a
+   formatting blind spot as well as a naming one, and a count taken from it is a lower bound.
 
 Do not open the tool until all twelve are confirmed. Once an answer is seen from the tool it
 cannot be unseen, and the gate stops measuring anything.
@@ -125,8 +130,7 @@ not about the modules elsewhere in the application.
 
 ## Q2 — config-driven behaviour
 
-**Status: CROSS-CHECKED — corrected 29 July, awaiting re-check. The previous correction
-introduced an absolute that did not survive; this one narrows rather than strengthens.**
+**Status: VERIFIED BY TOOL — 29 July, caller-counted.**
 
 > How is a referral given its priority band?
 
@@ -179,8 +183,9 @@ other direction, implying nothing re-bands after acceptance when the Accept butt
 The absence was confirmed by enumeration rather than by the grep alone. `useClinicStore` appears
 on twenty-seven lines across seven files — `eligibility.test.ts` (9), `ReferralDetailPage` (6),
 `AuditLogPage` (3), `ClinicianOverviewPage` (3), `Layout` (3), `ReferralListPage` (2), and the
-store's own definition (1) — of which sixteen are `state.` or `getState().` member references.
-None reaches `state.setPriority`. The audit entry the
+store's own definition (1) — and seventeen member references reached through `state.` or
+`getState().`, one of them split across `eligibility.test.ts:12-14` and so invisible to a
+line-oriented grep. None reaches `state.setPriority`. The audit entry the
 action writes, "Priority changed", can therefore never appear in the application.
 
 ---
@@ -323,8 +328,7 @@ operation.
 
 ## Q7 — legacy path
 
-**Status: CROSS-CHECKED — corrected 29 July, awaiting re-check. The previous correction
-introduced an absolute that did not survive; this one narrows rather than strengthens.**
+**Status: VERIFIED BY TOOL — 29 July, caller-counted.**
 
 > Which slot-finding implementation runs for a follow-up referral, and why that one?
 
@@ -465,8 +469,7 @@ type uses. The badge collides; the dot is merely meaningless.
 
 ## Q10 — applied
 
-**Status: CROSS-CHECKED — corrected 29 July, awaiting re-check. The previous correction
-introduced an absolute that did not survive; this one narrows rather than strengthens.**
+**Status: VERIFIED BY TOOL — 29 July, caller-counted.**
 
 > If the priority rules changed, what else would be affected?
 

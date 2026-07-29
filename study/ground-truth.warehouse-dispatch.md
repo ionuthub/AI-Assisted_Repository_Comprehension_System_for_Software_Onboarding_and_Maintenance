@@ -14,7 +14,7 @@ Each question carries a status:
   it.
 - **NOT CHECKED** — draft only. Not ground truth.
 
-Progress: **0 confirmed. 11 verified by tool, 1 corrected and awaiting re-check.** Nothing here
+Progress: **0 confirmed. 12 verified by tool.** Nothing here
 has yet been read and signed off by the researcher, which is the only status that permits the
 gate to run.
 
@@ -75,6 +75,9 @@ other two could not.
    its binding and count only those reaching the imported or store-held symbol. Warehouse-dispatch
    carries the same hazard in a milder form: `ZoneCard` declares a local `const reserved`
    alongside the `item.reserved` the stock code writes.
+
+   A grep also misses what a line break hides: a member access whose dot falls on the following
+   line is invisible to a line-oriented search. Any count taken this way is a lower bound.
 
 Do not open the tool until all twelve are checked. Once an answer is seen from the tool it
 cannot be unseen, and the gate stops measuring anything.
@@ -316,8 +319,7 @@ does.
 
 ## Q8 — event emitter
 
-**Status: CROSS-CHECKED — corrected 29 July, awaiting re-check. A parity fact was missing
-against the paired question in clinic-triage.**
+**Status: VERIFIED BY TOOL — 29 July, caller-counted.**
 
 > What reacts when a dispatch event is emitted?
 

@@ -1,0 +1,608 @@
+{
+ "repository": "clinic-triage",
+ "date": "",
+ "toolVersion": "77e39cb",
+ "model": "gemini-3.5-flash",
+ "generation": {
+  "temperature": 0.7,
+  "maxOutputTokens": 4096
+ },
+ "retrieval": {
+  "topK": 3,
+  "excerptChars": 2500,
+  "fileCap": 50
+ },
+ "items": [
+  {
+   "id": 1,
+   "pattern": "orientation",
+   "question": "Where does execution start in this project?",
+   "correctAnswer": "Browser execution starts in `src/main.tsx`, which finds the `root` element and renders `App`\ninside React strict mode. `App` itself defines the client routes. Importing the module also\ninstalls the scheduling and audit event listeners: lines 7 and 8 are bare side-effect imports,\nso neither statement binds a name and the act of importing is the whole effect.",
+   "toolAnswer": "Based on the provided repository context, the actual application entry point (such as a `main.ts`, `index.ts`, or server startup file) is **not present** in the provided files.\n\nHowever, within the context of the files provided, execution starts via the test suite:\n\n1. **Test Execution**: The test file `src/tests/eligibility.test.ts` imports and executes test suites using `vitest`.\n\n2. **State Initialization**: Inside the tests, execution begins in the `beforeEach` block (`src/tests/eligibility.test.ts`, lines 5–7), which initializes the application state by seeding `useClinicStore` with data from `src/data/seed.ts`.\n\n3. **Business Logic Execution**: The tests then trigger actions like `acceptReferral` on the store, which initiates eligibility checks and state transitions.",
+   "correct": null,
+   "toolEvidence": [
+    {
+     "rank": 1,
+     "path": "src/triage/validation.ts",
+     "score": 0.09
+    },
+    {
+     "rank": 2,
+     "path": "src/data/seed.ts",
+     "score": 0.04
+    },
+    {
+     "rank": 3,
+     "path": "src/tests/eligibility.test.ts",
+     "score": 0.04
+    }
+   ],
+   "toolEvidenceHeading": "Evidence · 3 files retrieved",
+   "toolUnverifiedMentions": [],
+   "toolScreenshot": "study/gate-screenshots/clinic-triage-q01.png",
+   "toolCoverage": "Retrieved by keyword match after searching 50 of 55 repository files. 5 files could not be searched. Scores measure shared wording, not correctness; a bar is full at 0.60.",
+   "correctAnswerFiles": [
+    "src/main.tsx:1-10",
+    "src/App.tsx:7-8",
+    "src/App.tsx:11-21"
+   ],
+   "correctAnswerNotes": "The comment at src/main.tsx:5 states that an Internet Explorer compatibility shim is required.\nNo shim is imported and no code acts on it. The comment describes something the code does not\ndo.\n\nAn earlier version of this answer said nothing reads a value from either module. That is true\nof `scheduling/eventListener`, whose only export has no callers, and false of `audit/logger`:\n`AuditLogPage` imports `getEventAudit` and calls it, which is what Q8 relies on when it says\nthe audit list reaches the screen. The claim about lines 7 and 8 is about those two statements,\nnot about the modules elsewhere in the application.",
+   "toolScreenshotComplete": true,
+   "toolGeneration": {
+    "status": "complete",
+    "finishReason": "STOP",
+    "usageMetadata": {
+     "promptTokenCount": 1846,
+     "candidatesTokenCount": 185,
+     "totalTokenCount": 2431
+    }
+   }
+  },
+  {
+   "id": 2,
+   "pattern": "config-driven behaviour",
+   "question": "How is a referral given its priority band?",
+   "correctAnswer": "`calculateBand` sums the referral type's configured base points with the points of every rule\nwhose `matches` predicate is satisfied, then takes the band of the first threshold the total\nmeets — red from 9, amber from 4, otherwise green. On acceptance the store uses that calculated\nband unless the operator supplies an override.",
+   "toolAnswer": "A referral's priority band is determined using a rules-based scoring engine implemented in `src/triage/banding.ts` via the `calculateBand` function.\n\nHere is the step-by-step breakdown of how the priority band is computed:\n\n1. Context Assembly\n\nThe evaluation context is created by merging the referral's clinical signals and its referral type:\n\n```typescript\n\nconst context = { ...referral.signals, type: referral.type };\n\n```\n\n*Source: `src/triage/banding.ts` (line 15)*\n\n2. Rule Matching\n\nThe engine imports `priorityRules` from `../config/priorityRules` and filters them to find which rules match the context:\n\n```typescript\n\nconst matched = priorityRules.filter((rule) => rule.matches(context));\n\n```\n\n*Source: `src/triage/banding.ts` (line 16)*\n\n3. Score Accumulation\n\nThe total priority score is calculated by starting with a base point value defined for the specific referral type in `referralPolicies`, then adding the point values of all matched rules:\n\n```typescript\n\nconst score =\n\nreferralPolicies[referral.type].basePoints +\n\nmatched.reduce((total, rule) => total + rule.points, 0);\n\n```\n\n*Source: `src/triage/banding.ts` (lines 17–19)*\n\n4. Band Resolution\n\nThe priority band is resolved by matching the accumulated score against configured thresholds (`bandThresholds` imported from `../config/priorityRules`). It finds the first threshold where the score is greater than or equal to the threshold's `minimum` value, defaulting to `\"green\"` if no threshold is met:\n\n```typescript\n\nconst band =\n\nbandThresholds.find((threshold) => score >= threshold.minimum)?.band ??\n\n\"green\";\n\n```\n\n*Source: `src/triage/banding.ts` (lines 20–22)*\n\n5. Output Payload\n\nThe function returns a `BandingDecision` object containing:\n\n`band`: The resolved `PriorityBand` (`\"red\" | \"amber\" | \"green\"`).\n`score`: The calculated numerical score.\n`matchedRules`: An array of strings representing the IDs of the matched rules.\n`targetHours`: The SLA response window in hours, retrieved from `referralPolicies[referral.type].targetHours`.\n\n---\n\nUI Presentation and Manual Override\n**Suggested Band vs. Selected Band**: The UI component `PriorityPanel` (`src/components/PriorityPanel.tsx`) invokes `calculateBand(referral)` to display the system-suggested band and its corresponding target response hours (e.g., Priority 1/Red, Priority 2/Amber, Priority 3/Green). However, the clinician can manually assign/override the priority band via the `onSelect` callback prop.\n**Filtering**: The hook `useReferralFilters` (`src/hooks/useReferralFilters.ts`) filters referrals by their assigned `referral.priority` band, allowing users to filter by specific bands or target `\"unbanded\"` referrals that do not yet have an assigned priority.",
+   "correct": null,
+   "toolEvidence": [
+    {
+     "rank": 1,
+     "path": "src/components/PriorityPanel.tsx",
+     "score": 0.57
+    },
+    {
+     "rank": 2,
+     "path": "src/triage/banding.ts",
+     "score": 0.49
+    },
+    {
+     "rank": 3,
+     "path": "src/hooks/useReferralFilters.ts",
+     "score": 0.39
+    }
+   ],
+   "toolEvidenceHeading": "Evidence · 3 files retrieved",
+   "toolUnverifiedMentions": [],
+   "toolScreenshot": "study/gate-screenshots/clinic-triage-q02.png",
+   "toolCoverage": "Retrieved by keyword match after searching 50 of 55 repository files. 5 files could not be searched. Scores measure shared wording, not correctness; a bar is full at 0.60.",
+   "correctAnswerFiles": [
+    "src/config/priorityRules.ts:26-31",
+    "src/config/priorityRules.ts:33-70",
+    "src/config/priorityRules.ts:72-76",
+    "src/triage/banding.ts:15-30",
+    "src/store/useClinicStore.ts:61",
+    "src/store/useClinicStore.ts:94-107",
+    "src/pages/ReferralDetailPage.tsx:26-28",
+    "src/pages/ReferralDetailPage.tsx:49",
+    "src/pages/ReferralDetailPage.tsx:96-104"
+   ],
+   "correctAnswerNotes": "Each entry in `priorityRules` declares a `band`, and `calculateBand` never reads it — line 22\ntakes `band` from `bandThresholds`, not from the rule. The declared band is not merely unused,\nit is misleading in two cases. A routine referral (0 base points) matching only `mobility`\nscores 2 and resolves to green, though the rule declares amber; the same holds for\n`post-discharge`, which declares amber and is worth 3 points. Only the accumulated score and\n`bandThresholds` determine the outcome.\n\nThe \"unless the operator supplies an override\" clause is doing more work than it appears. From\nthe interface an override is *always* supplied: `ReferralDetailPage` seeds its local `priority`\nstate to `referral?.priority ?? \"green\"` and passes it unconditionally to `acceptReferral`. The\noverride is therefore never `undefined`, so `calculateBand` never determines a stored band\nthrough the UI. Its result reaches the operator only as a suggestion in `PriorityPanel`.\n\nA band *can* be changed after acceptance, but not through the action named for it. The Accept\nbutton is relabelled \"Update priority\" whenever the status is not `incoming`, stays enabled\nuntil the referral is booked, and calls `acceptReferral` again with the panel's current\nselection — which stores the new band, re-runs `checkEligibility`, re-emits `referral:accepted`\nand writes an audit entry reading \"Referral accepted\" for what the interface called an update.\n\nThe store also exposes a `setPriority` action for the same purpose, and nothing calls it. `grep -rn setPriority src` returns four lines: the interface declaration, the\nimplementation, and two in `ReferralDetailPage` that are the component's own `useState` setter,\nnot the store action — a name collision, and the reason an earlier version of this answer\npresented the action as a live path. Striking the clause outright then went too far in the\nother direction, implying nothing re-bands after acceptance when the Accept button does.\n\nThe absence was confirmed by enumeration rather than by the grep alone. `useClinicStore` appears\non twenty-seven lines across seven files — `eligibility.test.ts` (9), `ReferralDetailPage` (6),\n`AuditLogPage` (3), `ClinicianOverviewPage` (3), `Layout` (3), `ReferralListPage` (2), and the\nstore's own definition (1) — and seventeen member references reached through `state.` or\n`getState().`, one of them split across `eligibility.test.ts:12-14` and so invisible to a\nline-oriented grep. None reaches `state.setPriority`. The audit entry the\naction writes, \"Priority changed\", can therefore never appear in the application.",
+   "toolScreenshotComplete": true,
+   "toolGeneration": {
+    "status": "complete",
+    "finishReason": "STOP",
+    "usageMetadata": {
+     "promptTokenCount": 1537,
+     "candidatesTokenCount": 698,
+     "totalTokenCount": 2989
+    }
+   }
+  },
+  {
+   "id": 3,
+   "pattern": "handler registry",
+   "question": "Which code decides how a given referral type is processed?",
+   "correctAnswer": "The route registry decides. `loadRoutes` dynamically imports each route module, those modules\nregister handlers keyed by referral type, and `routeReferral` retrieves and invokes the handler\nfor `referral.type`. The detail page loads the modules before routing the current referral.",
+   "toolAnswer": "The code that decides how a given referral type is processed is located in **`src/triage/routes/registry.ts`**.\n\nArchitecture and Control Flow\n\nThe routing and processing of referrals are managed via a dynamic registry pattern:\n\n1. **Handler Registry (`handlers`)**:\n\nA private module-level `Map` associates a `ReferralType` with a specific `RouteHandler` function:\n\n```typescript\n\nconst handlers = new Map<ReferralType, RouteHandler>();\n\n```\n\n2. **Registration (`registerRoute`)**:\n\nIndividual route handlers register themselves for a specific `ReferralType` using the `registerRoute` function:\n\n```typescript\n\nexport function registerRoute(type: ReferralType, handler: RouteHandler): void {\n\nhandlers.set(type, handler);\n\n}\n\n```\n\n3. **Resolution and Execution (`routeReferral`)**:\n\nWhen a referral needs to be processed, `routeReferral` looks up the corresponding handler based on the referral's type (`referral.type`) and executes it, returning a `RouteOutcome`:\n\n```typescript\n\nexport function routeReferral(referral: Referral): RouteOutcome {\n\nconst handler = handlers.get(referral.type);\n\nif (!handler)\n\nthrow new Error(`No routing handler registered for ${referral.type}`);\n\nreturn handler(referral);\n\n}\n\n```\n\nData Structures Involved\n**`RouteHandler`**: A function type signature `(referral: Referral) => RouteOutcome` that encapsulates the processing logic for a given referral type.\n**`RouteOutcome`**: The schema representing the decision outcome, containing the recommended service, priority/instructions, and phone call requirements:\n\n```typescript\n\nexport interface RouteOutcome {\n\nsummary: string;\n\nrecommendedService: string;\n\nrequiresPhoneCall: boolean;\n\ninstructions: string[];\n\n}\n\n```",
+   "correct": null,
+   "toolEvidence": [
+    {
+     "rank": 1,
+     "path": "src/hooks/useReferralFilters.ts",
+     "score": 0.36
+    },
+    {
+     "rank": 2,
+     "path": "src/triage/routes/registry.ts",
+     "score": 0.35
+    },
+    {
+     "rank": 3,
+     "path": "src/api/referrals-api.ts",
+     "score": 0.32
+    }
+   ],
+   "toolEvidenceHeading": "Evidence · 3 files retrieved",
+   "toolUnverifiedMentions": [],
+   "toolScreenshot": "study/gate-screenshots/clinic-triage-q03.png",
+   "toolCoverage": "Retrieved by keyword match after searching 50 of 55 repository files. 5 files could not be searched. Scores measure shared wording, not correctness; a bar is full at 0.60.",
+   "correctAnswerFiles": [
+    "src/triage/routes/loadRoutes.ts:1-11",
+    "src/triage/routes/registry.ts:8-18",
+    "src/triage/routes/routine.ts:1-11",
+    "src/triage/routes/urgent.ts:1-11",
+    "src/triage/routes/followUp.ts:1-11",
+    "src/triage/routes/safeguarding.ts:1-11",
+    "src/pages/ReferralDetailPage.tsx:7-8",
+    "src/pages/ReferralDetailPage.tsx:33"
+   ],
+   "correctAnswerNotes": "This route handler is distinct from priority banding and slot-finder selection. The\n`import.meta.glob` at loadRoutes.ts:1-5 excludes `registry.ts` and `loadRoutes.ts` itself, so a\nnew route module is discovered without editing any central list. `registry.test.ts:7-8`\nindependently asserts that four handlers register.",
+   "toolScreenshotComplete": true,
+   "toolGeneration": {
+    "status": "complete",
+    "finishReason": "STOP",
+    "usageMetadata": {
+     "promptTokenCount": 1108,
+     "candidatesTokenCount": 419,
+     "totalTokenCount": 1909
+    }
+   }
+  },
+  {
+   "id": 4,
+   "pattern": "cross-cutting concern",
+   "question": "Everywhere eligibility is checked — list every place it happens.",
+   "correctAnswer": "The common check is `checkEligibility`. It is called from exactly three places in `src/`: when accepting a\nreferral, when booking an appointment, and during reverification of accepted or booked\nreferrals. Each caller emits an `eligibility:failed` event on failure with a phase identifying\nacceptance, booking, or nightly processing.",
+   "toolAnswer": "Based on the provided codebase, eligibility is checked using the `checkEligibility` function defined in `src/triage/eligibility.ts`. There are exactly two places where this function is imported and executed:\n\n1. Nightly Reverification Job\n**File:** `src/jobs/nightlyReverification.ts`\n**Line of Execution:** Line 19 (`const result = checkEligibility(referral);`)\n**Context:** Inside the `runNightlyReverification(referrals: Referral[])` function. It filters for referrals with a status of `\"accepted\"` or `\"booked\"` and reverifies their eligibility. If a referral is no longer eligible, it pushes the failure to a report and emits an `\"eligibility:failed\"` event with the phase set to `\"nightly\"`.\n2. Appointment Booking Validation\n**File:** `src/triage/validation.ts`\n**Line of Execution:** Line 12 (`const eligibility = checkEligibility(referral);`)\n**Context:** Inside the `checkAppointment(referral, clinician, slotId, actor)` function. It checks the referral's eligibility before proceeding with slot assignment. If ineligible, it emits an `\"eligibility:failed\"` event with the phase set to `\"booking\"` and throws an error concatenated from the eligibility failure reasons.",
+   "correct": null,
+   "toolEvidence": [
+    {
+     "rank": 1,
+     "path": "src/jobs/nightlyReverification.ts",
+     "score": 0.13
+    },
+    {
+     "rank": 2,
+     "path": "src/triage/validation.ts",
+     "score": 0.11
+    },
+    {
+     "rank": 3,
+     "path": "src/triage/eligibility.ts",
+     "score": 0.11
+    }
+   ],
+   "toolEvidenceHeading": "Evidence · 3 files retrieved",
+   "toolUnverifiedMentions": [],
+   "toolScreenshot": "study/gate-screenshots/clinic-triage-q04.png",
+   "toolCoverage": "Retrieved by keyword match after searching 50 of 55 repository files. 5 files could not be searched. Scores measure shared wording, not correctness; a bar is full at 0.60.",
+   "correctAnswerFiles": [
+    "src/triage/eligibility.ts:4-25",
+    "src/store/useClinicStore.ts:49-79",
+    "src/triage/validation.ts:12",
+    "src/jobs/nightlyReverification.ts:9-34",
+    "src/pages/AuditLogPage.tsx:27-34"
+   ],
+   "correctAnswerNotes": "The previous note claimed that tests call `checkEligibility` directly. They do not.\n`grep -rn checkEligibility src` returns seven lines: three imports, the definition, and the\nthree call sites named above. `eligibility.test.ts` reaches it only indirectly, through\n`useClinicStore.acceptReferral`.\n\nThe claim is absolute, so the ways it could be evaded were checked as well. There is no\n`import *`, no re-export, and no `require` anywhere in the tree, and the only dynamic import is\nthe `import.meta.glob` in `loadRoutes.ts`, scoped to `./*.ts` within `src/triage/routes/`.\nNothing can reach the function under another name.\n\nDespite its name, the \"nightly\" reverification is not scheduled. It runs only when an operator\npresses the verify button on the audit log page.",
+   "toolScreenshotComplete": true,
+   "toolGeneration": {
+    "status": "complete",
+    "finishReason": "STOP",
+    "usageMetadata": {
+     "promptTokenCount": 1229,
+     "candidatesTokenCount": 282,
+     "totalTokenCount": 2133
+    }
+   }
+  },
+  {
+   "id": 5,
+   "pattern": "pipeline chain",
+   "question": "What happens to an outgoing API request before it is sent?",
+   "correctAnswer": "Requests pass through `traceStage`, `authStage`, and `redactStage` in that order. The trace\nstage adds an `X-Trace-Id`; auth adds a bearer token and `X-Staff-Role: triage`; and redaction\nreplaces the notes, phone and postcode before the transport receives the request.",
+   "toolAnswer": "Based on the provided codebase, an outgoing API request goes through a pipeline composed of middleware stages before reaching the final transport layer.\n\nHere is the step-by-step lifecycle of an outgoing request:\n\n1. Request Initiation and Normalization\n\nWhen an API method is called (for example, `submitReferral` or `recordBooking` in `src/api/referrals-api.ts`), it calls the `apiRequest` function defined in `src/api/api-client.ts`.\n\nIn `apiRequest`, the request payload is normalized to ensure the `headers` field is at least an empty object if not already provided:\n\n```typescript\n\n{ ...request, headers: request.headers ?? {} }\n\n```\n\n2. Pipeline Execution Order\n\nThe normalized request is passed to `composed`, which is a chain of middleware stages constructed using `Array.prototype.reduceRight` in `src/api/api-client.ts`:\n\n```typescript\n\nconst stages: ApiStage[] = [traceStage, authStage, redactStage];\n\nconst composed = stages.reduceRight<ApiNext>(\n\n(next, stage) => (request) => stage(request, next),\n\ntransport,\n\n);\n\n```\n\nBecause `reduceRight` processes the array from right to left with `transport` as the initial accumulator, the resulting onion-style execution flow wraps the stages such that they execute in the order they are declared in the array:\n\n1. **`traceStage`**: Receives the request first. It can inspect or modify the request (e.g., injecting trace headers) before calling `next`.\n\n2. **`authStage`**: Receives the request next, handling authorization concerns before calling `next`.\n\n3. **`redactStage`**: Receives the request third, performing any sanitization or redaction of sensitive fields before calling `next`.\n\n4. **`transport`**: The final terminal handler.\n\n3. Terminal Transport Layer\n\nOnce the request passes through all three stages, it reaches the `transport` function (`src/api/api-client.ts`), which acts as the mock network boundary:\n\n```typescript\n\nconst transport: ApiNext = (request) =>\n\nPromise.resolve({\n\nstatus: 200,\n\ndata: request.body ?? { ok: true },\n\nrequestId: request.headers[\"X-Trace-Id\"] ?? \"local\",\n\n});\n\n```\n\nThis transport layer resolves the pipeline by returning a mock `ApiResponse` containing:\n\nA `status` of `200`.\nThe `body` of the request as the returned `data` (defaulting to `{ ok: true }`).\nA `requestId` extracted from the `X-Trace-Id` header (defaulting to `\"local\"`).",
+   "correct": null,
+   "toolEvidence": [
+    {
+     "rank": 1,
+     "path": "src/api/pipeline/types.ts",
+     "score": 0.66
+    },
+    {
+     "rank": 2,
+     "path": "src/api/api-client.ts",
+     "score": 0.56
+    },
+    {
+     "rank": 3,
+     "path": "src/api/referrals-api.ts",
+     "score": 0.51
+    }
+   ],
+   "toolEvidenceHeading": "Evidence · 3 files retrieved",
+   "toolUnverifiedMentions": [],
+   "toolScreenshot": "study/gate-screenshots/clinic-triage-q05.png",
+   "toolCoverage": "Retrieved by keyword match after searching 50 of 55 repository files. 5 files could not be searched. Scores measure shared wording, not correctness; a bar is full at 0.60.",
+   "correctAnswerFiles": [
+    "src/api/api-client.ts:11-28",
+    "src/api/pipeline/trace-stage.ts:2-8",
+    "src/api/pipeline/auth-stage.ts:2-12",
+    "src/api/pipeline/redact-stage.ts:3-16",
+    "src/api/pipeline/redact-stage.ts:17-18",
+    "src/api/referrals-api.ts:3-9",
+    "src/api/referrals-api.ts:10-16"
+   ],
+   "correctAnswerNotes": "`reduceRight` composes the declared stage list so the request enters trace first, then auth,\nthen redact.\n\nRedaction is narrower than \"conditionally\" suggests: `redactBody` returns the body untouched\nunless it is a referral whose `type` is `safeguarding` *and* which carries a `patient` object.\n\nNothing in the application ever exercises this pipeline, and the reason is stronger than an\nabsence of calls. `submitReferral` and `recordBooking` are the only functions that call\n`apiRequest`, and neither has an importer. `api-client.ts` has exactly one importer,\n`referrals-api.ts` itself, and no module outside `src/api/` imports anything from `src/api/` at\nall. The module graph rooted at `main.tsx` therefore never reaches the directory, so the\n`reduceRight` composition does not merely go uncalled — it never executes, because the module\nis never loaded. No test imports it either. `transport` is a stub that echoes the request body.\n\nOne qualifier, because the distinction matters: this is unreachable, not dead. `tsconfig.app.json`\nincludes `src`, so these files are still type-checked and a break in them still fails the build.",
+   "toolScreenshotComplete": true,
+   "toolGeneration": {
+    "status": "complete",
+    "finishReason": "STOP",
+    "usageMetadata": {
+     "promptTokenCount": 809,
+     "candidatesTokenCount": 594,
+     "totalTokenCount": 2096
+    }
+   }
+  },
+  {
+   "id": 6,
+   "pattern": "misleading name",
+   "question": "Does `checkAppointment` change any state, or does it only check?",
+   "correctAnswer": "It changes state. After checking eligibility, slot existence, availability, and service\ncoverage, it creates an appointment and mutates the chosen slot in place by assigning\n`slot.bookedReferralId`. It also emits `appointment:booked` before returning the appointment.",
+   "toolAnswer": "Yes, **`checkAppointment` does change state** and has side effects; it is not a pure query/read-only function.\n\nSpecifically, it performs the following state mutations and side effects:\n\n1. In-Place Mutation of the Clinician's Slot\n\nIt mutates the `clinician` object passed to it by reference. Specifically, once validation passes, it sets the `bookedReferralId` property of the selected slot to the ID of the referral:\n\n```typescript\n\nslot.bookedReferralId = referral.id;\n\n```\n\n**File Reference:** `src/triage/validation.ts` (line 34)\n**Impact:** This directly mutates the caller's state. For example, in `src/tests/scheduling.test.ts` (lines 23-24), the test asserts this mutation occurred on the passed object:\n\n```typescript\n\nexpect(appointment.slotId).toBe(slot.id);\n\nexpect(slot.bookedReferralId).toBe(referral.id);\n\n```\n\n2. Side-Effect Event Emissions\n\nIt publishes events to the `clinicEvents` event emitter depending on the outcome:\n\nIf eligibility validation fails: It emits `\"eligibility:failed\"` (`src/triage/validation.ts`, line 14).\nIf booking succeeds: It emits `\"appointment:booked\"` (`src/triage/validation.ts`, line 35).\n\n---\n\nDownstream Store Integration\n\nIn the Zustand store (`src/store/useClinicStore.ts`), the `bookAppointment` method relies on this mutation. It passes its own state-derived `clinician` object to `checkAppointment`, and then spreads the mutated `clinicians` array directly into the new store state:\n\n```typescript\n\n// src/store/useClinicStore.ts (lines 118-124)\n\nconst appointment = checkAppointment(\n\nreferral,\n\nclinician,\n\nslotId,\n\nstate.actor,\n\n);\n\nset((current) => ({\n\nappointments: [...current.appointments, appointment],\n\nclinicians: [...current.clinicians], // Relies on the in-place mutation of the slot\n\n// ...\n\n}));\n\n```",
+   "correct": null,
+   "toolEvidence": [
+    {
+     "rank": 1,
+     "path": "src/triage/validation.ts",
+     "score": 0.21
+    },
+    {
+     "rank": 2,
+     "path": "src/store/useClinicStore.ts",
+     "score": 0.13
+    },
+    {
+     "rank": 3,
+     "path": "src/tests/scheduling.test.ts",
+     "score": 0.1
+    }
+   ],
+   "toolEvidenceHeading": "Evidence · 3 files retrieved",
+   "toolUnverifiedMentions": [],
+   "toolScreenshot": "study/gate-screenshots/clinic-triage-q06.png",
+   "toolCoverage": "Retrieved by keyword match after searching 50 of 55 repository files. 5 files could not be searched. Scores measure shared wording, not correctness; a bar is full at 0.60.",
+   "correctAnswerFiles": [
+    "src/triage/validation.ts:5-42"
+   ],
+   "correctAnswerNotes": "The function name and comment imply a check, but the slot mutation is the actual booking\noperation.",
+   "toolScreenshotComplete": true,
+   "toolGeneration": {
+    "status": "complete",
+    "finishReason": "STOP",
+    "usageMetadata": {
+     "promptTokenCount": 1802,
+     "candidatesTokenCount": 488,
+     "totalTokenCount": 3193
+    }
+   }
+  },
+  {
+   "id": 7,
+   "pattern": "legacy path",
+   "question": "Which slot-finding implementation runs for a follow-up referral, and why that one?",
+   "correctAnswer": "A follow-up uses the legacy `findContinuitySlots` implementation because\n`referralPolicies.followUp.finder` is `continuity`, and the scheduling service maps that key to\n`findContinuitySlots`. It filters clinicians to those active and offering the referral's\nservice, sorts them so any preferred clinician comes first, flattens their unbooked matching\nslots, and sorts the result by start time.",
+   "toolAnswer": "Based on the provided codebase, we cannot definitively state which slot-finding implementation runs for a follow-up referral because the configuration file defining this mapping is missing from the context.\n\nHowever, we can trace the exact control flow and mechanics of how this resolution occurs:\n\n1. How the Finder is Resolved\n\nIn `src/scheduling/service.ts`, the slot-finding implementation is determined dynamically based on the referral's type:\n\n```typescript\n\n// src/scheduling/service.ts\n\nconst finder = finders[referralPolicies[referral.type].finder];\n\n```\n\nThe `finders` registry maps configuration keys to specific finder functions:\n\n`standard` maps to `findSlots` (imported from `./slotFinder`).\n`continuity` maps to `findContinuitySlots` (imported from `./oldSlotFinder`).\n2. Missing Context\n\nTo resolve the exact finder, we need the contents of `src/config/priorityRules` (imported on line 1 of `src/scheduling/service.ts`), which is not provided in the current context. Without this file, we cannot verify the value of `referralPolicies[referral.type].finder` when `referral.type` corresponds to a follow-up.\n\n3. Architectural Intent\n\nThough the configuration is missing, the codebase strongly hints at the intended behavior:\n\nIn `src/triage/routes/followUp.ts`, the `\"followUp\"` route registers instructions that explicitly state: `\"Prefer the previous care team\"`.\nThis clinical requirement directly aligns with the `continuity` finder (`findContinuitySlots`), which receives the `preferredClinicianId` (mapped to `referral.assignedClinicianId` in `src/scheduling/service.ts`) to prioritize care continuity.",
+   "correct": null,
+   "toolEvidence": [
+    {
+     "rank": 1,
+     "path": "src/triage/routes/followUp.ts",
+     "score": 0.47
+    },
+    {
+     "rank": 2,
+     "path": "src/scheduling/service.ts",
+     "score": 0.35
+    },
+    {
+     "rank": 3,
+     "path": "src/scheduling/types.ts",
+     "score": 0.32
+    }
+   ],
+   "toolEvidenceHeading": "Evidence · 3 files retrieved",
+   "toolUnverifiedMentions": [],
+   "toolScreenshot": "study/gate-screenshots/clinic-triage-q07.png",
+   "toolCoverage": "Retrieved by keyword match after searching 50 of 55 repository files. 5 files could not be searched. Scores measure shared wording, not correctness; a bar is full at 0.60.",
+   "correctAnswerFiles": [
+    "src/config/priorityRules.ts:18-31",
+    "src/scheduling/service.ts:1-20",
+    "src/scheduling/oldSlotFinder.ts:3-24",
+    "src/scheduling/slotFinder.ts:11-14",
+    "src/store/useClinicStore.ts:129"
+   ],
+   "correctAnswerNotes": "Despite the filename `oldSlotFinder`, this is an intentional live path for follow-up referrals.\n\nThe comment at oldSlotFinder.ts:3 says slots are grouped by site before continuity is\nconsidered. There is no site grouping anywhere in the function. This is the same species of\nmisleading comment as the Internet Explorer shim in Q1.\n\nThe clinician preference never operates, but not because of the trailing sort. `startsAt` is\nderived from `slotIndex` alone in the seed data — `clinicianIndex` affects only\n`durationMinutes` — so two clinicians' slots at the same index carry an identical timestamp. A\nslot's service is `person[3][slotIndex % person[3].length]`, though, so clinicians offering\ndifferent numbers of services match a given service at different indices and coincide only\nsometimes: for a Cardiology referral, `c1` contributes indices 0, 2, 4 and 6 while `c4`\ncontributes 2 and 5, so one pair out of six ties. Ties arise only where two clinicians both\noffer a matching slot at the same index; `sort` is stable, so the preference survives those and\nnever gets a chance to matter elsewhere, where the earlier time simply wins.\n\nWhat makes it inert is that `preferredClinicianId` is `referral.assignedClinicianId`, and that\nfield is undefined at every call site in the repository. It appears three times in `src/`: the\noptional declaration, the read in the scheduling service, and a single write in the store during\nbooking. Every caller of `availableSlots` — the slot picker and three tests — passes a\nseed-derived referral, and no seed referral sets it, so the comparator evaluates 0 for every\npair.\n\nIt is unreachable by construction rather than merely unseeded. The only write sets\n`status: \"booked\"` at the same time; the slot picker renders only while `showBooking` is set or\nthe status is `accepted`; and the Accept button is disabled once the status is `booked`. There\nis no path back into the booking flow for a referral that has an assigned clinician.\n\nUnlike `findSlots`, the legacy finder has no `isAfter(now)` filter, so it can return slots in\nthe past. All seed slots are in the future, so this does not surface, but it is a real\nbehavioural divergence between the two paths.",
+   "toolScreenshotComplete": true,
+   "toolGeneration": {
+    "status": "complete",
+    "finishReason": "STOP",
+    "usageMetadata": {
+     "promptTokenCount": 648,
+     "candidatesTokenCount": 382,
+     "totalTokenCount": 2072
+    }
+   }
+  },
+  {
+   "id": 8,
+   "pattern": "event emitter",
+   "question": "What reacts when a scheduling event is emitted?",
+   "correctAnswer": "When `appointment:booked` is emitted, the scheduling listener records the slot ID in its\n`recentlyBooked` set and the audit logger appends a derived entry to its module-local list.\nThose are the only two subscriptions in the repository: nothing listens for\n`referral:accepted` or `eligibility:failed`.",
+   "toolAnswer": "Based on the provided codebase, when the `\"appointment:booked\"` scheduling event is emitted via the `clinicEvents` event channel, two components react to it:\n\n1. Booking State Tracker (`src/scheduling/eventListener.ts`)\n**Trigger**: Listens for the `\"appointment:booked\"` event.\n**Reaction**: Adds the booked appointment's `slotId` to an in-memory `Set` called `recentlyBooked`.\n**Control Flow & State**:\n\n```typescript\n\nclinicEvents.on(\"appointment:booked\", ({ appointment }) => {\n\nrecentlyBooked.add(appointment.slotId);\n\n});\n\n```\n\nThis state is exposed via the `wasRecentlyBooked(slotId: string)` helper function to verify recent scheduling activity (`src/scheduling/eventListener.ts`, lines 3-8).\n\n2. Audit Logger (`src/audit/logger.ts`)\n**Trigger**: Listens for the `\"appointment:booked\"` event.\n**Reaction**: Generates a structured audit log entry (`AuditEntry`) and prepends it to an in-memory array (`eventEntries`) using `unshift`.\n**Control Flow & State**:\n\n```typescript\n\nclinicEvents.on(\"appointment:booked\", ({ appointment, patientName }) => {\n\neventEntries.unshift({\n\nid: `event-${appointment.id}`,\n\noccurredAt: new Date().toISOString(),\n\nactor: appointment.bookedBy,\n\naction: \"Appointment booked\",\n\nreferralId: appointment.referralId,\n\ndetail: `Booked ${patientName} with clinician ${appointment.clinicianId}`,\n\nseverity: \"info\",\n\n});\n\n});\n\n```\n\nThe accumulated logs can be retrieved as a shallow copy using the exported `getEventAudit()` function (`src/audit/logger.ts`, lines 4-18).\n\nEvent Dispatch Mechanism (`src/events/channel.ts`)\n\nThese reactions are coordinated synchronously by the `EventChannel` instance (`clinicEvents`). When `clinicEvents.emit(\"appointment:booked\", payload)` is called, it iterates over the registered listeners stored in its internal `listeners` Map and executes them sequentially (`src/events/channel.ts`, lines 16-18).",
+   "correct": null,
+   "toolEvidence": [
+    {
+     "rank": 1,
+     "path": "src/scheduling/eventListener.ts",
+     "score": 0.18
+    },
+    {
+     "rank": 2,
+     "path": "src/audit/logger.ts",
+     "score": 0.18
+    },
+    {
+     "rank": 3,
+     "path": "src/events/channel.ts",
+     "score": 0.14
+    }
+   ],
+   "toolEvidenceHeading": "Evidence · 3 files retrieved",
+   "toolUnverifiedMentions": [],
+   "toolScreenshot": "study/gate-screenshots/clinic-triage-q08.png",
+   "toolCoverage": "Retrieved by keyword match after searching 50 of 55 repository files. 5 files could not be searched. Scores measure shared wording, not correctness; a bar is full at 0.60.",
+   "correctAnswerFiles": [
+    "src/events/channel.ts:5-22",
+    "src/triage/validation.ts:37-40",
+    "src/scheduling/eventListener.ts:1-8",
+    "src/audit/logger.ts:1-17",
+    "src/pages/AuditLogPage.tsx:15",
+    "src/App.tsx:7-8"
+   ],
+   "correctAnswerNotes": "Event delivery is synchronous. `App` imports both listener modules for their registration side\neffects.\n\nThe two listeners differ in whether their work is ever used. The audit logger's list is read by\nthe audit log page through `getEventAudit`, so it reaches the screen. The scheduling listener's\n`recentlyBooked` set is only readable through `wasRecentlyBooked`, which has no callers — the\nlistener writes to a set nothing reads.",
+   "toolScreenshotComplete": true,
+   "toolGeneration": {
+    "status": "complete",
+    "finishReason": "STOP",
+    "usageMetadata": {
+     "promptTokenCount": 718,
+     "candidatesTokenCount": 494,
+     "totalTokenCount": 1817
+    }
+   }
+  },
+  {
+   "id": 9,
+   "pattern": "applied",
+   "question": "Where would a new referral type be added, and what else would need changing?",
+   "correctAnswer": "Four changes are mandatory. Two are omissions the compiler reports under `strict`; the third is\nthe edit that causes it to report them, and the fourth fails only at run time. Add the\nliteral to `ReferralType`; add a complete entry to `referralPolicies`, which is a\n`Record<ReferralType, ReferralPolicy>`; extend the object literal inside `humaniseType`, which\nis indexed by `ReferralType` and will not compile without the new key; and add a route module\nthat registers a handler, since `routeReferral` throws at runtime for an unregistered type — the\nhandler map is a `Map` and enforces nothing at compile time. The route loader discovers the\nmodule automatically. The `humaniseType` error is gated on `noImplicitAny`, so the `strict`\nqualifier is load-bearing rather than decorative.\n\nBeyond that: `registry.test.ts` asserts that exactly four handlers register and will fail; the\npathway filter on the referral list is a hardcoded list of `<option>` elements, so a new type\nwould be unfilterable; and the type badge and dot carry per-type CSS classes, so a new type\nfalls back to the base rules. Seed data and type-specific eligibility or redaction rules are optional\ndepending on whether the new type needs them.",
+   "toolAnswer": "Based on the provided codebase context, here is where a new referral type would be added and the subsequent areas that would require updates:\n\n1. Define the Type\n**File:** `src/types/domain.ts` (referenced in `src/hooks/useReferralFilters.ts`, line 5)\n**Change:** Add the new string literal representation of the referral type to the `ReferralType` union type export.\n\n---\n\n2. Update Triage Routing\n**Files:** `src/triage/routes/` and `src/triage/routes/registry.ts` (referenced in `src/tests/registry.test.ts`, line 3)\n**Change:** The registry dynamically loads handlers (`loadRoutes()`) and expects a specific count (currently 4, as seen in `src/tests/registry.test.ts`, line 8). If the new referral type requires custom routing logic (e.g., determining if it `requiresPhoneCall` or preserves a `recommendedService`), you must:\n\n* Add a new route handler file within the routes directory.\n\n* Update the expected route count in `src/tests/registry.test.ts`.\n\n---\n\n3. Update Priority Banding Rules\n**File:** `src/triage/banding.ts` (referenced in `src/tests/banding.test.ts`, line 3)\n**Change:** The `calculateBand` function evaluates the referral's type to determine its priority band (e.g., `\"red\"`) and SLA target hours (e.g., `336` hours for routine work). You must update this logic to assign the appropriate band, target hours, and matched rules for the new referral type.\n\n---\n\n4. Add Seed Data & Tests\n**File:** `src/data/seed.ts` (referenced in `src/tests/banding.test.ts`, line 2 and `src/tests/registry.test.ts`, line 2)\n**Change:** Add a mock referral containing the new type to `seedReferrals`.\n**Files:** `src/tests/banding.test.ts` and `src/tests/registry.test.ts`\n**Change:** Add integration and unit tests verifying that the new referral type is correctly banded and routed.\n\n---\n\n5. UI and Filter Integration\n**File:** `src/hooks/useReferralFilters.ts` (lines 8, 28)\n**Change:** The hook defines `TypeFilter` as `ReferralType | \"all\"`. Because it uses the TypeScript union directly, the hook's filtering logic (`matchesType`) will automatically support the new type without code changes. However, any React components that render dropdowns or selection elements for filtering by referral type will need to be updated to present the new option to the user.",
+   "correct": null,
+   "toolEvidence": [
+    {
+     "rank": 1,
+     "path": "src/tests/registry.test.ts",
+     "score": 0.29
+    },
+    {
+     "rank": 2,
+     "path": "src/tests/banding.test.ts",
+     "score": 0.26
+    },
+    {
+     "rank": 3,
+     "path": "src/hooks/useReferralFilters.ts",
+     "score": 0.18
+    }
+   ],
+   "toolEvidenceHeading": "Evidence · 3 files retrieved",
+   "toolUnverifiedMentions": [
+    "src/types/domain.ts Not retrieved",
+    "src/triage/routes/registry.ts Not retrieved",
+    "src/triage/banding.ts Not retrieved",
+    "src/data/seed.ts Not retrieved"
+   ],
+   "toolScreenshot": "study/gate-screenshots/clinic-triage-q09.png",
+   "toolCoverage": "Retrieved by keyword match after searching 50 of 55 repository files. 5 files could not be searched. Scores measure shared wording, not correctness; a bar is full at 0.60.",
+   "correctAnswerFiles": [
+    "src/types/domain.ts:1",
+    "src/config/priorityRules.ts:26-31",
+    "src/utils/format.ts:17-24",
+    "src/triage/routes/loadRoutes.ts:1-11",
+    "src/triage/routes/registry.ts:8-18",
+    "src/triage/routes/routine.ts:1-11",
+    "src/tests/registry.test.ts:7-8",
+    "src/pages/ReferralListPage.tsx:84-87",
+    "src/styles.css:682-691",
+    "src/styles.css:692-702",
+    "src/styles.css:936-939",
+    "src/styles.css:940-951"
+   ],
+   "correctAnswerNotes": "The `TypeFilter` union in `useReferralFilters.ts:9` derives from `ReferralType` and widens\nautomatically, so the hook itself needs no change — only the hardcoded options it drives.\n\nThe styling consequence is subtler than \"unstyled\". There is no `.type-badge.type-routine`\nrule at all: routine already relies on the base `.type-badge`, so a new type would receive the\nsame green badge and be indistinguishable from routine. The dot behaves differently — routine\nhas its own green rule, so a new type would fall back to the base grey, a colour no existing\ntype uses. The badge collides; the dot is merely meaningless.",
+   "toolScreenshotComplete": true,
+   "toolGeneration": {
+    "status": "complete",
+    "finishReason": "STOP",
+    "usageMetadata": {
+     "promptTokenCount": 1222,
+     "candidatesTokenCount": 622,
+     "totalTokenCount": 2880
+    }
+   }
+  },
+  {
+   "id": 10,
+   "pattern": "applied",
+   "question": "If the priority rules changed, what else would be affected?",
+   "correctAnswer": "Less than the code's structure suggests. Rule predicates, points, base points and thresholds all\nfeed `calculateBand`, and `calculateBand`'s result reaches only one place in the running\napplication: the suggestion displayed in `PriorityPanel`. It does not determine the band that\ngets stored. `ReferralDetailPage` seeds its local `priority` state to `referral?.priority ??\n\"green\"` and passes it to `acceptReferral` unconditionally, so the store's\n`override ?? calculateBand(referral).band` always takes the override branch. An operator who\npresses Accept without touching the panel stores green even when the suggestion is red.\n\nChanging `targetHours` likewise changes only what the panel displays. Changing a policy's\n`finder` is the one edit in that file with real reach, because the scheduling service reads the\nsame policy table to choose a slot finder. `banding.test.ts` also hardcodes expectations —\nsafeguarding to red, routine to 336 hours — and will fail.",
+   "toolAnswer": "If the priority rules (imported from `src/config/priorityRules` into `src/triage/banding.ts`) are modified, the impact propagates through the triage calculation engine, the user interface, and the test suite.\n\nThe specific downstream effects include:\n\n1. Triage Calculation Engine (`src/triage/banding.ts`)\n**Score Computations**: The `calculateBand` function filters `priorityRules` to find matches against a referral's signals and sums their points:\n\n```typescript\n\nconst matched = priorityRules.filter((rule) => rule.matches(context));\n\nconst score = referralPolicies[referral.type].basePoints + matched.reduce((total, rule) => total + rule.points, 0);\n\n```\n\nAltering rule matching logic (`rule.matches`) or point values (`rule.points`) will directly shift the final `score`.\n\n**Band Resolution**: The resolved `band` (e.g., `\"red\"`, `\"amber\"`, `\"green\"`) is determined by comparing the computed `score` against `bandThresholds`. Changes to rule points or matching criteria may cause referrals to resolve to different priority bands.\n**Explainability Metadata**: The list of matched rule IDs (`matchedRules`) returned by `calculateBand` will change based on which rules match and what their `id` properties are.\n2. User Interface (`src/components/PriorityPanel.tsx`)\n\nThe `PriorityPanel` component consumes the `BandingDecision` returned by `calculateBand` and will reflect changes in the following ways:\n\n**Score Display**: The element `<span className=\"score\">Score {decision.score}</span>` will display the updated point total.\n**Suggested Band Designation**: The UI highlights the suggested band with an *Suggested* label:\n\n```typescript\n\n{decision.band === band && <em>Suggested</em>}\n\n```\n\nIf rule changes cause a referral to cross a threshold, this visual indicator will shift to a different priority option.\n\n**Rule Formatting & List**: The \"Signals considered\" section maps over `decision.matchedRules` and renders them:\n\n```typescript\n\n{decision.matchedRules.map((rule) => (\n\n<li key={rule}>{rule.replaceAll(\"-\", \" \")}</li>\n\n))}\n\n```\n\nIf rule IDs are modified, renamed, or no longer match, this list will change. Note that the UI relies on a kebab-case naming convention for rule IDs (applying `.replaceAll(\"-\", \" \")` for display formatting); changing the format of rule IDs in the configuration will affect how they are rendered here.\n\n3. Test Suite (`src/tests/banding.test.ts`)\n\nSeveral unit tests rely on the current rule configuration and will fail if the rules are altered:\n\n**Explainability Test**: The assertion `expect(calculateBand(referral).matchedRules.length).toBeGreaterThan(0)` relies on the existence of a rule that matches when `signals.deterioration` is present.\n**Safeguarding Banding Test**: The test expecting safeguarding referrals to resolve to `\"red\"` (`expect(calculateBand(referral).band).toBe(\"red\")`) depends on the combination of base points and matched priority rules exceeding the red threshold. If rule points are decreased or matching criteria change, this assertion may fail.",
+   "correct": null,
+   "toolEvidence": [
+    {
+     "rank": 1,
+     "path": "src/triage/banding.ts",
+     "score": 0.21
+    },
+    {
+     "rank": 2,
+     "path": "src/tests/banding.test.ts",
+     "score": 0.17
+    },
+    {
+     "rank": 3,
+     "path": "src/components/PriorityPanel.tsx",
+     "score": 0.15
+    }
+   ],
+   "toolEvidenceHeading": "Evidence · 3 files retrieved",
+   "toolUnverifiedMentions": [],
+   "toolScreenshot": "study/gate-screenshots/clinic-triage-q10.png",
+   "toolCoverage": "Retrieved by keyword match after searching 50 of 55 repository files. 5 files could not be searched. Scores measure shared wording, not correctness; a bar is full at 0.60.",
+   "correctAnswerFiles": [
+    "src/config/priorityRules.ts:26-31",
+    "src/config/priorityRules.ts:33-70",
+    "src/config/priorityRules.ts:72-76",
+    "src/triage/banding.ts:15-30",
+    "src/store/useClinicStore.ts:49-79",
+    "src/pages/ReferralDetailPage.tsx:26-28",
+    "src/pages/ReferralDetailPage.tsx:49",
+    "src/components/PriorityPanel.tsx:16",
+    "src/scheduling/service.ts:10-20",
+    "src/tests/banding.test.ts:9",
+    "src/tests/banding.test.ts:13"
+   ],
+   "correctAnswerNotes": "`PriorityPanel.tsx:16` is where `calculateBand` is actually called; a citation starting at 18\nshows only the consumption of the result.\n\nThe precise claim is that the stored band is always the panel's local state and never the\ncomputed one — not that it is always green. Green is the particular outcome when an operator\naccepts an unbanded referral without touching the panel, which is the case worth citing because\n`PriorityPanel` labels the calculated band \"Suggested\" against a control that was never\npreselected from it.\n\n`calculateBand` does determine a stored band in exactly one place in the repository:\n`eligibility.test.ts:11` calls `acceptReferral` without the override argument. No UI path does.\n\nNo seed referral carries a `priority`, so on a first visit `referral?.priority ?? \"green\"`\nresolves to green and an operator who presses Accept without touching the panel stores green\neven when the suggestion is red. That is as far as the claim goes. The `useState` initialiser\nruns once per mount, so after a band has been stored, navigating away and back re-seeds the\nlocal state from it.\n\n(The supporting grep is case-sensitive: `grep -ci priority src/data/seed.ts` returns 1, matching\nan audit fixture reading \"Priority set to green\". The conclusion stands on the referral\nfixtures, not on the command.)\n\nAn earlier version of this Note claimed `setPriority` offered another route to a stored band.\nIt does not: the store action has no callers, and the route that does exist is the Accept\nbutton. See Q2.",
+   "toolScreenshotComplete": true,
+   "toolGeneration": {
+    "status": "complete",
+    "finishReason": "STOP",
+    "usageMetadata": {
+     "promptTokenCount": 1263,
+     "candidatesTokenCount": 718,
+     "totalTokenCount": 3145
+    }
+   }
+  },
+  {
+   "id": 11,
+   "pattern": "pipeline chain",
+   "question": "Are safeguarding referrals treated differently anywhere? Where?",
+   "correctAnswer": "Yes, in five places. The priority configuration gives the type a base score of 8 and a four-hour\ntarget, and a separate rule adds 10 points when the safeguarding signal is set. The route\nhandler requires a restricted review, Community nursing, a phone call, safe-contact precautions\nand lead notification. Eligibility rejects safeguarding referrals for patients under 16. The\nredaction stage replaces notes, phone and postcode for safeguarding referrals before transport.\nAnd the referral list counts a referral towards the urgent tile if its type is safeguarding,\nindependently of its priority band.",
+   "toolAnswer": "Based on the provided codebase context, safeguarding referrals are treated differently in two main areas:\n\n1. Triage Routing and Safety Instructions\n\nIn `src/triage/routes/safeguarding.ts` (lines 1-12), safeguarding referrals are registered with a dedicated route handler via `registerRoute(\"safeguarding\", ...)` that enforces strict operational and communication constraints:\n\n**Restricted Summaries:** The generated summary is explicitly marked as a \"Restricted safeguarding review\".\n**Communication Constraints:** They require a phone call (`requiresPhoneCall: true`) and must adhere to strict safety instructions:\n\n* `\"Do not leave a voicemail\"`\n\n* `\"Check safe contact method\"`\n\n* `\"Notify safeguarding lead\"`\n\n**Service Recommendation:** They are routed specifically to `\"Community nursing\"`.\n2. Banding and Priority Escalation\n\nIn the triage evaluation logic tested in `src/tests/banding.test.ts` (lines 5-10), safeguarding referrals are assigned the highest priority band:\n\nWhen `calculateBand()` (from `src/triage/banding`) processes a referral with `type === \"safeguarding\"`, it escalates the referral's priority to the `\"red\"` band (`expect(calculateBand(referral).band).toBe(\"red\")`).",
+   "correct": null,
+   "toolEvidence": [
+    {
+     "rank": 1,
+     "path": "src/triage/routes/safeguarding.ts",
+     "score": 0.27
+    },
+    {
+     "rank": 2,
+     "path": "src/tests/eligibility.test.ts",
+     "score": 0.19
+    },
+    {
+     "rank": 3,
+     "path": "src/tests/banding.test.ts",
+     "score": 0.13
+    }
+   ],
+   "toolEvidenceHeading": "Evidence · 3 files retrieved",
+   "toolUnverifiedMentions": [],
+   "toolScreenshot": "study/gate-screenshots/clinic-triage-q11.png",
+   "toolCoverage": "Retrieved by keyword match after searching 50 of 55 repository files. 5 files could not be searched. Scores measure shared wording, not correctness; a bar is full at 0.60.",
+   "correctAnswerFiles": [
+    "src/config/priorityRules.ts:26-31",
+    "src/config/priorityRules.ts:34-39",
+    "src/triage/routes/safeguarding.ts:1-11",
+    "src/triage/eligibility.ts:4-25",
+    "src/api/pipeline/redact-stage.ts:3-16",
+    "src/api/pipeline/redact-stage.ts:17-18",
+    "src/pages/ReferralListPage.tsx:10-15"
+   ],
+   "correctAnswerNotes": "A non-safeguarding referral can still match the safeguarding-signal priority rule if its signal\nis set; the eligibility and redaction branches check the referral type specifically.\n\n\"Five places\" counts behavioural branches. A reader counting presentational differences reaches\nsix, because `styles.css` groups safeguarding with urgent for both badge and dot colour — that\nis shared styling rather than safeguarding-specific handling, which is why it is not in the\nlist.\n\nThe route handler's text reads \"Community nursing\" with a lowercase n.",
+   "toolScreenshotComplete": true,
+   "toolGeneration": {
+    "status": "complete",
+    "finishReason": "STOP",
+    "usageMetadata": {
+     "promptTokenCount": 952,
+     "candidatesTokenCount": 278,
+     "totalTokenCount": 1855
+    }
+   }
+  },
+  {
+   "id": 12,
+   "pattern": "misleading name",
+   "question": "Where is a slot actually booked?",
+   "correctAnswer": "The slot itself is booked inside `checkAppointment`, which finds the slot object and mutates\n`slot.bookedReferralId`. The store's `bookAppointment` calls that function, then adds the\nreturned appointment and updates the referral to `booked` with appointment and clinician IDs.\n`reserveSlot` returns a booked copy but has no runtime caller, so it is not the actual\napplication booking path.",
+   "toolAnswer": "Based on the provided codebase, slot booking is handled in two distinct places depending on whether you are referring to the state transformation of a `Slot` domain object or the tracking of booking events:\n\n1. Slot Domain Object Mutation\n\nIn `src/scheduling/service.ts`, the `reserveSlot` function updates a slot's booking state. It asserts that the slot is not already booked and returns a shallow copy of the slot with the `bookedReferralId` field populated:\n\n```typescript\n\n// src/scheduling/service.ts, lines 19-23\n\nexport function reserveSlot(slot: Slot, referralId: string): Slot {\n\nif (slot.bookedReferralId)\n\nthrow new Error(\"This slot has already been booked\");\n\nreturn { ...slot, bookedReferralId: referralId };\n\n}\n\n```\n\n2. Event-Driven Booking Tracking\n\nIn `src/scheduling/eventListener.ts`, an in-memory `Set` named `recentlyBooked` tracks bookings asynchronously. It listens to the `\"appointment:booked\"` event emitted by the `clinicEvents` channel and adds the booked `slotId` to the set:\n\n```typescript\n\n// src/scheduling/eventListener.ts, lines 3-6\n\nclinicEvents.on(\"appointment:booked\", ({ appointment }) => {\n\nrecentlyBooked.add(appointment.slotId);\n\n});\n\n```\n\n*Note: The actual persistence layer or service emitting the `\"appointment:booked\"` event is not present in the provided source files.*",
+   "correct": null,
+   "toolEvidence": [
+    {
+     "rank": 1,
+     "path": "src/scheduling/service.ts",
+     "score": 0.5
+    },
+    {
+     "rank": 2,
+     "path": "src/scheduling/eventListener.ts",
+     "score": 0.45
+    },
+    {
+     "rank": 3,
+     "path": "src/scheduling/slotFinder.ts",
+     "score": 0.44
+    }
+   ],
+   "toolEvidenceHeading": "Evidence · 3 files retrieved",
+   "toolUnverifiedMentions": [],
+   "toolScreenshot": "study/gate-screenshots/clinic-triage-q12.png",
+   "toolCoverage": "Retrieved by keyword match after searching 50 of 55 repository files. 5 files could not be searched. Scores measure shared wording, not correctness; a bar is full at 0.60.",
+   "correctAnswerFiles": [
+    "src/triage/validation.ts:5-42",
+    "src/triage/validation.ts:36",
+    "src/store/useClinicStore.ts:108-142",
+    "src/scheduling/service.ts:21-25"
+   ],
+   "correctAnswerNotes": "The clinician array is shallow-copied in the store at useClinicStore.ts:122, after\n`checkAppointment` has already mutated the nested slot object at validation.ts:36 — so the copy\ndoes not isolate the mutation.",
+   "toolScreenshotComplete": true,
+   "toolGeneration": {
+    "status": "complete",
+    "finishReason": "STOP",
+    "usageMetadata": {
+     "promptTokenCount": 738,
+     "candidatesTokenCount": 327,
+     "totalTokenCount": 1657
+    }
+   }
+  }
+ ],
+ "notes": "QUESTION STEMS ONLY. correctAnswer must be written by the researcher from reading the code, BEFORE the tool is asked anything. toolAnswer is pasted verbatim from the tool afterwards. 'correct' is the researcher's marking. Questions may be reworded or replaced; they are drafted to cover each architectural pattern once so the gate exercises the same structures the study tasks will target.",
+ "capturedFrom": "https://repo-comprehension-system.vercel.app/",
+ "capturedRepository": "https://github.com/ionuthub/clinic-triage",
+ "groundTruthProvenance": "Ground truth verified by machine review (caller counts, re-counted quantifiers, and a citation checker that reported zero failures; NOTE results were not structurally validated) rather than read line by line by the researcher. Disclose in the methodology; see study/AI-DISCLOSURE.md."
+}

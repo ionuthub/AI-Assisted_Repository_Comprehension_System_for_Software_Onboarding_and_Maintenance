@@ -1,8 +1,12 @@
 {
  "repository": "warehouse-dispatch",
  "date": "",
- "toolVersion": "77e39cb",
+ "toolVersion": "7984e6f",
  "model": "gemini-3.5-flash",
+ "generation": {
+  "temperature": 0.7,
+  "maxOutputTokens": 4096
+ },
  "retrieval": {
   "topK": 3,
   "excerptChars": 2500,
@@ -14,7 +18,7 @@
    "pattern": "orientation",
    "question": "Where does execution start in this project?",
    "correctAnswer": "Browser execution starts in `src/main.tsx`, which finds the `root` element and renders `App`\ninside React strict mode. The router is not created by `App`: it is built once at module scope\nwhen `App.tsx` is first imported. `App` itself installs the notification listeners, calls the\nstore's `initialize`, and renders the `RouterProvider` around the router that already exists.",
-   "toolAnswer": "Based on the provided repository context, the absolute entry point of the entire application (such as a `main.tsx` or `index.tsx` file) is not included.\n\nHowever, within the provided codebase, the execution of the application's core state and background orchestration starts with the **`initialize()`** action of the Zustand store in **`src/store/useWarehouseStore.ts`**.\n\nExecution Control Flow\n\nWhen `initialize()` is invoked, it triggers the following sequential operations:\n\n1. **Guard Clause**: It checks if the store is already initialized to prevent duplicate runs:\n\n```typescript\n\nif (get().initialized) return;\n\nset({ initialized: true });\n\n```\n\n*(Source: `src/store/useWarehouseStore.ts`, lines 82–83)*\n\n2. **Notification Polling Loop**: It registers a periodic execution loop using `window.setInterval` to run every 300 milliseconds. This loop calls `drainNotifications()` to retrieve pending notifications and updates the store state:\n\n```typescript\n\nconst pullNotifications = window.setInterval(() => {\n\nconst additions = drainNotifications();\n\nif (additions.length) {\n\nset((state) => ({\n\nnotifications: [...additions, ...state.notifications].slice(0, 8),\n\n}));\n\n}\n\n}, 300);\n\n```\n\n*(Source: `src/store/useWarehouseStore.ts`, lines 84–91)*\n\n3. **Revalidation Background Job**: It invokes `startRevalidationJob`, passing store reader and writer callbacks to kick off stock reservation revalidation:\n\n```typescript\n\nstopJob = startRevalidationJob(\n\n// Reads current orders and zones from the store, writes the revalidated results back\n\n```\n\n*(Source: `src/store/useWarehouseStore.ts`, lines 92–99)*\n\nInside `startRevalidationJob` (defined in **`src/jobs/revalidation.ts`**), another `window.setInterval` is registered with a default interval of 60,000ms (`intervalMs = 60_000`). This periodic job executes `revalidateReservations` to reconcile allocated, picking, and ready orders against the current physical stock zones:\n\n```typescript\n\nexport function startRevalidationJob(\n\nread: () => { orders: Order[]; zones: Zone[] },\n\nwrite: (result: RevalidationResult) => void,\n\nintervalMs = 60_000,\n\n): () => void {\n\nconst timer = window.setInterval(\n\n() => write(revalidateReservations(read().orders, read().zones)),\n\nintervalMs,\n\n);\n\nreturn () => window.clearInterval(timer);\n\n}\n\n```\n\n*(Source: `src/jobs/revalidation.ts`, lines 48–61)*",
+   "toolAnswer": "Based on the provided repository context, the main application entry point (such as an `index.html`, `main.tsx`, or `App.tsx` file) is **not present** in the provided source code.\n\nHowever, within the context of the provided codebase, execution of the core domain logic and background tasks starts with the initialization of the state store:\n\n1. Store Initialization\n\nThe reactive warehouse state and background jobs are kicked off by calling the `initialize()` method on the Zustand store defined in `src/store/useWarehouseStore.ts` (lines 89–100):\n\n```typescript\n\ninitialize() {\n\nif (get().initialized) return;\n\nset({ initialized: true });\n\nconst pullNotifications = window.setInterval(() => {\n\nconst additions = drainNotifications();\n\nif (additions.length) {\n\nset((state) => ({\n\nnotifications: [...additions, ...state.notifications].slice(0, 8),\n\n}));\n\n}\n\n}, 300);\n\nstopJob = startRevalidationJob(\n\n() => // ...\n\n```\n\n2. Background Process Execution\n\nWhen `initialize()` is called, it registers two persistent background loops:\n\n**Notification Polling Loop:** Sets a `window.setInterval` to poll and drain notifications every 300ms (lines 93–99 of `src/store/useWarehouseStore.ts`).\n**Reservation Revalidation Job:** Calls `startRevalidationJob` (imported from `src/jobs/revalidation.ts`), which registers a second `window.setInterval` (defaulting to every 60,000ms) to run `revalidateReservations` against the store's current orders and zones (lines 40–51 of `src/jobs/revalidation.ts`).",
    "correct": null,
    "toolEvidence": [
     {
@@ -36,20 +40,30 @@
    "toolEvidenceHeading": "Evidence · 3 files retrieved",
    "toolUnverifiedMentions": [],
    "toolScreenshot": "study/gate-screenshots/warehouse-dispatch-q01.png",
-   "toolCoverage": "Retrieved by keyword match over 50 of 54 indexed files. 4 files could not be searched. Scores measure shared wording, not correctness; a bar is full at 0.60.",
+   "toolCoverage": "Retrieved by keyword match after searching 50 of 54 repository files. 4 files could not be searched. Scores measure shared wording, not correctness; a bar is full at 0.60.",
    "correctAnswerFiles": [
     "src/main.tsx:1-10",
     "src/App.tsx:11-22",
     "src/App.tsx:24-31"
    ],
-   "correctAnswerNotes": "The distinction matters for a question about where execution starts: the route table is\nconstructed at import time, before any component renders, whereas the listeners and the store\ninitialisation run inside an effect after the first render.\n\nThis is the client entry point; there is no separate application server because API behaviour\nis mocked in-process."
+   "correctAnswerNotes": "The distinction matters for a question about where execution starts: the route table is\nconstructed at import time, before any component renders, whereas the listeners and the store\ninitialisation run inside an effect after the first render.\n\nThis is the client entry point; there is no separate application server because API behaviour\nis mocked in-process.",
+   "toolScreenshotComplete": true,
+   "toolGeneration": {
+    "status": "complete",
+    "finishReason": "STOP",
+    "usageMetadata": {
+     "promptTokenCount": 2663,
+     "candidatesTokenCount": 399,
+     "totalTokenCount": 3795
+    }
+   }
   },
   {
    "id": 2,
    "pattern": "config-driven behaviour",
    "question": "How is an order assigned to a warehouse zone?",
    "correctAnswer": "`allocateOrder` processes each order line independently. It scores every zone with `scoreZone`,\nremoves inactive zones and zones without the SKU, sorts by descending score, and proposes\nallocations from available stock until the requested quantity is covered. `scoreZone` applies\nconfiguration rules in priority order: hazardous isolation, cold-chain compatibility,\norder-type routing, and capacity balance. `applyStockReservation` then accepts only quantities\nstill available and updates reserved stock in a cloned zone set.",
-   "toolAnswer": "Based on the provided codebase, an order is assigned or routed to a warehouse zone using a rule-based scoring mechanism defined in `src/config/zoneRules.ts`.\n\nThe scoring and matching process for an order line (`OrderLine`) within an order (`Order`) against a specific warehouse zone (`Zone`) is executed as follows:\n\n1. Rule Selection (`rulesFor`)\n\nWhen evaluating an order and a specific line item, the system determines which rules apply by filtering the `zoneRules` list using each rule's `applies` predicate. The matching rules are then sorted in descending order based on their priority `score` (higher scores run first):\n\n```typescript\n\nexport function rulesFor(order: Order, line: OrderLine): ZoneRule[] {\n\nreturn zoneRules\n\n.filter((rule) => rule.applies(order, line))\n\n.sort((left, right) => right.score - left.score);\n\n}\n\n```\n\n*(Source: `src/config/zoneRules.ts`)*\n\n2. Zone Scoring (`scoreZone`)\n\nTo evaluate a zone's compatibility with an order and order line, the system computes a cumulative score:\n\n**Base Score**: Starts at `0`.\n**Kind Validation**: For each applicable rule, if the zone's `kind` is not included in the rule's allowed `zoneKinds`, a penalty of **`-25`** is applied.\n**Preference Calculation**: If the zone kind is valid for the rule, the score is modified by the value returned from the rule's `prefer(zone, order, line)` function.\n\n```typescript\n\nexport function scoreZone(zone: Zone, order: Order, line: OrderLine): number {\n\nreturn rulesFor(order, line).reduce((score, rule) => {\n\nif (!rule.zoneKinds.includes(zone.kind)) return score - 25;\n\nreturn score + rule.prefer(zone, order, line);\n\n}, 0);\n\n}\n\n```\n\n*(Source: `src/config/zoneRules.ts`)*\n\n---\n\n3. Active Zone Rules\n\nThe scoring is governed by four rules in `zoneRules` (ordered from highest priority to lowest):\n\n#### A. **Hazard Isolation** (Priority Score: `100`)\n\n**Applies when**: `order.type === \"hazardous\"` or `line.hazardous` is true.\n**Allowed Zone Kinds**: `[\"secure\"]`\n**Preference**: Returns `80` if the zone's kind is `\"secure\"`, otherwise `-100`.\n\n#### B. **Cold Chain** (Priority Score: `90`)\n\n**Applies when**: `line.temperature !== \"ambient\"`.\n**Allowed Zone Kinds**: `[\"cold\"]`\n**Preference**: Returns `70` if the zone's temperature matches the line's temperature exactly; otherwise, returns `-100`.",
+   "toolAnswer": "An order is assigned to warehouse zones through a line-by-line allocation process managed in `src/dispatch/allocator.ts`. The process evaluates, scores, and selects active candidate zones containing the required stock.\n\n---\n\n1. Candidate Filtering and Sorting\n\nFor each line in an order, `allocateOrder` (in `src/dispatch/allocator.ts`) evaluates all available zones. A zone is qualified as a candidate for a line if:\n\nIt is active (`zone.active`).\nIt contains stock for the requested SKU (`zone.stock.some(item => item.sku === line.sku)`).\n\nCandidate zones are then sorted in descending order based on a score computed by `scoreZone` from `src/config/zoneRules.ts`:\n\n```typescript\n\nconst candidates = zones\n\n.map((zone) => ({ zone, score: scoreZone(zone, prepared, line) }))\n\n.filter(\n\n({ zone }) =>\n\nzone.active && zone.stock.some((item) => item.sku === line.sku),\n\n)\n\n.sort((left, right) => right.score - left.score);\n\n```\n\n---\n\n2. Scoring Mechanism (`src/config/zoneRules.ts`)\n\nThe `scoreZone` function calculates a zone's fitness score for a specific order line.\n\n1. **Rule Filtering**: It fetches applicable rules using `rulesFor(order, line)`, which filters the global `zoneRules` list using `rule.applies(order, line)` and sorts them by rule priority (`score` descending).\n\n2. **Score Reduction**: It iterates over the applicable rules starting with a score of `0`:\n\n* If the zone's kind (`zone.kind`) is not supported by the rule's `zoneKinds`, the score is penalized by **`-25`**.\n\n* Otherwise, the score is adjusted by the return value of `rule.prefer(zone, order, line)`.\n\n#### The Active Rules (Sorted by Priority/Score)\n\n**`hazard-isolation` (Rule Score: 100)**:\n\n* *Applies if*: The order type is `\"hazardous\"` or the order line is flagged as `hazardous`.\n\n* *Preference*: Returns `80` if the zone kind is `\"secure\"`, and `-100` otherwise.\n\n**`cold-chain` (Rule Score: 90)**:\n\n* *Applies if*: The line temperature is not `\"ambient\"`.\n\n* *Preference*: Returns `70` if `zone.temperature === line.temperature`, and `-100` otherwise.\n\n**`type-routing` (Rule Score: 50)**:\n\n* *Applies if*: Always (`() => true`).\n\n* *Preference*: Determines priority based on the order type's preferred zone mapping (`typeKinds`). Returns `40 - position * 10` if the zone kind is found in the sequence, and `-50` if it is not.\n\n**`capacity-balance` (Rule Score: 10)**:\n\n* *Applies if*: Always (`() => true`).\n\n* *Preference*: Prefers zones with lower stock utilization. It calculates the proportion of free capacity and scales it: `Math.round((1 - used / zone.capacity) * 20)`.\n\n---\n\n3. Inventory Allocation and Reservation\n\nOnce candidate zones are sorted by score, the allocator iterates through them to fulfill the line's requested quantity:\n\n1. **Available Stock Calculation**: For each candidate zone, the available stock is computed as:\n\n$$\\text{Available} = \\max(0, \\text{onHand} - \\text{reserved})$$\n\n2. **Quantity Deduction**: The allocator reserves the minimum of the remaining required quantity and the available stock:\n\n```typescript\n\nconst quantity = Math.min(remaining, available);\n\n```\n\n3. **Allocation Generation**: If `quantity > 0`, an allocation entry is created containing the `zoneId`, `quantity`, and the specific `lotCode` of the item.\n\n4. **Finalization**: After processing all lines, `applyStockReservation` is called to update the state of the zones. If all lines are fully allocated, the order status is set to `\"allocated\"` and an `order.allocated` event is emitted. If any units remain unallocated, the order status is set to `\"held\"`.",
    "correct": null,
    "toolEvidence": [
     {
@@ -64,34 +78,44 @@
     },
     {
      "rank": 3,
-     "path": "src/pages/OrderDetailPage.tsx",
+     "path": "src/dispatch/allocator.ts",
      "score": 0.18
     }
    ],
    "toolEvidenceHeading": "Evidence · 3 files retrieved",
    "toolUnverifiedMentions": [],
    "toolScreenshot": "study/gate-screenshots/warehouse-dispatch-q02.png",
-   "toolCoverage": "Retrieved by keyword match over 50 of 54 indexed files. 4 files could not be searched. Scores measure shared wording, not correctness; a bar is full at 0.60.",
+   "toolCoverage": "Retrieved by keyword match after searching 50 of 54 repository files. 4 files could not be searched. Scores measure shared wording, not correctness; a bar is full at 0.60.",
    "correctAnswerFiles": [
     "src/dispatch/allocator.ts:17-73",
     "src/config/zoneRules.ts:14-19",
     "src/config/zoneRules.ts:28-85",
     "src/stock/reservation.ts:9-45"
    ],
-   "correctAnswerNotes": "An order can be split across zones and its different lines can go to different zones. The\nresult is `held` if the accepted allocations do not cover every line completely\n(allocator.ts:59-69)."
+   "correctAnswerNotes": "An order can be split across zones and its different lines can go to different zones. The\nresult is `held` if the accepted allocations do not cover every line completely\n(allocator.ts:59-69).",
+   "toolScreenshotComplete": true,
+   "toolGeneration": {
+    "status": "complete",
+    "finishReason": "STOP",
+    "usageMetadata": {
+     "promptTokenCount": 2280,
+     "candidatesTokenCount": 967,
+     "totalTokenCount": 4687
+    }
+   }
   },
   {
    "id": 3,
    "pattern": "handler registry",
    "question": "Which code decides how a given order type is processed?",
    "correctAnswer": "The dispatch-handler registry makes the decision. On first use, `getHandler` dynamically imports\nevery handler module; each module registers one handler keyed by its `type`. Allocation and\nrelease look up the handler using `order.type`, then call its preparation/inspection or\nshipment-default methods.",
-   "toolAnswer": "The logic that determines how a given order type is routed, scored, and priced is defined in **`src/config/zoneRules.ts`**.\n\nSpecifically, processing behavior is governed by the following configurations and functions within this file:\n\n1. Zone Routing Preferences (`typeKinds`)\n\nThe mapping `typeKinds` defines the prioritized warehouse zone kinds (`Zone[\"kind\"]`) for each `OrderType`:\n\n```typescript\n\nconst typeKinds: Record<OrderType, Zone[\"kind\"][]> = {\n\nstandard: [\"general\", \"fast-pick\"],\n\nexpress: [\"fast-pick\", \"general\"],\n\nbulk: [\"bulk\", \"general\"],\n\nhazardous: [\"secure\"],\n\n};\n\n```\n\nThis mapping is executed within the `type-routing` rule inside the `zoneRules` array (lines 51–60), which calculates a preference score based on the order type's zone list index:\n\n```typescript\n\nprefer: (zone, order) => {\n\nconst position = typeKinds[order.type].indexOf(zone.kind);\n\nreturn position < 0 ? -50 : 40 - position * 10;\n\n}\n\n```\n\n2. Pricing Strategy Assignment (`pricingByType` & `pricingStrategyFor`)\n\nThe pricing strategy (`\"current\"` or `\"legacy\"`) associated with an order type is determined by the `pricingByType` map and retrieved via `pricingStrategyFor`:\n\n```typescript\n\nconst pricingByType: Record<OrderType, PricingStrategy> = {\n\nstandard: \"current\",\n\nexpress: \"current\",\n\nbulk: \"legacy\",\n\nhazardous: \"current\",\n\n};\n\nexport function pricingStrategyFor(order: Order): PricingStrategy {\n\nreturn pricingByType[order.type];\n\n}\n\n```\n\n3. Hazard Isolation Routing\n\nThe `hazard-isolation` rule (lines 33–40) targets hazardous orders specifically, checking if `order.type === \"hazardous\"` (or if the line item itself is hazardous) to prioritize `\"secure\"` zones and penalize others:\n\n```typescript\n\n{\n\nid: \"hazard-isolation\",\n\nscore: 100,\n\nzoneKinds: [\"secure\"],\n\npricing: \"current\",\n\napplies: (order, line) => order.type === \"hazardous\" || line.hazardous,\n\nprefer: (zone) => (zone.kind === \"secure\" ? 80 : -100),\n\n}\n\n```\n\n4. Scoring Execution (`scoreZone`)\n\nThe ultimate decision of which zone processes an order line is computed by `scoreZone` (lines 80–85). This function aggregates the scores of all applicable rules (filtered and sorted via `rulesFor` based on the order and line properties):\n\n```typescript\n\nexport function scoreZone(zone: Zone, order: Order, line: OrderLine): number {\n\nreturn rulesFor(order, line).reduce((score, rule) => {\n\nif (!rule.zoneKinds.includes(zone.kind)) return score - 25;\n\nreturn score + rule.prefer(zone, order, line);\n\n}, 0);\n\n}\n\n```",
+   "toolAnswer": "The logic that decides how a given order type is processed is defined in **`src/config/zoneRules.ts`**.\n\nThis file handles routing preferences, pricing strategies, and zone-suitability scoring based on the order's type (`OrderType`).\n\nKey Mechanisms and Structures\n\n#### 1. Zone Routing Preferences (`typeKinds`)\n\nThe `typeKinds` mapping dictates which storage zones are preferred for each `OrderType`:\n\n```typescript\n\nconst typeKinds: Record<OrderType, Zone[\"kind\"][]> = {\n\nstandard: [\"general\", \"fast-pick\"],\n\nexpress: [\"fast-pick\", \"general\"],\n\nbulk: [\"bulk\", \"general\"],\n\nhazardous: [\"secure\"],\n\n};\n\n```\n\n*File: `src/config/zoneRules.ts` (lines 13–18)*\n\n#### 2. Pricing Strategies (`pricingByType` & `pricingStrategyFor`)\n\nThe pricing strategy (\"current\" vs. \"legacy\") applied to an order is determined by its type:\n\n```typescript\n\nconst pricingByType: Record<OrderType, PricingStrategy> = {\n\nstandard: \"current\",\n\nexpress: \"current\",\n\nbulk: \"legacy\",\n\nhazardous: \"current\",\n\n};\n\nexport function pricingStrategyFor(order: Order): PricingStrategy {\n\nreturn pricingByType[order.type];\n\n}\n\n```\n\n*File: `src/config/zoneRules.ts` (lines 20–25 and 79–81)*\n\n#### 3. Zone Rule Matching (`zoneRules`)\n\nSpecific rules inspect the `order.type` to determine applicability and score potential allocation zones:\n\n**`hazard-isolation`**: Applies if the order type is `\"hazardous\"` (or if the line item itself is hazardous), prioritizing `\"secure\"` zones.\n\n```typescript\n\napplies: (order, line) => order.type === \"hazardous\" || line.hazardous,\n\n```\n\n*File: `src/config/zoneRules.ts` (lines 34)*\n\n**`type-routing`**: Evaluates the order type against the `typeKinds` mapping to calculate a preference score based on the zone's index in the preferred list.\n\n```typescript\n\nprefer: (zone, order) => {\n\nconst position = typeKinds[order.type].indexOf(zone.kind);\n\nreturn position < 0 ? -50 : 40 - position * 10;\n\n},\n\n```\n\n*File: `src/config/zoneRules.ts` (lines 54–57)*\n\n#### 4. Execution Flow (`scoreZone` and `rulesFor`)\n\nTo process an order and allocate stock, the system evaluates zones using:\n\n**`rulesFor(order, line)`**: Filters and sorts rules by their priority `score`.\n**`scoreZone(zone, order, line)`**: Computes a numerical score for how compatible a specific zone is for a given order line by aggregating the matching rules' `prefer` output.\n\n*File: `src/config/zoneRules.ts` (lines 73–86)*",
    "correct": null,
    "toolEvidence": [
     {
      "rank": 1,
      "path": "src/components/OrderCard.tsx",
-     "score": 0.21
+     "score": 0.2
     },
     {
      "rank": 2,
@@ -107,7 +131,7 @@
    "toolEvidenceHeading": "Evidence · 3 files retrieved",
    "toolUnverifiedMentions": [],
    "toolScreenshot": "study/gate-screenshots/warehouse-dispatch-q03.png",
-   "toolCoverage": "Retrieved by keyword match over 50 of 54 indexed files. 4 files could not be searched. Scores measure shared wording, not correctness; a bar is full at 0.60.",
+   "toolCoverage": "Retrieved by keyword match after searching 50 of 54 repository files. 4 files could not be searched. Scores measure shared wording, not correctness; a bar is full at 0.60.",
    "correctAnswerFiles": [
     "src/dispatch/handlers/registry.ts:3-32",
     "src/dispatch/handlers/standardHandler.ts:1-22",
@@ -117,14 +141,24 @@
     "src/dispatch/allocator.ts:21",
     "src/dispatch/releaseService.ts:17"
    ],
-   "correctAnswerNotes": "The registry selects processing behaviour; zone selection is a separate, configuration-driven\ndecision. Registering a second handler for the same type throws, so the glob cannot silently\nshadow one handler with another."
+   "correctAnswerNotes": "The registry selects processing behaviour; zone selection is a separate, configuration-driven\ndecision. Registering a second handler for the same type throws, so the glob cannot silently\nshadow one handler with another.",
+   "toolScreenshotComplete": true,
+   "toolGeneration": {
+    "status": "complete",
+    "finishReason": "STOP",
+    "usageMetadata": {
+     "promptTokenCount": 1906,
+     "candidatesTokenCount": 682,
+     "totalTokenCount": 3181
+    }
+   }
   },
   {
    "id": 4,
    "pattern": "cross-cutting concern",
    "question": "Everywhere stock is reserved — list every place it happens.",
    "correctAnswer": "Actual reservation changes are centralized in `applyStockReservation`. It is called during\ninitial allocation, again before shipment release to recheck and finalize the order's\nallocations, and by the periodic revalidation job after resetting reserved counts and\nrebuilding them for active orders. The store installs that revalidation job during\ninitialization.",
-   "toolAnswer": "Based on the provided repository context, stock reservation logic is executed, tested, and managed in the following locations:\n\n1. `src/stock/reservation.ts` (Core Reservation Logic)\n\nAlthough the implementation file itself is not included in the provided context, its interface and behavior are defined here.\n\n**Function**: `applyStockReservation` is imported from this module (cited in `src/tests/reservation.test.ts`, line 2).\n**Behavior**: It takes an order, an array of allocation requests, and current zones, then returns updated zones with incremented `reserved` stock values, along with allocations (including populated lot codes) and shortage reports.\n\n---\n\n2. `src/tests/reservation.test.ts` (Test Execution)\n\nStock reservation is actively triggered and asserted within two test cases in this file:\n\n**Incrementing Reserved Stock**: (Lines 16–26) Calls `applyStockReservation` with a request of `10` units for SKU `\"BX-100\"` in zone `\"ZA-01\"`. It explicitly asserts that the `reserved` property on the target stock item increases by `10`:\n\n```typescript\n\nconst result = applyStockReservation(order, [request], zones);\n\nconst after = result.zones[0].stock.find(\n\n(item) => item.sku === \"BX-100\",\n\n)!.reserved;\n\nexpect(after).toBe(before + 10);\n\n```\n\n**Shortage Handling**: (Lines 28–35) Invokes `applyStockReservation` with an excessive reservation quantity (`10_000`) to verify that the system detects a shortage instead of over-reserving or creating negative availability.\n\n---\n\nRelated State Modifications & Reads (Not Active Reservations)\n\nFor completeness, the following files interact with the `reserved` state but do not perform the initial reservation:\n\n**`src/stock/stockService.ts` (Deduction/Release)**:\n\nThe `commitReleasedStock` function (lines 15–38) decrements the `reserved` stock (along with `onHand`) when allocations are finalized and shipped:\n\n```typescript\n\nitem.reserved = Math.max(0, item.reserved - allocation.quantity);\n\n```\n\n**`src/components/ZoneCard.tsx` (Read-only)**:\n\nReads `item.reserved` to calculate available capacity and render UI elements (lines 6, 38, 48, 62).",
+   "toolAnswer": "Based on the provided repository context, the reservation of stock is managed in the following places:\n\n1. `applyStockReservation` (Logic defined in `src/stock/reservation.ts`)\n\nThe primary entry point for reserving stock is the `applyStockReservation` function.\n\n**Note on Context:** The implementation file `src/stock/reservation.ts` is not provided in the context, but its behavior and usage are defined and verified in `src/tests/reservation.test.ts` (lines 1-40).\n**Behavior:**\n\n* It increments the `reserved` property of a stock item in a given zone based on an allocation request (tested in `src/tests/reservation.test.ts`, lines 18–25).\n\n* It handles shortages when a reservation request exceeds available inventory, ensuring negative availability is not created (tested in `src/tests/reservation.test.ts`, lines 28–37).\n\n---\n\n2. `commitReleasedStock` (Deduction of Reserved Stock in `src/stock/stockService.ts`)\n\nWhile this function does not create a new reservation, it is where the lifecycle of reserved stock is finalized (committed).\n\n**Location:** `src/stock/stockService.ts` (lines 15–37)\n**Behavior:** When allocations are committed, the reserved stock is decremented alongside the physical on-hand stock:\n\n```typescript\n\nitem.onHand = Math.max(0, item.onHand - allocation.quantity);\n\nitem.reserved = Math.max(0, item.reserved - allocation.quantity);\n\n```",
    "correct": null,
    "toolEvidence": [
     {
@@ -145,11 +179,10 @@
    ],
    "toolEvidenceHeading": "Evidence · 3 files retrieved",
    "toolUnverifiedMentions": [
-    "src/stock/reservation.ts Not retrieved",
-    "src/components/ZoneCard.ts Not retrieved"
+    "src/stock/reservation.ts Not retrieved"
    ],
    "toolScreenshot": "study/gate-screenshots/warehouse-dispatch-q04.png",
-   "toolCoverage": "Retrieved by keyword match over 50 of 54 indexed files. 4 files could not be searched. Scores measure shared wording, not correctness; a bar is full at 0.60.",
+   "toolCoverage": "Retrieved by keyword match after searching 50 of 54 repository files. 4 files could not be searched. Scores measure shared wording, not correctness; a bar is full at 0.60.",
    "correctAnswerFiles": [
     "src/stock/reservation.ts:9-45",
     "src/dispatch/allocator.ts:56-72",
@@ -157,14 +190,24 @@
     "src/jobs/revalidation.ts:10-49",
     "src/store/useWarehouseStore.ts:88-125"
    ],
-   "correctAnswerNotes": "`commitReleasedStock` does not create a reservation; it consumes on-hand stock and removes the\ncorresponding reservation (src/stock/stockService.ts:16-37).\n\nThe list is complete by two independent routes. `grep -rn applyStockReservation src` returns ten\nlines: four imports, the definition, and five call sites — the three application paths named\nabove plus two in `reservation.test.ts`, at lines 22 and 31, which build orders by hand.\n\nGrepping instead for a direct write to `item.reserved` returns two, at `reservation.ts:40` and\n`stockService.ts:27`. Three places set a reserved value, but the third does not assign to the\nproperty: `revalidation.ts:16` writes `{ ...item, reserved: 0 }` into a fresh object inside a\n`.map`, so no search for an assignment can find it. That is the same structural blindness as\nthe line break described above, one variant along, and it is why the count and the search result\ndiffer.\n\nNeither search reveals an application path missing from the list above. They do not simply\nagree: the write-based search surfaces `commitReleasedStock`, which is not a call site and which\nthis note has already excluded as consuming a reservation rather than creating one."
+   "correctAnswerNotes": "`commitReleasedStock` does not create a reservation; it consumes on-hand stock and removes the\ncorresponding reservation (src/stock/stockService.ts:16-37).\n\nThe list is complete by two independent routes. `grep -rn applyStockReservation src` returns ten\nlines: four imports, the definition, and five call sites — the three application paths named\nabove plus two in `reservation.test.ts`, at lines 22 and 31, which build orders by hand.\n\nGrepping instead for a direct write to `item.reserved` returns two, at `reservation.ts:40` and\n`stockService.ts:27`. Three places set a reserved value, but the third does not assign to the\nproperty: `revalidation.ts:16` writes `{ ...item, reserved: 0 }` into a fresh object inside a\n`.map`, so no search for an assignment can find it. That is the same structural blindness as\nthe line break described above, one variant along, and it is why the count and the search result\ndiffer.\n\nNeither search reveals an application path missing from the list above. They do not simply\nagree: the write-based search surfaces `commitReleasedStock`, which is not a call site and which\nthis note has already excluded as consuming a reservation rather than creating one.",
+   "toolScreenshotComplete": true,
+   "toolGeneration": {
+    "status": "complete",
+    "finishReason": "STOP",
+    "usageMetadata": {
+     "promptTokenCount": 1689,
+     "candidatesTokenCount": 359,
+     "totalTokenCount": 3466
+    }
+   }
   },
   {
    "id": 5,
    "pattern": "interceptor chain",
    "question": "What happens to an outgoing API request before it is sent?",
    "correctAnswer": "The client builds a request with an `Accept` header and empty metadata, then applies three\ninterceptors in order. Authentication adds the bearer token; audit adds a request timestamp,\nsource, and correlation ID; and the hazardous interceptor conditionally rewrites `/orders` to\n`/controlled/orders`, adds an `x-controlled-load` header and sets `routing` metadata to\n`dangerous-goods`. The transformed request is then passed to the mock transport.",
-   "toolAnswer": "Based on the provided codebase, outgoing API requests are processed and mutated by one or more **Request Interceptors** before they are dispatched.\n\nThese interceptors conform to the `RequestInterceptor` type defined in `src/api/interceptors/types.ts`:\n\n```typescript\n\nexport type RequestInterceptor = (\n\nrequest: ApiRequest,\n\n) => ApiRequest | Promise<ApiRequest>;\n\n```\n\nThe repository defines two specific interceptors that modify the outgoing `ApiRequest` payload:\n\n1. Audit Injection (`src/api/interceptors/audit-interceptor.ts`)\n\nEvery request passed through the `auditInterceptor` is enriched with tracing and audit headers/metadata:\n\n**Headers**: Adds an `x-requested-at` header set to the current ISO timestamp (`new Date().toISOString()`).\n**Metadata**: Injects a `source` identifier set to `\"dispatch-console\"` and a unique `correlationId` generated via `crypto.randomUUID()`.\n2. Hazardous Cargo Routing (`src/api/interceptors/hazardous-interceptor.ts`)\n\nThe `hazardousInterceptor` conditionally intercepts and reroutes dangerous goods orders based on the request body:\n\n**Condition**: It inspects the request body (cast as `Partial<Order>`). If `body.type` is equal to `\"hazardous\"`, mutations are applied. Otherwise, the request is returned unmodified.\n**Path Mutation**: Replaces `/orders` in the request path with `/controlled/orders`.\n**Headers**: Appends an `\"x-controlled-load\": \"true\"` header.\n**Metadata**: Appends a `routing` key set to `\"dangerous-goods\"`.",
+   "toolAnswer": "Based on the provided codebase, outgoing API requests (represented by `ApiRequest`) are processed and transformed by request interceptors before they are dispatched.\n\nThe pipeline structure is defined by the `RequestInterceptor` type in `src/api/interceptors/types.ts`, which takes an `ApiRequest` and returns either a modified `ApiRequest` or a `Promise<ApiRequest>`.\n\nTwo specific interceptors are implemented to handle request modification:\n\n1. Audit Enrichment\n\nThe `auditInterceptor` (`src/api/interceptors/audit-interceptor.ts`) unconditionally enriches every processed request with tracking and telemetry data:\n\n**Headers**: Appends an `x-requested-at` header populated with the current ISO timestamp (`new Date().toISOString()`).\n**Metadata**: Appends a `source` identifier set to `\"dispatch-console\"` and a unique `correlationId` generated using `crypto.randomUUID()`.\n2. Hazardous Cargo Routing\n\nThe `hazardousInterceptor` (`src/api/interceptors/hazardous-interceptor.ts`) conditionally reroutes and tags requests containing hazardous cargo:\n\n**Condition**: It inspects the request body (cast as a `Partial<Order>`). If `body.type` is not `\"hazardous\"`, the request is returned unmodified.\n**Mutations**: If the order type is `\"hazardous\"`, the interceptor:\n\n* Replaces `/orders` in the request `path` with `/controlled/orders`.\n\n* Injects an `x-controlled-load: \"true\"` header.\n\n* Injects `routing: \"dangerous-goods\"` into the request's `metadata`.\n\nExecution Flow and Maintenance Impact\n**Order of Execution**: The exact execution order (e.g., whether `auditInterceptor` runs before or after `hazardousInterceptor`) and the orchestration mechanism (such as an interceptor chain or runner) are not defined in the provided source files.\n**State Immutability**: Both interceptors practice shallow-copying of the request object, headers, and metadata (using the spread operator `...request`), preventing unintended mutation of the original request reference.",
    "correct": null,
    "toolEvidence": [
     {
@@ -186,7 +229,7 @@
    "toolEvidenceHeading": "Evidence · 3 files retrieved",
    "toolUnverifiedMentions": [],
    "toolScreenshot": "study/gate-screenshots/warehouse-dispatch-q05.png",
-   "toolCoverage": "Retrieved by keyword match over 50 of 54 indexed files. 4 files could not be searched. Scores measure shared wording, not correctness; a bar is full at 0.60.",
+   "toolCoverage": "Retrieved by keyword match after searching 50 of 54 repository files. 4 files could not be searched. Scores measure shared wording, not correctness; a bar is full at 0.60.",
    "correctAnswerFiles": [
     "src/api/api-client.ts:5-19",
     "src/api/interceptors/index.ts:7-11",
@@ -201,14 +244,24 @@
     "src/dispatch/orderService.ts:11-15",
     "src/store/useWarehouseStore.ts:152"
    ],
-   "correctAnswerNotes": "The hazardous transformation only occurs when the request body itself has `type: \"hazardous\"`.\n\nThe path rewrite has no effect on the response. `mock-server.ts:7-9` normalises\n`/controlled/orders` straight back to `/orders` before dispatching, so the rewritten path\nreaches nothing that treats it differently. The header and the metadata survive; the new path\ndoes not.\n\nThe comment at `mock-server.ts:4` says the mock \"always responds synchronously to keep tests\ndeterministic\". `handleRequest` awaits a 90-millisecond timeout at line 14. This is the third\ncomment in the pair that describes something the code does not do, alongside the Internet\nExplorer shim and the site-grouping claim in clinic-triage.\n\nUnlike its counterpart in clinic-triage, this chain genuinely executes. `saveOrder` is imported\nby the store and called at `useWarehouseStore.ts:152, 185, 222` and `242` with a full order as\nthe body, so the hazardous branch can fire in the running application. `fetchOrders` and\n`fetchOrder` in the same module have no consumers, but no answer claims otherwise."
+   "correctAnswerNotes": "The hazardous transformation only occurs when the request body itself has `type: \"hazardous\"`.\n\nThe path rewrite has no effect on the response. `mock-server.ts:7-9` normalises\n`/controlled/orders` straight back to `/orders` before dispatching, so the rewritten path\nreaches nothing that treats it differently. The header and the metadata survive; the new path\ndoes not.\n\nThe comment at `mock-server.ts:4` says the mock \"always responds synchronously to keep tests\ndeterministic\". `handleRequest` awaits a 90-millisecond timeout at line 14. This is the third\ncomment in the pair that describes something the code does not do, alongside the Internet\nExplorer shim and the site-grouping claim in clinic-triage.\n\nUnlike its counterpart in clinic-triage, this chain genuinely executes. `saveOrder` is imported\nby the store and called at `useWarehouseStore.ts:152, 185, 222` and `242` with a full order as\nthe body, so the hazardous branch can fire in the running application. `fetchOrders` and\n`fetchOrder` in the same module have no consumers, but no answer claims otherwise.",
+   "toolScreenshotComplete": true,
+   "toolGeneration": {
+    "status": "complete",
+    "finishReason": "STOP",
+    "usageMetadata": {
+     "promptTokenCount": 529,
+     "candidatesTokenCount": 455,
+     "totalTokenCount": 1581
+    }
+   }
   },
   {
    "id": 6,
    "pattern": "misleading name",
-   "question": "Does validateShipment change any state, or does it only check?",
+   "question": "Does `validateShipment` change any state, or does it only check?",
    "correctAnswer": "It does more than check. Alongside collecting errors and warnings, it mutates the supplied\nshipment by assigning `shipment.dock`: hazardous orders always receive D4; other orders receive\nD1–D3 deterministically from the order ID.",
-   "toolAnswer": "Yes, `validateShipment` **does change state**. It is not a pure read-only check.\n\nSpecifically, it mutates the `shipment` object passed to it as an argument by assigning or overriding its `dock` property based on the order type and ID.\n\nCode Evidence\n\n#### 1. Mutation in `validateShipment`\n\nIn `src/dispatch/validation.ts`, the function calculates a dock assignment and directly mutates the `shipment` parameter:\n\n```typescript\n\n// src/dispatch/validation.ts (lines 35-38)\n\nconst numeric = order.id\n\n.split(\"\")\n\n.reduce((sum, character) => sum + character.charCodeAt(0), 0);\n\nshipment.dock = order.type === \"hazardous\" ? \"D4\" : docks[numeric % 3];\n\n```\n\n#### 2. Reliance on Mutation in Tests\n\nThe test suite in `src/tests/validation.test.ts` explicitly asserts that this side-effect occurs when calling `validateShipment`:\n\n```typescript\n\n// src/tests/validation.test.ts (lines 31-34)\n\nconst result = validateShipment(candidate, order);\n\nexpect(result.valid).toBe(true);\n\nexpect(candidate.dock).toMatch(/^D[1-3]$/); // Asserts dock was mutated/assigned\n\n```\n\n#### 3. Downstream Propagation\n\nThe release pipeline in `src/dispatch/releaseService.ts` relies on this mutation. After calling `validateShipment(shipment, order)`, it reads the newly assigned `shipment.dock` property to build the `releasedOrder` object:\n\n```typescript\n\n// src/dispatch/releaseService.ts (lines 36-43)\n\nconst validation = validateShipment(shipment, order);\n\nif (!validation.valid) throw new Error(validation.errors.join(\"; \"));\n\nshipment.releasedAt = new Date().toISOString();\n\nconst releasedOrder: Order = {\n\n...order,\n\nstatus: \"released\",\n\nassignedDock: shipment.dock, // Populated by the validation side-effect\n\ncarrier: shipment.carrier,\n\ntrackingNumber: `${shipment.carrier.slice(0, 3).toUpperCase()}${Date.now().toString().slice(-9)}`,\n\n};\n\n```\n\nMaintenance Impact\n\nThis is a notable design trade-off: a function prefixed with `validate` is performing a write/mutation operation. If you call `validateShipment` purely to check validity without intending to modify the shipment, you will inadvertently overwrite its `dock` assignment.",
+   "toolAnswer": "Yes, `validateShipment` **does change state** by mutating the `shipment` object passed to it as an argument. It does not only perform checks.\n\nThe Mutation\n\nIn `src/dispatch/validation.ts`, the function calculates and assigns the `dock` property directly onto the input `shipment` object:\n\n```typescript\n\nconst numeric = order.id\n\n.split(\"\")\n\n.reduce((sum, character) => sum + character.charCodeAt(0), 0);\n\nshipment.dock = order.type === \"hazardous\" ? \"D4\" : docks[numeric % 3];\n\n```\n\n*(Source: `src/dispatch/validation.ts`, lines 35–39)*\n\nThis mutation occurs regardless of whether the validation succeeds or fails (i.e., even if `valid` is returned as `false`).\n\nImpact and Usage in the Codebase\n\n1. **Test Expectations**:\n\nThe test suite explicitly relies on this side effect. In `src/tests/validation.test.ts`, the assertions verify that the `candidate` shipment object has its `dock` property populated after calling `validateShipment`:\n\n* For standard shipments: `expect(candidate.dock).toMatch(/^D[1-3]$/);` (line 33)\n\n* For hazardous shipments: `expect(candidate.dock).toBe(\"D4\");` (line 49)\n\n2. **Downstream Dependency**:\n\nIn `src/dispatch/releaseService.ts`, the `releaseShipment` function calls `validateShipment(shipment, order)` (line 36). Immediately after, it relies on the mutated `shipment.dock` value to populate the `assignedDock` of the `releasedOrder`:\n\n```typescript\n\nconst releasedOrder: Order = {\n\n...order,\n\nstatus: \"released\",\n\nassignedDock: shipment.dock, // Populated by validateShipment side effect\n\ncarrier: shipment.carrier,\n\ntrackingNumber: `${shipment.carrier.slice(0, 3).toUpperCase()}${Date.now().toString().slice(-9)}`,\n\n};\n\n```\n\n*(Source: `src/dispatch/releaseService.ts`, lines 38–44)*",
    "correct": null,
    "toolEvidence": [
     {
@@ -230,18 +283,28 @@
    "toolEvidenceHeading": "Evidence · 3 files retrieved",
    "toolUnverifiedMentions": [],
    "toolScreenshot": "study/gate-screenshots/warehouse-dispatch-q06.png",
-   "toolCoverage": "Retrieved by keyword match over 50 of 54 indexed files. 4 files could not be searched. Scores measure shared wording, not correctness; a bar is full at 0.60.",
+   "toolCoverage": "Retrieved by keyword match after searching 50 of 54 repository files. 4 files could not be searched. Scores measure shared wording, not correctness; a bar is full at 0.60.",
    "correctAnswerFiles": [
     "src/dispatch/validation.ts:12-40"
    ],
-   "correctAnswerNotes": "This is an in-place mutation, contrary to both the function name and its documentation comment.\n\nThe dock list holds four entries, but the non-hazardous branch indexes it modulo 3, so D4 is\nunreachable except through the hazardous branch. \"D1-D3\" is exact rather than approximate."
+   "correctAnswerNotes": "This is an in-place mutation, contrary to both the function name and its documentation comment.\n\nThe dock list holds four entries, but the non-hazardous branch indexes it modulo 3, so D4 is\nunreachable except through the hazardous branch. \"D1-D3\" is exact rather than approximate.",
+   "toolScreenshotComplete": true,
+   "toolGeneration": {
+    "status": "complete",
+    "finishReason": "STOP",
+    "usageMetadata": {
+     "promptTokenCount": 1779,
+     "candidatesTokenCount": 488,
+     "totalTokenCount": 3079
+    }
+   }
   },
   {
    "id": 7,
    "pattern": "legacy path",
    "question": "Which pricing implementation runs for a bulk order, and why that one?",
    "correctAnswer": "Bulk orders use `calculateLegacyPrice`. `pricingByType` maps `bulk` to `legacy`;\n`calculateOrderPrice` reads that strategy and delegates to the legacy implementation. The legacy\ncalculation adds per-pallet handling and applies tiered volume discounts.",
-   "toolAnswer": "For a bulk order, the **legacy pricing** implementation (`calculateLegacyPrice`) runs instead of the current pricing calculation.\n\nControl Flow & Why It Runs\n\n1. **Entry Point & Strategy Check**:\n\nWhen `calculateOrderPrice(order)` is called in `src/pricing/pricing.ts`, it first determines the pricing strategy for the order:\n\n```typescript\n\nconst strategy = pricingStrategyFor(order);\n\nif (strategy === \"legacy\") return calculateLegacyPrice(order);\n\n```\n\n2. **Strategy Resolution**:\n\nThe `pricingStrategyFor(order)` function is defined in `src/config/zoneRules.ts`. It resolves the strategy by looking up the order's `type` in the `pricingByType` configuration mapping:\n\n```typescript\n\nexport function pricingStrategyFor(order: Order): PricingStrategy {\n\nreturn pricingByType[order.type];\n\n}\n\n```\n\n3. **Configuration Mapping**:\n\nIn `src/config/zoneRules.ts`, the `pricingByType` record explicitly maps the `\"bulk\"` `OrderType` to the `\"legacy\"` `PricingStrategy`:\n\n```typescript\n\nconst pricingByType: Record<OrderType, PricingStrategy> = {\n\nstandard: \"current\",\n\nexpress: \"current\",\n\nbulk: \"legacy\", // <--- Maps bulk to legacy\n\nhazardous: \"current\",\n\n};\n\n```\n\nBecause this lookup returns `\"legacy\"`, the conditional block in `calculateOrderPrice` evaluates to `true` and immediately returns the result of `calculateLegacyPrice(order)`.\n\nThis behavior is verified by the unit tests in `src/tests/pricing.test.ts`, which assert that `pricingStrategyFor(bulk)` is `\"legacy\"` and that `calculateOrderPrice(bulk)` matches `calculateLegacyPrice(bulk)`.",
+   "toolAnswer": "For a bulk order, the **legacy pricing implementation** runs via the `calculateLegacyPrice(order)` function (`src/pricing/pricing.ts`).\n\nWhy This Implementation Runs\n\nThe execution path is determined by the following control flow:\n\n1. **Strategy Resolution**:\n\nWhen `calculateOrderPrice(order)` is invoked, it first determines the pricing strategy by calling `pricingStrategyFor(order)` (`src/pricing/pricing.ts`, line 5).\n\n2. **Configuration Lookup**:\n\nIn `src/config/zoneRules.ts` (lines 80–82), `pricingStrategyFor` resolves the strategy using the `pricingByType` mapping table:\n\n```typescript\n\nexport function pricingStrategyFor(order: Order): PricingStrategy {\n\nreturn pricingByType[order.type];\n\n}\n\n```\n\n3. **Type-to-Strategy Mapping**:\n\nThe `pricingByType` record explicitly maps the `bulk` order type to the `\"legacy\"` strategy (`src/config/zoneRules.ts`, lines 21–26):\n\n```typescript\n\nconst pricingByType: Record<OrderType, PricingStrategy> = {\n\nstandard: \"current\",\n\nexpress: \"current\",\n\nbulk: \"legacy\",\n\nhazardous: \"current\",\n\n};\n\n```\n\n4. **Short-Circuit Execution**:\n\nBack in `calculateOrderPrice` (`src/pricing/pricing.ts`, line 6), the engine checks if the resolved strategy is `\"legacy\"`. Because it is, the function short-circuits and delegates calculation directly to the legacy engine:\n\n```typescript\n\nif (strategy === \"legacy\") return calculateLegacyPrice(order);\n\n```\n\nThis behavior is verified by the unit tests in `src/tests/pricing.test.ts` (lines 7–11), which assert that a bulk order's strategy is `\"legacy\"` and that its final price matches the output of `calculateLegacyPrice(bulk)`.",
    "correct": null,
    "toolEvidence": [
     {
@@ -263,21 +326,31 @@
    "toolEvidenceHeading": "Evidence · 3 files retrieved",
    "toolUnverifiedMentions": [],
    "toolScreenshot": "study/gate-screenshots/warehouse-dispatch-q07.png",
-   "toolCoverage": "Retrieved by keyword match over 50 of 54 indexed files. 4 files could not be searched. Scores measure shared wording, not correctness; a bar is full at 0.60.",
+   "toolCoverage": "Retrieved by keyword match after searching 50 of 54 repository files. 4 files could not be searched. Scores measure shared wording, not correctness; a bar is full at 0.60.",
    "correctAnswerFiles": [
     "src/config/zoneRules.ts:21-26",
     "src/config/zoneRules.ts:76-78",
     "src/pricing/pricing.ts:1-8",
     "src/pricing/legacyPricing.ts:3-21"
    ],
-   "correctAnswerNotes": "The handler selected for bulk dispatch does not select pricing; the separate configuration map\ndoes."
+   "correctAnswerNotes": "The handler selected for bulk dispatch does not select pricing; the separate configuration map\ndoes.",
+   "toolScreenshotComplete": true,
+   "toolGeneration": {
+    "status": "complete",
+    "finishReason": "STOP",
+    "usageMetadata": {
+     "promptTokenCount": 1675,
+     "candidatesTokenCount": 432,
+     "totalTokenCount": 2864
+    }
+   }
   },
   {
    "id": 8,
    "pattern": "event emitter",
    "question": "What reacts when a dispatch event is emitted?",
    "correctAnswer": "Reactions depend on the event. `shipment.released` is consumed by the notification listener,\nwhich publishes a success notification. `stock.low` is consumed both by that notification\nlistener and by the stock service's in-memory low-stock signal collector. There is no\nregistered listener for `order.allocated` or `notification.created` in this repository.",
-   "toolAnswer": "Based on the provided codebase, the primary system reacting directly to emitted warehouse events is the **notification listener system** defined in `src/notifications/listener.ts`.\n\nSpecifically, when the `eventBus` (defined in `src/events/bus.ts`) emits events, the following reactions occur:\n\n1. **`shipment.released` Event**:\n\n* **Reaction**: Triggers a call to `publishNotification` with a `\"success\"` level notification.\n\n* **Details**: It formats a message indicating that the order has been released and details how many packages are loading at which dock.\n\n* **Code implementation** (`src/notifications/listener.ts`):\n\n```typescript\n\neventBus.on(\"shipment.released\", ({ order, shipment }) => {\n\npublishNotification({\n\nlevel: \"success\",\n\ntitle: `Order ${order.id} released`,\n\nmessage: `${shipment.packageCount} package(s) are loading at dock ${shipment.dock}.`,\n\n});\n\n});\n\n```\n\n2. **`stock.low` Event**:\n\n* **Reaction**: Triggers a call to `publishNotification` with a `\"warning\"` level notification.\n\n* **Details**: It formats a warning message stating the remaining available units and the zone ID for the low-stock SKU.\n\n* **Code implementation** (`src/notifications/listener.ts`):\n\n```typescript\n\neventBus.on(\"stock.low\", ({ sku, zoneId, available }) => {\n\npublishNotification({\n\nlevel: \"warning\",\n\ntitle: `Low stock: ${sku}`,\n\nmessage: `${available} units remain available in ${zoneId}.`,\n\n});\n\n});\n\n```\n\nInitialization\n\nThese reactions are registered by calling the `installNotificationListeners()` function (defined in `src/notifications/listener.ts`), which ensures the listeners are attached to the `eventBus` exactly once.\n\nOther Related Components\n\nWhile `src/pages/DispatchLogPage.tsx` displays dispatch log entries (such as `\"received\"`, `\"allocated\"`, `\"revalidated\"`, `\"held\"`, `\"released\"`, and `\"note\"`), it does not react directly to the event bus. Instead, it reads static/historical log state from the global store via `useWarehouseStore((state) => state.logs)`.",
+   "toolAnswer": "Based on the provided codebase context, the reaction to events emitted via the `EventBus` (`src/events/bus.ts`) is managed by listeners registered in **`src/notifications/listener.ts`**.\n\nWhen events are emitted via `eventBus.emit()`, the following reactions occur:\n\n1. `\"shipment.released\"` Event\n**Reacting Component/Service:** The listener registered in `installNotificationListeners()` (`src/notifications/listener.ts`).\n**Reaction:** It intercepts the event payload containing `{ order, shipment }` and calls `publishNotification()` to dispatch a success-level notification:\n\n```typescript\n\npublishNotification({\n\nlevel: \"success\",\n\ntitle: `Order ${order.id} released`,\n\nmessage: `${shipment.packageCount} package(s) are loading at dock ${shipment.dock}.`,\n\n});\n\n```\n\n2. `\"stock.low\"` Event\n**Reacting Component/Service:** The listener registered in `installNotificationListeners()` (`src/notifications/listener.ts`).\n**Reaction:** It intercepts the event payload containing `{ sku, zoneId, available }` and calls `publishNotification()` to dispatch a warning-level notification:\n\n```typescript\n\npublishNotification({\n\nlevel: \"warning\",\n\ntitle: `Low stock: ${sku}`,\n\nmessage: `${available} units remain available in ${zoneId}.`,\n\n});\n\n```\n\n---\n\nOther Event Types & Logs\n**`\"order.allocated\"` and `\"notification.created\"`:** Although defined in the `WarehouseEvents` interface in `src/events/bus.ts`, there are no active listeners registered for these events in the provided files.\n**Dispatch Log Page (`src/pages/DispatchLogPage.tsx`):** The `DispatchLogPage` does not directly subscribe to the `EventBus`. Instead, it reactively renders historical audit trail entries (`DispatchLogEntry`) read from the global Zustand store (`useWarehouseStore` state slice `logs`).",
    "correct": null,
    "toolEvidence": [
     {
@@ -297,11 +370,9 @@
     }
    ],
    "toolEvidenceHeading": "Evidence · 3 files retrieved",
-   "toolUnverifiedMentions": [
-    "src/pages/DispatchLogPage.ts Not retrieved"
-   ],
+   "toolUnverifiedMentions": [],
    "toolScreenshot": "study/gate-screenshots/warehouse-dispatch-q08.png",
-   "toolCoverage": "Retrieved by keyword match over 50 of 54 indexed files. 4 files could not be searched. Scores measure shared wording, not correctness; a bar is full at 0.60.",
+   "toolCoverage": "Retrieved by keyword match after searching 50 of 54 repository files. 4 files could not be searched. Scores measure shared wording, not correctness; a bar is full at 0.60.",
    "correctAnswerFiles": [
     "src/events/bus.ts:3-34",
     "src/notifications/listener.ts:4-23",
@@ -313,14 +384,24 @@
     "src/stock/stockService.ts:39-41",
     "src/notifications/service.ts:16"
    ],
-   "correctAnswerNotes": "Listeners are synchronous: `emit` immediately iterates the registered callbacks.\n\n`stock.low` has a single emitter, `commitReleasedStock`, which raises it when available stock\nfalls to or below the reorder point after a release.\n\nThe two listener sets register at different moments. The stock service subscribes at module\nimport time, as a side effect of loading the file. The notification listeners subscribe only\nwhen `installNotificationListeners` is called from `App`. A question about what reacts to an\nevent therefore has a different answer before that call than after it.\n\nThe two also differ in whether their work is used. The notification listener publishes a\nnotification a user sees. The stock service's listener appends to `lowStockSignals`, which is\nreadable only through `getLowStockSignals`, and that function has no callers — the collector\nwrites to an array nothing reads. This is the same shape as `recentlyBooked` in clinic-triage,\nand stating it here keeps the paired event-emitter question symmetric: without it, a reader who\nspots the dead collector is credited on one repository and not on the other for identical\nreasoning."
+   "correctAnswerNotes": "Listeners are synchronous: `emit` immediately iterates the registered callbacks.\n\n`stock.low` has a single emitter, `commitReleasedStock`, which raises it when available stock\nfalls to or below the reorder point after a release.\n\nThe two listener sets register at different moments. The stock service subscribes at module\nimport time, as a side effect of loading the file. The notification listeners subscribe only\nwhen `installNotificationListeners` is called from `App`. A question about what reacts to an\nevent therefore has a different answer before that call than after it.\n\nThe two also differ in whether their work is used. The notification listener publishes a\nnotification a user sees. The stock service's listener appends to `lowStockSignals`, which is\nreadable only through `getLowStockSignals`, and that function has no callers — the collector\nwrites to an array nothing reads. This is the same shape as `recentlyBooked` in clinic-triage,\nand stating it here keeps the paired event-emitter question symmetric: without it, a reader who\nspots the dead collector is credited on one repository and not on the other for identical\nreasoning.",
+   "toolScreenshotComplete": true,
+   "toolGeneration": {
+    "status": "complete",
+    "finishReason": "STOP",
+    "usageMetadata": {
+     "promptTokenCount": 1408,
+     "candidatesTokenCount": 439,
+     "totalTokenCount": 3010
+    }
+   }
   },
   {
    "id": 9,
    "pattern": "applied",
    "question": "Where would a new order type be added, and what else would need changing?",
    "correctAnswer": "Add the literal to `OrderType`; add entries to both exhaustive order-type maps for zone\npreferences and pricing; and add a handler module that calls `registerHandler` with preparation,\ninspection, and shipment defaults. The dynamically loaded registry will discover the new handler\nautomatically. Seed and UI fixtures and tests should also be extended if the new type must\nappear and be verified.",
-   "toolAnswer": "Based on the provided test files and their imports, here is where a new order type (e.g., joining `\"express\"`, `\"hazardous\"`, `\"bulk\"`, and `\"standard\"`) would be defined and what other parts of the system would need to be modified.\n\n---\n\n1. Type Definitions\n**File:** `src/types/domain.ts` (inferred from the import of `Shipment` in `src/tests/validation.test.ts` [line 3])\n**Change:** You would need to update the `Order` type definition (specifically its `type` property union) to include the new literal string of your new order type.\n2. Seed & Test Data\n**File:** `src/data/seedData.ts` (imported in `src/tests/allocation.test.ts` [line 3], `src/tests/pricing.test.ts` [line 5], and `src/tests/validation.test.ts` [line 3])\n**Change:** Add representative order instances of the new type to `seedOrders` so that allocation, pricing, and validation tests can run against realistic payloads.\n3. Pricing Strategy and Configuration\n**Files:**\n\n* `src/config/zoneRules.ts` (imported in `src/tests/pricing.test.ts` [line 2])\n\n* `src/pricing/pricing.ts` (imported in `src/tests/pricing.test.ts` [line 4])\n\n**Change:**\n\n* In `src/config/zoneRules.ts`, update `pricingStrategyFor(order)` to map the new order type to its appropriate pricing strategy (e.g., whether it uses `\"legacy\"` pricing like `\"bulk\"`, or a standard/custom strategy).\n\n* In `src/pricing/pricing.ts`, update `calculateOrderPrice(order)` to apply any specific handling fees or surcharges required for the new type (analogous to the dangerous goods surcharge applied to `\"hazardous\"` orders in `src/tests/pricing.test.ts` [lines 22–31]).\n\n4. Allocation Logic\n**File:** `src/dispatch/allocator.ts` (imported in `src/tests/allocation.test.ts` [line 2])\n**Change:** Update `allocateOrder` if the new order type requires specialized inventory matching rules. For",
+   "toolAnswer": "Based on the imports and logic demonstrated in the test suites, adding a new order type requires changes across the domain definition, seeding, pricing, allocation, and validation layers.\n\n1. Where to Add the New Order Type\n**Type Definition**: You must add the new order type string literal (e.g., `'new_type'`) to the `type` union field of the `Order` type inside **`src/types/domain.ts`** (inferred from the `Shipment` import in `src/tests/validation.test.ts`).\n**Seed Data**: Add a representative order of the new type to the `seedOrders` array in **`src/data/seedData.ts`** (imported in `src/tests/allocation.test.ts`, `src/tests/pricing.test.ts`, and `src/tests/validation.test.ts`) to allow integration testing.\n\n---\n\n2. What Else Needs Changing\n\n#### A. Pricing Strategy & Calculation\n\n**`src/config/zoneRules.ts`**: Update `pricingStrategyFor(order)` to map the new order type to its appropriate pricing strategy (e.g., returning `'legacy'` or a new strategy identifier) as verified in `src/tests/pricing.test.ts`.\n**`src/pricing/pricing.ts`**: If the new order type incurs specific handling charges or surcharges (similar to the hazardous surcharge test in `src/tests/pricing.test.ts`), update `calculateOrderPrice(order)` to apply these calculations.\n\n#### B. Allocation Rules\n\n**`src/dispatch/allocator.ts`**: Update `allocateOrder(order, zones)` to handle any inventory routing or zone preferences specific to the new type (similar to how `\"express\"` orders prefer zone `ZB-02` and `\"hazardous\"` orders are restricted to `ZS-04` as shown in `src/tests/allocation.test.ts`).\n\n#### C. Shipment Validation & Routing\n\n**`src/dispatch/validation.ts`**: Update `validateShipment(shipment, order)` to enforce any carrier, safety, or packaging rules specific to the new order type. If this type requires restricted dock assignments (like `\"D4\"` for hazardous goods in `src/tests/validation.test.ts`), implement that logic here.\n\n#### D. Test Coverage\n\nYou must add corresponding unit and integration tests to verify the new type's behavior:\n\n**`src/tests/allocation.test.ts`**: Test that orders of the new type allocate correctly to the expected zones or hold if inventory is unavailable.\n**`src/tests/pricing.test.ts`**: Assert that the pricing calculation yields the correct subtotal and surcharges.\n**`src/tests/validation.test.ts`**: Ensure shipments containing the new order type validate correctly and route to the proper dock.",
    "correct": null,
    "toolEvidence": [
     {
@@ -345,10 +426,11 @@
     "src/data/seedData.ts Not retrieved",
     "src/config/zoneRules.ts Not retrieved",
     "src/pricing/pricing.ts Not retrieved",
-    "src/dispatch/allocator.ts Not retrieved"
+    "src/dispatch/allocator.ts Not retrieved",
+    "src/dispatch/validation.ts Not retrieved"
    ],
    "toolScreenshot": "study/gate-screenshots/warehouse-dispatch-q09.png",
-   "toolCoverage": "Retrieved by keyword match over 50 of 54 indexed files. 4 files could not be searched. Scores measure shared wording, not correctness; a bar is full at 0.60.",
+   "toolCoverage": "Retrieved by keyword match after searching 50 of 54 repository files. 4 files could not be searched. Scores measure shared wording, not correctness; a bar is full at 0.60.",
    "correctAnswerFiles": [
     "src/types/domain.ts:1",
     "src/config/zoneRules.ts:14-26",
@@ -358,14 +440,24 @@
     "src/data/seedData.ts:167-324",
     "src/pages/OrderListPage.tsx:15-21"
    ],
-   "correctAnswerNotes": "TypeScript's `Record<OrderType, ...>` maps force configuration additions at compile time. A new\nmodule is discovered by the registry glob without editing a central import list.\n\nThe order list's type filter is a hardcoded array rather than a derivation from `OrderType`, so\na new type would be unfilterable in the interface and the compiler would not object.\n\nNothing in this repository asserts a handler count, so unlike clinic-triage — where\n`registry.test.ts` fails the moment a fifth route module lands — no test breaks here on a new\norder type. `registeredHandlerTypes` would have made such a test possible, but it is exported\nand never called."
+   "correctAnswerNotes": "TypeScript's `Record<OrderType, ...>` maps force configuration additions at compile time. A new\nmodule is discovered by the registry glob without editing a central import list.\n\nThe order list's type filter is a hardcoded array rather than a derivation from `OrderType`, so\na new type would be unfilterable in the interface and the compiler would not object.\n\nNothing in this repository asserts a handler count, so unlike clinic-triage — where\n`registry.test.ts` fails the moment a fifth route module lands — no test breaks here on a new\norder type. `registeredHandlerTypes` would have made such a test possible, but it is exported\nand never called.",
+   "toolScreenshotComplete": true,
+   "toolGeneration": {
+    "status": "complete",
+    "finishReason": "STOP",
+    "usageMetadata": {
+     "promptTokenCount": 1518,
+     "candidatesTokenCount": 620,
+     "totalTokenCount": 3165
+    }
+   }
   },
   {
    "id": 10,
    "pattern": "applied",
    "question": "If the zone rules changed, what else would be affected?",
    "correctAnswer": "Changes to matching, compatible zone kinds, priorities, or preference scores alter which zones\nare ranked and therefore each order's proposed and accepted allocations, shortage warnings,\nfinal `allocated` versus `held` state, and reserved stock totals. Revalidation and release reuse\nthose stored allocations and reservations. If the order-type pricing map in the same\nconfiguration file changes, the calculated order total also changes.",
-   "toolAnswer": "Based on the provided codebase context, changing the zone rules in `src/config/zoneRules.ts` would have a cascading effect on several downstream systems, scoring calculations, and test suites.\n\nHere is a detailed breakdown of what would be affected:\n\n1. Order Allocation Behavior\n\nThe core order allocation process—handled by `allocateOrder` (imported in `src/tests/allocation.test.ts` from `../dispatch/allocator`)—is guided by the scoring output of these rules. Specifically:\n\n**Zone Selection Priority:** `scoreZone` (`src/config/zoneRules.ts`) evaluates each zone against an order line. If you modify rules like `type-routing` or `hazard-isolation`, the calculated score for a zone changes. This directly alters which zones are selected first during allocation.\n**Hazardous Materials Routing:** The `hazard-isolation` rule (score: `100`) ensures hazardous orders/lines are routed to `\"secure\"` zones. Modifying this rule would allow hazardous items to be allocated to general or cold zones.\n**Cold Chain Compliance:** The `cold-chain` rule (score: `90`) penalizes mismatched temperatures with a `-100",
+   "toolAnswer": "If the zone rules in `src/config/zoneRules.ts` are modified, the impact propagates across zone scoring, order allocation decisions, pricing strategies, and system test suites.\n\nHere is a detailed breakdown of what would be affected:\n\n1. Zone Scoring and Selection (`src/config/zoneRules.ts`)\n\nThe `scoreZone` function (lines 81–86) dynamically calculates a suitability score for a given zone, order, and line:\n\n**Rule Filtering and Ordering**: `scoreZone` calls `rulesFor(order, line)`, which filters rules using `rule.applies` and sorts them by descending `rule.score` (lines 71–75). Changing a rule's `score` changes the evaluation order.\n**Score Penalties and Bonuses**: For each applicable rule, if the zone's kind is not in `rule.zoneKinds`, the score is penalized by `-25` (line 83). Otherwise, it adds the result of `rule.prefer(zone, order, line)` (line 84).\n**Rule Definitions**: Modifying any of the four default rules (`hazard-isolation`, `cold-chain`, `type-routing`, `capacity-balance`) directly alters these scores:\n\n* Changing `capacity-balance` (lines 53–64) affects how heavily stock utilization (`zone.stock` vs `zone.capacity`) influences routing.\n\n* Changing `type-routing` (lines 42–52) alters the hierarchy defined in `typeKinds` (lines 13–19) which maps `OrderType` to preferred `Zone[\"kind\"][]`.\n\n---\n\n2. Order Allocation Decisions (`src/dispatch/allocator` & `src/tests/allocation.test.ts`)\n\nThe allocation system uses `scoreZone` to determine which zone should fulfill an order line. Changing the rules will alter the chosen zones:\n\n**Express Goods Allocation**: The unit test `\"allocates express goods from preferred zones\"` (in `src/tests/allocation.test.ts`, lines 6–17) asserts that express goods are allocated to zone `\"ZB-02\"`. This relies on `type-routing` prioritizing `\"fast-pick\"` and `\"general\"` zones for express orders (line 15). If these priorities or scores change, this assertion may fail.\n**Hazardous Stock Isolation**: The unit test `\"keeps hazardous stock in the secure zone\"` (in `src/tests/allocation.test.ts`, lines 19–30) asserts that hazardous items (SKU `\"CL-900\"`) are allocated to zone `\"ZS-04\"`. This behavior is enforced by the `hazard-isolation` rule (lines 24–31), which targets the `\"secure\"` zone and penalizes non-secure zones with `-100`. Modifying this rule could cause hazardous stock to be allocated to unsafe zones, violating safety constraints and breaking this test.\n\n---\n\n3. Order Pricing Strategies (`src/config/zoneRules.ts`)\n**Strategy Resolutions**: The function `pricingStrategyFor(order)` (lines 77–79) returns a `PricingStrategy` (`\"current\"` or `\"legacy\"`) based on `pricingByType` (lines 21–26).\n**Downstream Billing**: If you modify `pricingByType` or the `PricingStrategy` type itself (line 3), any downstream invoicing, billing, or financial reporting systems that rely on `pricingStrategyFor` will receive different pricing models (e.g., switching standard orders from `\"current\"` to `\"legacy\"`).\n\n---\n\n4. Stock Reservation and Revalidation (`src/jobs/revalidation.ts`)\n\nWhile `revalidateReservations` (lines 10–51) does not directly invoke `scoreZone`, it is highly sensitive to its outcomes:\n\n**Revalidation Failures**: `revalidateReservations` processes existing allocations and checks them against actual zone stock levels using `applyStockReservation` (lines 19–23). If a change in zone rules causes new orders to be allocated to different zones, the distribution of `reserved` stock across `workingZones` will shift. This can trigger shortages, leading to orders being demoted to `\"held\"` status with added warning notes (lines 35–43).",
    "correct": null,
    "toolEvidence": [
     {
@@ -387,7 +479,7 @@
    "toolEvidenceHeading": "Evidence · 3 files retrieved",
    "toolUnverifiedMentions": [],
    "toolScreenshot": "study/gate-screenshots/warehouse-dispatch-q10.png",
-   "toolCoverage": "Retrieved by keyword match over 50 of 54 indexed files. 4 files could not be searched. Scores measure shared wording, not correctness; a bar is full at 0.60.",
+   "toolCoverage": "Retrieved by keyword match after searching 50 of 54 repository files. 4 files could not be searched. Scores measure shared wording, not correctness; a bar is full at 0.60.",
    "correctAnswerFiles": [
     "src/config/zoneRules.ts:14-85",
     "src/dispatch/allocator.ts:17-73",
@@ -396,14 +488,24 @@
     "src/dispatch/releaseService.ts:31-56",
     "src/pricing/pricing.ts:5-21"
    ],
-   "correctAnswerNotes": "The `pricing` property present on individual `ZoneRule` objects is not read by any code in the\nrepository. It is declared on the interface, written on all four rules, and never read:\n`pricingStrategyFor` consults `pricingByType`, and grepping for `.pricing` outside the\nconfiguration file returns nothing. Pricing is decided by order type, not by zone."
+   "correctAnswerNotes": "The `pricing` property present on individual `ZoneRule` objects is not read by any code in the\nrepository. It is declared on the interface, written on all four rules, and never read:\n`pricingStrategyFor` consults `pricingByType`, and grepping for `.pricing` outside the\nconfiguration file returns nothing. Pricing is decided by order type, not by zone.",
+   "toolScreenshotComplete": true,
+   "toolGeneration": {
+    "status": "complete",
+    "finishReason": "STOP",
+    "usageMetadata": {
+     "promptTokenCount": 2026,
+     "candidatesTokenCount": 938,
+     "totalTokenCount": 4475
+    }
+   }
   },
   {
    "id": 11,
    "pattern": "interceptor chain",
    "question": "Are hazardous orders treated differently anywhere? Where?",
    "correctAnswer": "Yes. Their handler adds dangerous-goods paperwork, raises priority, validates regulated lines\nand international review, and supplies SecureChem shipment defaults. Zone scoring isolates a\nhazardous order or line to secure zones. The API interceptor rewrites outgoing hazardous-order\nrequests and adds controlled-load metadata. Shipment validation requires SecureChem and forces\ndock D4. Current pricing also adds a hazardous fee when a line is hazardous.",
-   "toolAnswer": "Yes, hazardous orders are treated differently in two main areas of the codebase: API request routing/interception and dispatch handling.\n\n1. API Request Interception\n\nIn **`src/api/interceptors/hazardous-interceptor.ts`**, there is a `hazardousInterceptor` that intercepts outgoing requests. If the request body contains an order of type `\"hazardous\"`, it modifies the request configuration as follows:\n\n**Path Routing**: Redirects the request path from `/orders` to `/controlled/orders`.\n**Headers**: Appends an `\"x-controlled-load\": \"true\"` header.\n**Metadata**: Injects `{ routing: \"dangerous-goods\" }` into the request metadata.\n\n```typescript\n\n// src/api/interceptors/hazardous-interceptor.ts (lines 4-13)\n\nexport const hazardousInterceptor: RequestInterceptor = (request) => {\n\nconst body = request.body as Partial<Order> | undefined;\n\nif (body?.type !== \"hazardous\") return request;\n\nreturn {\n\n...request,\n\npath: request.path.replace(\"/orders\", \"/controlled/orders\"),\n\nheaders: { ...request.headers, \"x-controlled-load\": \"true\" },\n\nmetadata: { ...request.metadata, routing: \"dangerous-goods\" },\n\n};\n\n};\n\n```\n\n---\n\n2. Dispatch Order Handling\n\nIn **`src/dispatch/handlers/hazardousHandler.ts`**, a dedicated dispatch handler is registered for orders with the `\"hazardous\"` type. This handler overrides default behaviors across three lifecycle methods:\n\n**`prepare(order)`**:\n\n* Sets the order priority to `\"urgent\"`.\n\n* Appends `\"Dangerous goods paperwork required\"` to the order's `notes` array.\n\n**`inspect(order)`**:\n\n* Validates that at least one line item is marked hazardous (`line.hazardous`). If not, it flags `\"Hazardous order has no regulated line\"`.\n\n* Flags `\"International dangerous goods review required\"` if the destination country is not `\"US\"`.\n\n**`shipmentDefaults(order)`**:\n\n* Sets the default carrier to `\"SecureChem Logistics\"`.\n\n* Calculates the `packageCount` based on total item quantities, grouping them by a factor of 4: `Math.max(1, Math.ceil(units / 4))`.\n\n```typescript\n\n// src/dispatch/handlers/hazardousHandler.ts (lines 3-27)\n\nregisterHandler({\n\ntype: \"hazardous\",\n\nprepare(order) {\n\nreturn {\n\n...order,\n\nnotes: [...order.notes, \"Dangerous goods paperwork required\"],\n\npriority: \"urgent\",\n\n};\n\n},\n\ninspect(order) {\n\nconst issues: string[] = [];\n\nif (!order.lines.some((line) => line.hazardous))\n\nissues.push(\"Hazardous order has no regulated line\");\n\nif (order.destination.country !== \"US\")\n\nissues.push(\"International dangerous goods review required\");\n\nreturn issues;\n\n},\n\nshipmentDefaults(order) {\n\nconst units = order.lines.reduce((sum, line) => sum + line.quantity, 0);\n\nreturn {\n\ncarrier: \"SecureChem Logistics\",\n\npackageCount: Math.max(1, Math.ceil(units / 4)),\n\n};\n\n},\n\n});\n\n```",
+   "toolAnswer": "Yes, orders of type `\"hazardous\"` are treated differently in two distinct parts of the codebase: **API Request Routing** and **Dispatch Processing**.\n\n---\n\n1. API Request Routing & Interception\n\nIn the API client layer, requests dealing with hazardous orders are intercepted and mutated before dispatch.\n\n**File:** `src/api/interceptors/hazardous-interceptor.ts`\n**Behavior:** The `hazardousInterceptor` inspects the request body. If the body has a `type` property equal to `\"hazardous\"`, it alters the request payload:\n\n* **Path Mutated:** Replaces `/orders` with `/controlled/orders`.\n\n* **Headers Added:** Injects the header `\"x-controlled-load\": \"true\"`.\n\n* **Metadata Added:** Appends `{ routing: \"dangerous-goods\" }` to the request metadata.\n\n```typescript\n\n// src/api/interceptors/hazardous-interceptor.ts (lines 4-13)\n\nexport const hazardousInterceptor: RequestInterceptor = (request) => {\n\nconst body = request.body as Partial<Order> | undefined;\n\nif (body?.type !== \"hazardous\") return request;\n\nreturn {\n\n...request,\n\npath: request.path.replace(\"/orders\", \"/controlled/orders\"),\n\nheaders: { ...request.headers, \"x-controlled-load\": \"true\" },\n\nmetadata: { ...request.metadata, routing: \"dangerous-goods\" },\n\n};\n\n};\n\n```\n\n---\n\n2. Dispatch Processing & Validation\n\nA dedicated dispatch handler is registered to handle lifecycle steps specifically for `\"hazardous\"` orders.\n\n**File:** `src/dispatch/handlers/hazardousHandler.ts`\n**Behavior:** It registers a specialized handler with three operational hooks:\n\n* **`prepare(order)`**:\n\n* Appends `\"Dangerous goods paperwork required\"` to `order.notes`.\n\n* Sets the order's `priority` to `\"urgent\"`.\n\n* **`inspect(order)`**: Performs safety and compliance validations, flagging issues if:\n\n* The order contains no line items marked as hazardous (`!line.hazardous`).\n\n* The destination country is not `\"US\"` (raising `\"International dangerous goods review required\"`).\n\n* **`shipmentDefaults(order)`**:\n\n* Forces the carrier to `\"SecureChem Logistics\"`.\n\n* Calculates the required package count by dividing total line item quantities by `4` (minimum of 1 package, rounded up).\n\n```typescript\n\n// src/dispatch/handlers/hazardousHandler.ts (lines 3-27)\n\nregisterHandler({\n\ntype: \"hazardous\",\n\nprepare(order) {\n\nreturn {\n\n...order,\n\nnotes: [...order.notes, \"Dangerous goods paperwork required\"],\n\npriority: \"urgent\",\n\n};\n\n},\n\ninspect(order) {\n\nconst issues: string[] = [];\n\nif (!order.lines.some((line) => line.hazardous))\n\nissues.push(\"Hazardous order has no regulated line\");\n\nif (order.destination.country !== \"US\")\n\nissues.push(\"International dangerous goods review required\");\n\nreturn issues;\n\n},\n\nshipmentDefaults(order) {\n\nconst units = order.lines.reduce((sum, line) => sum + line.quantity, 0);\n\nreturn {\n\ncarrier: \"SecureChem Logistics\",\n\npackageCount: Math.max(1, Math.ceil(units / 4)),\n\n};\n\n},\n\n});\n\n```",
    "correct": null,
    "toolEvidence": [
     {
@@ -425,7 +527,7 @@
    "toolEvidenceHeading": "Evidence · 3 files retrieved",
    "toolUnverifiedMentions": [],
    "toolScreenshot": "study/gate-screenshots/warehouse-dispatch-q11.png",
-   "toolCoverage": "Retrieved by keyword match over 50 of 54 indexed files. 4 files could not be searched. Scores measure shared wording, not correctness; a bar is full at 0.60.",
+   "toolCoverage": "Retrieved by keyword match after searching 50 of 54 repository files. 4 files could not be searched. Scores measure shared wording, not correctness; a bar is full at 0.60.",
    "correctAnswerFiles": [
     "src/dispatch/handlers/hazardousHandler.ts:3-27",
     "src/config/zoneRules.ts:14-19",
@@ -434,14 +536,24 @@
     "src/dispatch/validation.ts:29-30",
     "src/pricing/pricing.ts:16-20"
    ],
-   "correctAnswerNotes": "Some behaviour is keyed by `order.type === \"hazardous\"`, while zone isolation and the price\nsurcharge can also be triggered by a hazardous line in another order type."
+   "correctAnswerNotes": "Some behaviour is keyed by `order.type === \"hazardous\"`, while zone isolation and the price\nsurcharge can also be triggered by a hazardous line in another order type.",
+   "toolScreenshotComplete": true,
+   "toolGeneration": {
+    "status": "complete",
+    "finishReason": "STOP",
+    "usageMetadata": {
+     "promptTokenCount": 820,
+     "candidatesTokenCount": 794,
+     "totalTokenCount": 2301
+    }
+   }
   },
   {
    "id": 12,
    "pattern": "misleading name",
    "question": "Where is a dock assigned to a shipment?",
    "correctAnswer": "`validateShipment` assigns the dock directly on the mutable shipment object. It chooses D4 for\nhazardous orders and otherwise D1–D3 from a checksum of the order ID. `releaseShipment` calls\nthat function and then copies the resulting dock to `releasedOrder.assignedDock`.",
-   "toolAnswer": "A dock is assigned to a shipment in the **`validateShipment`** function within **`src/dispatch/validation.ts`** (lines 38–39).\n\nImplementation Details:\n\nThe assignment is performed via side-effect mutation on the `shipment` object passed to the validator:\n\n```typescript\n\nconst numeric = order.id\n\n.split(\"\")\n\n.reduce((sum, character) => sum + character.charCodeAt(0), 0);\n\nshipment.dock = order.type === \"hazardous\" ? \"D4\" : docks[numeric % 3];\n\n```\n\n**Hazardous Orders:** Automatically routed to dock `\"D4\"`.\n**Standard Orders:** Allocated to one of the remaining docks (`\"D1\"`, `\"D2\"`, or `\"D3\"`) using a modulo calculation on the sum of the character codes of the `order.id` (derived from the `docks` array on line 10).\nControl Flow Integration:\n\nThis mutation occurs during the release pipeline inside `releaseShipment` in **`src/dispatch/releaseService.ts`** (line 33):\n\n```typescript\n\nconst validation = validateShipment(shipment, order);\n\n```\n\nImmediately after validation, the assigned dock is propagated to the returned `Order` object (line 37):\n\n```typescript\n\nconst releasedOrder: Order = {\n\n...order,\n\nstatus: \"released\",\n\nassignedDock: shipment.dock, // Propagated here\n\n...\n\n};\n\n```",
+   "toolAnswer": "A dock is assigned to a shipment inside the **`validateShipment`** function, located in **`src/dispatch/validation.ts`**.\n\nDetailed Code Analysis\n\nThe assignment is executed as a side-effect during validation:\n\n```typescript\n\n// src/dispatch/validation.ts\n\nconst numeric = order.id\n\n.split(\"\")\n\n.reduce((sum, character) => sum + character.charCodeAt(0), 0);\n\nshipment.dock = order.type === \"hazardous\" ? \"D4\" : docks[numeric % 3];\n\n```\n\nAllocation Logic:\n\n1. **Hazardous Orders**: If `order.type === \"hazardous\"`, the shipment is statically assigned to dock **`D4`**.\n\n2. **Standard Orders**: Otherwise, it calculates a hash of the `order.id` by summing the character codes (ASCII values) of the string and applying a modulo operation (`% 3`) over the first three elements of the `docks` array (`[\"D1\", \"D2\", \"D3\", \"D4\"]`). This resolves to dock **`D1`**, **`D2`**, or **`D3`**.\n\nControl Flow Integration:\n**Execution**: This mutation occurs when `validateShipment(shipment, order)` is called on line 30 of **`src/dispatch/releaseService.ts`**.\n**Downstream Usage**: Once assigned, the dock is copied to the updated order status in `releaseShipment` (line 35: `assignedDock: shipment.dock`) and used in the release log message (line 47).\n**Testing**: This behavior is verified in **`src/tests/validation.test.ts`**, which asserts that standard shipments receive a dock matching `/^D[1-3]$/` and hazardous shipments receive `\"D4\"`.",
    "correct": null,
    "toolEvidence": [
     {
@@ -463,7 +575,7 @@
    "toolEvidenceHeading": "Evidence · 3 files retrieved",
    "toolUnverifiedMentions": [],
    "toolScreenshot": "study/gate-screenshots/warehouse-dispatch-q12.png",
-   "toolCoverage": "Retrieved by keyword match over 50 of 54 indexed files. 4 files could not be searched. Scores measure shared wording, not correctness; a bar is full at 0.60.",
+   "toolCoverage": "Retrieved by keyword match after searching 50 of 54 repository files. 4 files could not be searched. Scores measure shared wording, not correctness; a bar is full at 0.60.",
    "correctAnswerFiles": [
     "src/dispatch/validation.ts:9",
     "src/dispatch/validation.ts:35-37",
@@ -471,11 +583,22 @@
     "src/dispatch/releaseService.ts:35",
     "src/dispatch/releaseService.ts:41"
    ],
-   "correctAnswerNotes": "The assignment is hidden inside validation rather than a named allocation step."
+   "correctAnswerNotes": "The assignment is hidden inside validation rather than a named allocation step.",
+   "toolScreenshotComplete": true,
+   "toolGeneration": {
+    "status": "complete",
+    "finishReason": "STOP",
+    "usageMetadata": {
+     "promptTokenCount": 1772,
+     "candidatesTokenCount": 401,
+     "totalTokenCount": 2793
+    }
+   }
   }
  ],
  "notes": "QUESTION STEMS ONLY. correctAnswer must be written by the researcher from reading the code, BEFORE the tool is asked anything. toolAnswer is pasted verbatim from the tool afterwards. 'correct' is the researcher's marking. Questions may be reworded or replaced; they are drafted to cover each architectural pattern once so the gate exercises the same structures the study tasks will target.",
  "capturedFrom": "https://repo-comprehension-system.vercel.app/",
  "capturedRepository": "https://github.com/ionuthub/warehouse-dispatch",
- "groundTruthProvenance": "Ground truth verified by machine review (caller counts, re-counted quantifiers, mechanically validated citations) rather than read line by line by the researcher. Disclose in the methodology; see study/AI-DISCLOSURE.md."
+ "groundTruthProvenance": "Ground truth verified by machine review (caller counts, re-counted quantifiers, and a citation checker that reported zero failures; NOTE results were not structurally validated) rather than read line by line by the researcher. Disclose in the methodology; see study/AI-DISCLOSURE.md.",
+ "capturedAt": "2026-07-29T17:09:19.992Z"
 }

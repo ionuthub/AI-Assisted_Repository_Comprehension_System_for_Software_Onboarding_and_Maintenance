@@ -60,6 +60,14 @@ each answer with the files retrieved, their scores, any unverified mentions and 
 screenshot. It writes into `toolAnswer` and resets `correct` to null because any verdict on an
 archived answer cannot transfer to newly generated wording.
 
+To test retrieval reproducibility, repeat each capture once on the same deployed commit and run:
+
+    npm run gate:compare
+
+The comparison selects the newest archived run with the same commit, model, retrieval, and
+generation settings. It refuses to compare across an instrument change, because different
+tokenization or corpus rules legitimately change TF-IDF scores.
+
 It refuses to run until every answer is CONFIRMED, or VERIFIED BY TOOL when the package scripts'
 explicit `--accept-tool-verified` flag is present. `--force` overrides and records that it did.
 Do not use `--force` for the study run.

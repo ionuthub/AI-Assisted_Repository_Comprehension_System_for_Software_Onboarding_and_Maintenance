@@ -19,8 +19,20 @@ interface WorkspaceQAViewProps {
  * Paths the answer mentions. Used only to detect references the model made to files that
  * were not retrieved, so they can be shown as unverified rather than as sources. Citations
  * themselves come from the retrieval layer, never from this.
+ *
+ * Extensions are ordered longest-first and anchored with a word boundary. Regex alternation
+ * takes the first branch that matches, so listing `ts` before `tsx` truncated every React
+ * component path: `PriorityPanel.tsx` was extracted as `PriorityPanel.ts`, which of course had
+ * not been retrieved, and the panel warned that the model had cited a file it never saw — while
+ * displaying the real `.tsx` file as evidence directly above the warning.
+ *
+ * That is the worst failure this component can have. The panel exists to tell a reader when an
+ * answer names something unsupported, and it was manufacturing exactly that accusation against
+ * correct answers. A reader who checked would find the file present and learn to discount the
+ * warning; a reader who did not would distrust a sound answer.
  */
-const MENTIONED_PATH = /(?:[\w-]+\/)+[\w.-]+\.(?:ts|tsx|js|jsx|css|json|md|py|go|rb|java)/g;
+export const MENTIONED_PATH =
+  /(?:[\w-]+\/)+[\w.-]+\.(?:tsx|jsx|json|java|ts|js|css|md|py|go|rb)\b/g;
 
 export default function WorkspaceQAView({
   question,

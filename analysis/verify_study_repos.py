@@ -156,7 +156,7 @@ def verify(a: dict, b: dict) -> bool:
         print(f"\n{r['repo']}")
         ok &= check("file count in 40-46", FILES_MIN <= r["source_files"] <= FILES_MAX,
                     f"{r['source_files']} source files")
-        ok &= check("lines of source in 2600-3200", LOC_MIN <= r["loc"] <= LOC_MAX,
+        ok &= check(f"lines of source in {LOC_MIN}-{LOC_MAX}", LOC_MIN <= r["loc"] <= LOC_MAX,
                     f"{r['loc']} lines")
         ok &= check("artefact indexes nearly all of it", r["predicted_coverage"] >= COVERAGE_MIN,
                     f"{r['indexed_files']}/{r['analysable_files']} files "

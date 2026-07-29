@@ -24,11 +24,12 @@ Every claim made by a verification pass was independently re-checked before bein
 the file, by reading the cited source and by grep. Several claims were rejected or narrowed at
 that stage.
 
-Every file and line reference in both files is validated mechanically by
-`analysis/check_citations.py`, which counts bracket depth from the first cited line to confirm
-that a range spans the declaration it names. Both files currently report zero problems. That
-script says nothing about whether the prose is true; it only prevents a citation pointing
-somewhere other than where it claims.
+Every file and line reference in both files was passed through
+`analysis/check_citations.py`. The checker reports either PASS, when its bracket-depth heuristic
+can structurally validate the range, or NOTE, when it cannot perform that check. Both files
+currently report zero FAIL results, but 49 references report NOTE and therefore received no
+structural validation. The script says nothing about whether the prose is true; even PASS only
+shows that a range spans the declaration the heuristic identified.
 
 ## What the passes found
 
@@ -86,22 +87,25 @@ The residual risk is real and is not quantified. The gate figure should be read 
 agreement with a machine-verified standard rather than with ground truth established by human
 reading.
 
-## The step that would close it
+## Second marking and the step that would close it
 
-The AE1 protocol commits to blind second-marking of a sample by a second marker. That step is
-outstanding, and it is now the only element of the verification chain not produced by a machine.
-A person with TypeScript experience checking six to eight of the twenty-four answers against the
-source would break the chain and give the disclosure above a materially stronger conclusion. It
-requires roughly half an hour of somebody else's time and none of the researcher's reading.
+The existing second marking in `study/second-marking.md` was also machine-produced. It was blind
+to the first verdicts, but it was not an independent human check; its disagreements exposed a
+useful shared reachability blind spot and a rubric inconsistency, not human corroboration.
+
+The AE1 commitment to blind second-marking by a person is therefore still outstanding. A person
+with TypeScript experience checking a pre-declared sample against the source would break the
+all-machine chain and give the disclosure above a materially stronger conclusion.
 
 ## Suggested wording for the methodology chapter
 
 > The ground-truth answer set for the accuracy gate was drafted with generative AI assistance
 > and verified through seven independent adversarial review passes against the repository
-> source, with every claim re-checked before acceptance and every file and line citation
-> validated mechanically. The researcher did not read the repository source line by line; the
+> source, with every claim re-checked before acceptance. A citation checker reported zero FAIL
+> results, while 49 references returned NOTE and were not structurally validated. The researcher
+> did not read the repository source line by line; the
 > standard therefore rests on machine verification rather than on researcher confirmation, and
 > the gate figure should be interpreted as agreement with a machine-verified standard. A sample
-> of *n* answers was independently checked by a second marker. This assistance is disclosed in
+> of *n* answers was independently checked by a human second marker. This assistance is disclosed in
 > accordance with the University's policy on the use of generative AI, and the full record,
 > including the defects found at each pass, is at Appendix *x*.

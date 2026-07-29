@@ -1,5 +1,11 @@
 # Second marking of the accuracy gate
 
+> **Historical record, not a reportable result.** This second marking was machine-produced, not
+> human. The 6/24 and 5/24 figures below describe the earlier capture; two answers in that run
+> were incomplete generations, and the committed gate files do not carry the verdicts. The gate
+> must be re-captured and all 24 answers re-marked before any accuracy figure is reported. The
+> detail below is retained because it records the disagreement and the resulting rubric repair.
+
 The AE1 protocol commits to blind second-marking of a sample. This is that step, performed
 against the run of record without sight of the first marker's verdicts, on the eight items the
 first marker scored correct. Items scored incorrect were not re-examined: a disagreement there
@@ -42,7 +48,8 @@ Q2 does not move either, though its grounds narrow. The Answer requires that the
 calculated band unless an override is supplied; the tool never reaches the store or names
 `acceptReferral`. The `band`-field trap it also omits is a Note and does not count.
 
-**6/24 is the figure to report**, with 5/24 as the stricter reading and both rules stated. The
+At that point **6/24 was selected under the Answer-only rule**, with 5/24 as the stricter reading.
+Neither is now a reportable figure. The
 choice between them was made by asking which material had been shown, not by which produced a
 better number — and it is recorded here because that ordering is the only thing that makes the
 choice credible.
@@ -150,11 +157,12 @@ the items scored incorrect could only raise the figure and inflation is the risk
 for. A full agreement statistic would require both markers to mark all twenty-four
 independently.
 
-## Recommendation
+## Superseded recommendation
 
-Report 21% as the figure, 33% as the first marking, and this disagreement as part of the
-result rather than as a footnote to it. A number with two markings and a documented dispute is
-worth more than a number with one marking and none.
+Do not report 21%, 25%, or 33% as the gate result. Re-capture after the instrument fixes, collect
+the frozen answers and new verdicts into the JSON, and use only the figure emitted by the
+fail-closed scorer. Retain this disagreement as methodological history rather than presenting it
+as a result from the new run.
 
 The three disputes still need adjudicating by a person. That is now the whole ask: read clinic
 Q2, Q7 and Q8 against the cited lines and decide. Fifteen minutes, three questions, and it is

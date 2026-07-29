@@ -25,8 +25,11 @@ describe('tokenize', () => {
     expect(tokenize('route')).toContain('route');
   });
 
-  it('still removes language keywords', () => {
-    expect(tokenize('const function return')).toHaveLength(0);
+  it('keeps code-structure terms while still removing low-signal keywords', () => {
+    expect(tokenize('default export interface class function static')).toEqual([
+      'default', 'export', 'interface', 'class', 'function', 'static',
+    ]);
+    expect(tokenize('const return')).toHaveLength(0);
   });
 });
 
@@ -82,13 +85,15 @@ describe('searchRepository', () => {
 
   it('respects the requested result limit', () => {
     const index = buildSearchIndex(CORPUS);
-    expect(searchRepository('export', index, CORPUS, 2).length).toBeLessThanOrEqual(2);
+    const results = searchRepository('function', index, CORPUS, 2);
+    expect(results).toHaveLength(2);
   });
 
   it('does not index files whose content failed to load', () => {
     const withNull = [...CORPUS, file('src/lib/missing.ts', null)];
     const index = buildSearchIndex(withNull);
-    const results = searchRepository('payment', index, withNull, 5);
+    const results = searchRepository('missing', index, withNull, 5);
+    expect(index.docVectors['src/lib/missing.ts']).toBeUndefined();
     expect(results.map((r) => r.path)).not.toContain('src/lib/missing.ts');
   });
 });
@@ -102,6 +107,7 @@ describe('selectExcerptRegion', () => {
     expect(r.startLine).toBe(1);
     expect(r.endLine).toBe(2);
     expect(r.omittedLines).toBe(0);
+    expect(r.omittedCharacters).toBe(0);
     expect(r.text).toContain('const b = 2;');
   });
 
@@ -126,6 +132,29 @@ describe('selectExcerptRegion', () => {
     const content = long('function handleAuthentication() {}', 150);
     const r = selectExcerptRegion(content, 'authentication', 400);
     expect(r.text.length).toBeLessThanOrEqual(400);
+  });
+
+  it('scores only the emitted prefix of a line longer than the budget', () => {
+    const hiddenMatch = `${'x'.repeat(500)} authentication`;
+    const visibleMatch = `function authentication() { return true; }`;
+    const content = `${hiddenMatch}\n${visibleMatch}`;
+    const r = selectExcerptRegion(content, 'authentication', 100);
+
+    expect(r.startLine).toBe(2);
+    expect(r.text).toContain('authentication');
+    expect(r.text.length).toBeLessThanOrEqual(100);
+    expect(r.omittedCharacters).toBe(content.length - r.text.length);
+  });
+
+  it('reports character omission when only part of one line is emitted', () => {
+    const content = `${'a'.repeat(500)} hiddenMatch`;
+    const r = selectExcerptRegion(content, 'hiddenMatch', 100);
+
+    expect(r.startLine).toBe(1);
+    expect(r.endLine).toBe(1);
+    expect(r.omittedLines).toBe(0);
+    expect(r.omittedCharacters).toBe(content.length - 100);
+    expect(r.text).not.toContain('hiddenMatch');
   });
 
   it('falls back to the head when no query term appears in the file', () => {

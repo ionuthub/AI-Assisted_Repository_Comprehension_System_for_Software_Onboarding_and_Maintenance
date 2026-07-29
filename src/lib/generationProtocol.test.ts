@@ -1,0 +1,59 @@
+import { describe, expect, it } from "vitest";
+import {
+  consumeGenerationStream,
+  encodeGenerationEvent,
+  extractJsonObjects,
+} from "./generationProtocol";
+
+const streamOf = (parts: string[]) =>
+  new ReadableStream<Uint8Array>({
+    start(controller) {
+      const encoder = new TextEncoder();
+      parts.forEach((part) => controller.enqueue(encoder.encode(part)));
+      controller.close();
+    },
+  });
+
+describe("Gemini stream parsing", () => {
+  it("extracts complete objects while retaining an incomplete final object", () => {
+    const parsed = extractJsonObjects(
+      '[{"candidates":[{"content":{"parts":[{"text":"a { brace"}]}}]}, {"candidate'
+    );
+    expect(parsed.objects).toHaveLength(1);
+    expect(parsed.rest).toContain('{"candidate');
+  });
+
+  it("reassembles text events split across network chunks and returns usage", async () => {
+    const payload =
+      encodeGenerationEvent({ type: "text", text: "hello" }) +
+      encodeGenerationEvent({
+        type: "complete",
+        finishReason: "STOP",
+        usageMetadata: { candidatesTokenCount: 7 },
+      });
+    const pieces = [payload.slice(0, 9), payload.slice(9, 27), payload.slice(27)];
+    let answer = "";
+
+    const complete = await consumeGenerationStream(streamOf(pieces), (text) => {
+      answer += text;
+    });
+
+    expect(answer).toBe("hello");
+    expect(complete.finishReason).toBe("STOP");
+    expect(complete.usageMetadata?.candidatesTokenCount).toBe(7);
+  });
+
+  it("refuses a stream that ends without completion metadata", async () => {
+    const stream = streamOf([encodeGenerationEvent({ type: "text", text: "partial" })]);
+    await expect(consumeGenerationStream(stream, () => undefined)).rejects.toThrow(
+      /without a completion event/
+    );
+  });
+
+  it("refuses a non-STOP finish reason", async () => {
+    const stream = streamOf([
+      encodeGenerationEvent({ type: "complete", finishReason: "MAX_TOKENS" }),
+    ]);
+    await expect(consumeGenerationStream(stream, () => undefined)).rejects.toThrow(/MAX_TOKENS/);
+  });
+});

@@ -1,6 +1,12 @@
 import { defineConfig, loadEnv } from "vite";
 import react from "@vitejs/plugin-react-swc";
 import path from "path";
+import {
+  encodeGenerationEvent,
+  extractJsonObjects,
+  successfulFinishReason,
+  type GenerationUsageMetadata,
+} from "./src/lib/generationProtocol";
 
 // https://vitejs.dev/config/
 export default defineConfig(({ mode }) => {
@@ -99,72 +105,101 @@ export default defineConfig(({ mode }) => {
 
               if (!stream) {
                 const data = await apiResponse.json();
-                const explanation = data.candidates?.[0]?.content?.parts?.[0]?.text;
-                res.writeHead(200, { 'Content-Type': 'application/json' });
-                res.end(JSON.stringify({ explanation }));
+                const candidate = data.candidates?.[0];
+                const explanation = candidate?.content?.parts
+                  ?.map((part: { text?: string }) => part.text || '')
+                  .join('');
+                const finishReason = candidate?.finishReason;
+                const usageMetadata = data.usageMetadata;
+                const complete = Boolean(explanation) && successfulFinishReason(finishReason);
+                res.writeHead(complete ? 200 : 502, { 'Content-Type': 'application/json' });
+                res.end(JSON.stringify(
+                  complete
+                    ? { explanation, finishReason, usageMetadata }
+                    : {
+                        error: explanation
+                          ? 'Generation ended before completion'
+                          : 'Generation returned no answer',
+                        finishReason,
+                        usageMetadata,
+                      }
+                ));
                 return;
               }
 
               res.writeHead(200, {
-                'Content-Type': 'text/event-stream',
+                'Content-Type': 'application/x-ndjson; charset=utf-8',
                 'Cache-Control': 'no-cache',
                 'Connection': 'keep-alive',
               });
 
-              if (apiResponse.body) {
+              let finishReason: string | undefined;
+              let usageMetadata: GenerationUsageMetadata | undefined;
+              const emit = (event: Parameters<typeof encodeGenerationEvent>[0]) =>
+                res.write(encodeGenerationEvent(event));
+
+              try {
+                if (!apiResponse.body) throw new Error('Gemini response body was empty');
                 const reader = apiResponse.body.getReader();
                 const decoder = new TextDecoder();
                 let buffer = '';
+
+                const consumeObjects = (objects: unknown[]) => {
+                  for (const raw of objects) {
+                    const data = raw as {
+                      candidates?: Array<{
+                        content?: { parts?: Array<{ text?: string }> };
+                        finishReason?: string;
+                      }>;
+                      usageMetadata?: GenerationUsageMetadata;
+                    };
+                    const candidate = data.candidates?.[0];
+                    const text = candidate?.content?.parts
+                      ?.map((part) => part.text || '')
+                      .join('');
+                    if (text) emit({ type: 'text', text });
+                    if (candidate?.finishReason) finishReason = candidate.finishReason;
+                    if (data.usageMetadata) usageMetadata = data.usageMetadata;
+                  }
+                };
 
                 while (true) {
                   const { done, value } = await reader.read();
                   if (done) break;
 
                   buffer += decoder.decode(value, { stream: true });
-
-                  while (true) {
-                    let openBraces = 0;
-                    let inString = false;
-                    let escape = false;
-                    let startIndex = -1;
-                    let endIndex = -1;
-
-                    for (let i = 0; i < buffer.length; i++) {
-                      const char = buffer[i];
-                      if (escape) { escape = false; continue; }
-                      if (char === '\\') { escape = true; continue; }
-                      if (char === '"') { inString = !inString; continue; }
-                      if (inString) continue;
-
-                      if (char === '{') {
-                        if (openBraces === 0) startIndex = i;
-                        openBraces++;
-                      } else if (char === '}') {
-                        openBraces--;
-                        if (openBraces === 0 && startIndex !== -1) {
-                          endIndex = i;
-                          break;
-                        }
-                      }
-                    }
-
-                    if (endIndex !== -1) {
-                      const jsonStr = buffer.substring(startIndex, endIndex + 1);
-                      buffer = buffer.substring(endIndex + 1);
-                      try {
-                        const data = JSON.parse(jsonStr);
-                        const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
-                        if (text) {
-                          res.write(text);
-                        }
-                      } catch (e) {
-                        void e; // Ignore JSON parsing errors for incomplete chunks
-                      }
-                    } else {
-                      break;
-                    }
-                  }
+                  const parsed = extractJsonObjects(buffer);
+                  buffer = parsed.rest;
+                  consumeObjects(parsed.objects);
                 }
+
+                buffer += decoder.decode();
+                const parsed = extractJsonObjects(buffer);
+                buffer = parsed.rest;
+                consumeObjects(parsed.objects);
+                if (buffer.replace(/\s/g, '').replaceAll(',', '').replaceAll('[', '').replaceAll(']', '')) {
+                  throw new Error('Gemini stream ended with incomplete JSON');
+                }
+
+                if (successfulFinishReason(finishReason)) {
+                  emit({ type: 'complete', finishReason, usageMetadata });
+                } else {
+                  emit({
+                    type: 'error',
+                    error: finishReason
+                      ? 'Generation ended before completion'
+                      : 'Generation ended without a finish reason',
+                    finishReason,
+                    usageMetadata,
+                  });
+                }
+              } catch (error) {
+                emit({
+                  type: 'error',
+                  error: error instanceof Error ? error.message : 'Generation stream failed',
+                  finishReason,
+                  usageMetadata,
+                });
               }
               res.end();
 

@@ -10,7 +10,7 @@ test.describe('Repository Comprehension System - core flow', () => {
     test('landing page exposes the ingestion controls', async ({ page }) => {
         await page.goto('/');
 
-        await expect(page.getByRole('heading', { level: 1 })).toContainText('Repository Comprehension System');
+        await expect(page.getByRole('heading', { level: 1 })).toContainText('Analyse a repository');
 
         const urlInput = page.locator('#github-url');
         await expect(urlInput).toBeVisible();

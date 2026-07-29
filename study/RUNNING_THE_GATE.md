@@ -2,15 +2,19 @@
 
 Four steps. Only the first and third need you.
 
-## 1. Confirm the ground truth  — yours
+## 1. Settle and freeze the ground truth
 
 Open `study/ground-truth.clinic-triage.md` and `study/ground-truth.warehouse-dispatch.md`.
-For each question: open the files it cites, read the answer, decide whether it describes what
-the code does. Correct it if not, then change the status line to:
+The current files are frozen and stamped VERIFIED BY TOOL. They were established through the
+machine-assisted process disclosed in `study/AI-DISCLOSURE.md`; do not silently describe that as
+researcher confirmation. For a future gate, the stronger route is to open the cited files, read
+each answer, decide whether it describes what the code does, and stamp it:
 
     **Status: CONFIRMED — <date>.**
 
-One repository per sitting. Roughly an hour each.
+The capture accepts either CONFIRMED, or VERIFIED BY TOOL only when
+`--accept-tool-verified` is explicitly supplied. It checks that the ground-truth question IDs
+and text exactly match every gate item; a missing or empty status list fails.
 
 Do not open the tool before this is finished for both files.
 
@@ -30,6 +34,10 @@ Then, once:
     npm install
     npx playwright install chromium
 
+The capture drives the deployed site, not the local checkout. Before a run, confirm the Vercel
+deployment contains the exact commit being evaluated and record that SHA; otherwise the gate
+JSON describes different code from the repository beside it.
+
 `playwright` is already in `devDependencies`, so `npm install` fetches the library.
 `playwright install chromium` downloads the browser it drives, which is a separate step and a
 few hundred megabytes.
@@ -45,24 +53,40 @@ watch it work, append `-- --headed`.
 
 Add `--headed` to watch it. It ingests the repository, asks all twelve questions, and records
 each answer with the files retrieved, their scores, any unverified mentions and a full-page
-screenshot. It writes into `toolAnswer` and leaves `correct` alone.
+screenshot. It writes into `toolAnswer` and resets `correct` to null because any verdict on an
+archived answer cannot transfer to newly generated wording.
 
-It refuses to run until every answer in the ground-truth file is CONFIRMED. `--force`
-overrides and records that it did.
+It refuses to run until every answer is CONFIRMED, or VERIFIED BY TOOL when the package scripts'
+explicit `--accept-tool-verified` flag is present. `--force` overrides and records that it did.
+Do not use `--force` for the study run.
 
-## 3. Mark it — yours
+## 3. Populate the frozen answers and mark the capture
 
-In each gate file set `"correct": true` or `false` per item, comparing `toolAnswer` against
-`correctAnswer`. Partial credit is not available: the proposal commits to a binary judgement,
-so an answer that names the right file but misses two of the four places a thing happens is
-incorrect. Have a second marker check a sample independently.
+First collect the already-frozen answers into the gate JSON; this does not set a verdict:
+
+    python3 analysis/gate_worksheet.py collect study/accuracy-gate.clinic-triage.json study/ground-truth.clinic-triage.md
+    python3 analysis/gate_worksheet.py collect study/accuracy-gate.warehouse-dispatch.json study/ground-truth.warehouse-dispatch.md
+
+Then build the two marking sheets:
+
+    npm run gate:mark
+
+Write `correct` or `incorrect` on every verdict line and collect each sheet with the command
+printed in its header. The sheet is bound to the exact repository, provenance, questions, and
+captured answers; collecting a sheet from a different or earlier run fails. Partial credit is
+not available: an answer that names the right file but misses two of the four places a thing
+happens is incorrect. Have a human second marker check the pre-declared sample independently.
+
+If the tool is re-captured, old verdicts do not transfer: rebuild and re-mark the sheets.
 
 ## 4. Score it — automatic
 
     npm run gate:score
 
-Prints the accuracy figure for AE2 and writes `seeded_candidates.json` — the only legitimate
-source of seeded items for the over-trust probes.
+The scorer fails unless both repositories are present and every question has non-empty frozen
+and tool answers plus an explicit boolean verdict. Only then does it print the accuracy figure
+for AE2 and write `seeded_candidates.json` — the only legitimate source of seeded items for the
+over-trust probes.
 
 ## If the figure comes out low
 

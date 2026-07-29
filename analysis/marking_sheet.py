@@ -17,6 +17,7 @@ Usage:
     python3 marking_sheet.py --self-test
 """
 import json
+import hashlib
 import re
 import sys
 from pathlib import Path
@@ -30,6 +31,28 @@ from gate_worksheet import parse  # noqa: E402
 # self-test below covers that case, which is how it was caught.
 BLOCK_SPLIT_RE = re.compile(r"^## Q(\d+)\b", re.M)
 VERDICT_RE = re.compile(r"^\*\*Verdict:\*\*[ \t]*(\w+)", re.M)
+BINDING_RE = re.compile(r"<!-- accuracy-gate-binding: ([0-9a-f]{64}) -->")
+
+
+def gate_binding(gate: dict) -> str:
+    """Binds a sheet to the captured repository, provenance, questions, and answers."""
+    payload = {
+        "repository": gate.get("repository"),
+        "capturedRepository": gate.get("capturedRepository"),
+        "capturedFrom": gate.get("capturedFrom"),
+        "groundTruthProvenance": gate.get("groundTruthProvenance"),
+        "items": [
+            {
+                "id": item.get("id"),
+                "question": item.get("question"),
+                "correctAnswer": item.get("correctAnswer"),
+                "toolAnswer": item.get("toolAnswer"),
+            }
+            for item in gate.get("items", [])
+        ],
+    }
+    canonical = json.dumps(payload, sort_keys=True, separators=(",", ":"), ensure_ascii=False)
+    return hashlib.sha256(canonical.encode()).hexdigest()
 
 
 def read_verdicts(markdown: str) -> dict[int, str]:
@@ -45,6 +68,8 @@ def read_verdicts(markdown: str) -> dict[int, str]:
 
 HEADER = """\
 # Marking sheet — {repo}
+
+<!-- accuracy-gate-binding: {binding} -->
 
 {n} questions. For each one, decide whether the tool's answer says the same thing as the ground
 truth, and write `correct` or `incorrect` on the verdict line.
@@ -118,8 +143,49 @@ def build(gate_path: Path, truth_path: Path) -> Path:
     truth = parse(truth_path.read_text())
     repo = gate.get("repository", gate_path.stem)
 
-    if not any(i.get("toolAnswer") for i in gate["items"]):
-        print(f"{gate_path.name} has no captured answers yet. Run the capture first.")
+    items = gate.get("items")
+    if not isinstance(items, list) or not items:
+        print(f"{gate_path.name} has no gate items.")
+        raise SystemExit(1)
+
+    ids = [item.get("id") for item in items]
+    if len(ids) != len(set(ids)):
+        print(f"{gate_path.name} has duplicate question IDs.")
+        raise SystemExit(1)
+    missing_answers = [item.get("id") for item in items if not str(item.get("toolAnswer") or "").strip()]
+    missing_gate_truth = [
+        item.get("id") for item in items if not str(item.get("correctAnswer") or "").strip()
+    ]
+    missing_truth = [qid for qid in ids if not str(truth.get(qid, {}).get("answer") or "").strip()]
+    truth_mismatches = [
+        item.get("id")
+        for item in items
+        if str(item.get("correctAnswer") or "").strip()
+        != str(truth.get(item.get("id"), {}).get("answer") or "").strip()
+    ]
+    extra_truth = sorted(set(truth) - set(ids))
+    if (
+        missing_answers
+        or missing_gate_truth
+        or missing_truth
+        or truth_mismatches
+        or extra_truth
+        or len(truth) != len(items)
+    ):
+        if missing_answers:
+            print(f"No captured answer: Q{', Q'.join(map(str, missing_answers))}.")
+        if missing_gate_truth:
+            print(f"No correctAnswer in gate: Q{', Q'.join(map(str, missing_gate_truth))}.")
+        if missing_truth:
+            print(f"No ground-truth answer: Q{', Q'.join(map(str, missing_truth))}.")
+        if truth_mismatches:
+            print(
+                "Gate correctAnswer differs from the supplied ground truth: "
+                f"Q{', Q'.join(map(str, truth_mismatches))}."
+            )
+        if extra_truth:
+            print(f"Ground truth has questions absent from the gate: Q{', Q'.join(map(str, extra_truth))}.")
+        print("No marking sheet was written.")
         raise SystemExit(1)
 
     sheet = Path(f"marking.{repo}.md")
@@ -147,14 +213,38 @@ def build(gate_path: Path, truth_path: Path) -> Path:
         )
 
     sheet.write_text(
-        HEADER.format(repo=repo, n=len(gate["items"]), gate=gate_path, sheet=sheet) + "".join(blocks)
+        HEADER.format(
+            repo=repo,
+            n=len(gate["items"]),
+            gate=gate_path,
+            sheet=sheet,
+            binding=gate_binding(gate),
+        ) + "".join(blocks)
     )
     return sheet
 
 
 def collect(gate_path: Path, sheet_path: Path) -> bool:
     gate = json.loads(gate_path.read_text())
-    verdicts = read_verdicts(sheet_path.read_text())
+    markdown = sheet_path.read_text()
+    bindings = BINDING_RE.findall(markdown)
+    expected_binding = gate_binding(gate)
+    if bindings != [expected_binding]:
+        found = bindings[0] if len(bindings) == 1 else f"{len(bindings)} binding records"
+        print(
+            f"Sheet does not belong to this captured gate (expected {expected_binding}, found {found})."
+        )
+        print("Nothing was saved.")
+        return False
+
+    sheet_ids = [int(match.group(1)) for match in BLOCK_SPLIT_RE.finditer(markdown)]
+    gate_ids = [item["id"] for item in gate["items"]]
+    if len(sheet_ids) != len(set(sheet_ids)) or set(sheet_ids) != set(gate_ids):
+        print(f"Sheet question IDs {sheet_ids} do not match gate question IDs {gate_ids}.")
+        print("Nothing was saved.")
+        return False
+
+    verdicts = read_verdicts(markdown)
 
     missing, bad = [], []
     for item in gate["items"]:
@@ -202,7 +292,26 @@ def self_test() -> None:
     # line. It must be absent, not inherited from Q3 and not silently false.
     assert got == {1: "correct", 3: "incorrect"}, got
     assert 2 not in got, got
-    print("self-test OK: filled verdicts parse, an unmarked question stays unmarked")
+
+    gate = {
+        "repository": "repo-a",
+        "capturedRepository": "https://example.test/repo-a",
+        "groundTruthProvenance": "confirmed",
+        "items": [{
+            "id": 1,
+            "question": "Question?",
+            "correctAnswer": "Ground truth",
+            "toolAnswer": "Answer A",
+        }],
+    }
+    original = gate_binding(gate)
+    changed_answer = json.loads(json.dumps(gate))
+    changed_answer["items"][0]["toolAnswer"] = "Answer B"
+    assert gate_binding(changed_answer) != original
+    changed_repo = json.loads(json.dumps(gate))
+    changed_repo["repository"] = "repo-b"
+    assert gate_binding(changed_repo) != original
+    print("self-test OK: verdict blocks stay local and sheets bind to their exact captured gate")
 
 
 if __name__ == "__main__":

@@ -193,8 +193,8 @@ after it emerged the two markers had seen different material.
 
 3. **Independently mark three items of your choosing** and compare with both existing markings.
 
-4. **Assess the non-determinism claim.** Wording similarity between runs averages 27–31%, while
-   overlap in files named averages 86–92%. The argument is that substance is stable even though
+4. **Assess the non-determinism claim.** Pairwise wording similarity between runs averages
+   27–36%, while overlap in files named averages 86–96%. The argument is that substance is stable even though
    prose is not, and this is what makes marking a single run defensible. Test that argument.
 
 ## Section 6 — The claims made in writing

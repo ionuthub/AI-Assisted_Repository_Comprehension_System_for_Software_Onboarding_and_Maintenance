@@ -1,4 +1,5 @@
 import EvidencePanel, { type RetrievedEvidence, type UnverifiedMention } from "@/components/EvidencePanel";
+import type { GenerationCompleteEvent } from "@/lib/generationProtocol";
 
 export type { RetrievedEvidence } from "@/components/EvidencePanel";
 
@@ -6,6 +7,8 @@ interface WorkspaceQAViewProps {
   question: string;
   answer: string;
   isLoading: boolean;
+  generationStatus: 'idle' | 'loading' | 'complete' | 'error';
+  completion: GenerationCompleteEvent | null;
   evidence: RetrievedEvidence[];
   /** Paths present in the repository but not retrieved, with the reason they were excluded. */
   excludedPaths?: Record<string, string>;
@@ -38,6 +41,8 @@ export default function WorkspaceQAView({
   question,
   answer,
   isLoading,
+  generationStatus,
+  completion,
   evidence,
   excludedPaths,
   indexedFileCount,
@@ -113,7 +118,17 @@ export default function WorkspaceQAView({
                 <div className="h-4 rounded bg-secondary animate-pulse w-5/6" />
               </div>
             ) : (
-              <div className="max-w-[68ch]">{renderAnswer(answer)}</div>
+              <div
+                className="max-w-[68ch]"
+                data-generation-status={generationStatus}
+                data-finish-reason={completion?.finishReason}
+                data-prompt-token-count={completion?.usageMetadata?.promptTokenCount}
+                data-output-token-count={completion?.usageMetadata?.candidatesTokenCount}
+                data-total-token-count={completion?.usageMetadata?.totalTokenCount}
+                role={generationStatus === 'error' ? 'alert' : undefined}
+              >
+                {renderAnswer(answer)}
+              </div>
             )}
           </div>
 

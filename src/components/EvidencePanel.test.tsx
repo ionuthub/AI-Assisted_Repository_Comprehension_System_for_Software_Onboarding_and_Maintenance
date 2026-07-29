@@ -10,6 +10,7 @@ const evidence = (path: string, score: number): RetrievedEvidence => ({
   endLine: 1,
   totalLines: 1,
   omittedLines: 0,
+  omittedCharacters: 0,
 });
 
 describe('EvidencePanel headings', () => {
@@ -32,7 +33,32 @@ describe('EvidencePanel headings', () => {
   it('distinguishes the no-evidence state by wording, not colour alone', () => {
     render(<EvidencePanel evidence={[]} unverifiedMentions={[]} isLoading={false} />);
     expect(screen.getByText(/No evidence · 0 files retrieved/)).toBeInTheDocument();
-    expect(screen.getByText(/Check it against the source/)).toBeInTheDocument();
+    expect(screen.getByText(/No matching evidence was found in the files searched/)).toBeInTheDocument();
+  });
+
+  it('states repository coverage without calling the searched subset the indexed total', () => {
+    render(
+      <EvidencePanel
+        evidence={[evidence('src/a.ts', 0.2)]}
+        unverifiedMentions={[]}
+        isLoading={false}
+        indexedFileCount={50}
+        totalFileCount={55}
+      />
+    );
+    expect(screen.getByText(/after searching 50 of 55 repository files/)).toBeInTheDocument();
+    expect(screen.queryByText(/50 of 55 indexed files/)).not.toBeInTheDocument();
+  });
+
+  it('discloses character truncation within a cited line', () => {
+    render(
+      <EvidencePanel
+        evidence={[{ ...evidence('src/long.ts', 0.2), omittedCharacters: 2400 }]}
+        unverifiedMentions={[]}
+        isLoading={false}
+      />
+    );
+    expect(screen.getByText(/2400 characters not sent/)).toBeInTheDocument();
   });
 
   it('singularises the count for one file', () => {

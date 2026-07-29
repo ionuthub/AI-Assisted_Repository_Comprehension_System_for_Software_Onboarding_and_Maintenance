@@ -203,9 +203,9 @@ const buildProjectFiles = (items: GitHubTreeItem[]): ProjectFile[] =>
  * filename matching and the RAG prompt is assembled with no evidence. Contents are
  * therefore hydrated during ingestion rather than lazily as the user opens files.
  *
- * A file that fails to load is left with `content: null` rather than failing the whole
- * analysis: a partially indexed repository is more useful than none, and the count of
- * files actually carrying content is reported on the project.
+ * A file that fails to load is returned here with `content: null` so the caller can record
+ * the exclusion reason. It must be removed before the Project is returned: otherwise the
+ * search index can retrieve it by filename even though no source was read.
  */
 const hydrateFileContents = async (
   owner: string,
@@ -279,15 +279,16 @@ export const fetchRepositoryProject = async (
   const unreadable = files
     .filter((f) => !f.content)
     .map((f) => ({ path: f.path, reason: "Could not be read" }));
+  const readableFiles = files.filter((f) => Boolean(f.content));
 
   return {
     summary: buildProjectSummary(repoData),
-    files,
+    files: readableFiles,
     ingestion: {
       totalCandidateFiles: totalCandidates,
       totalRepositoryFiles: tree.filter((i) => i.type === "blob").length,
       includedFiles: files.length,
-      filesWithContent: files.filter((f) => Boolean(f.content)).length,
+      filesWithContent: readableFiles.length,
       treeTruncatedByGitHub: Boolean(treePayload.truncated),
       excluded: [...excluded, ...unreadable],
     },

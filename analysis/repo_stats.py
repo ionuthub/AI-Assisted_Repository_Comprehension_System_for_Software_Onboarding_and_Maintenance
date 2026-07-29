@@ -6,9 +6,11 @@ small-to-medium JavaScript/TypeScript repositories (React/Next, public, permissi
 Usage: python3 repo_stats.py /path/to/repoA /path/to/repoB ...
 Reports the matching dimensions so the choice of pair is evidence-based and citable.
 """
-import json, sys
-from pathlib import Path
 from collections import Counter
+import json
+from pathlib import Path
+import sys
+import tempfile
 
 EXCLUDE = {"node_modules", ".git", "dist", "build", ".next", "coverage"}
 SRC_EXT = {".ts": "TypeScript", ".tsx": "TypeScript", ".js": "JavaScript",
@@ -36,8 +38,32 @@ def stats(root: Path):
             "framework": framework, "licence": licence,
             "top_languages": dict(langs.most_common(4))}
 
+
+def self_test() -> None:
+    with tempfile.TemporaryDirectory() as directory:
+        root = Path(directory) / "fixture"
+        (root / "src").mkdir(parents=True)
+        (root / "node_modules" / "vendored").mkdir(parents=True)
+        (root / "src" / "app.tsx").write_text("line one\nline two\n")
+        (root / "node_modules" / "vendored" / "index.js").write_text("ignored\n")
+        (root / "package.json").write_text(json.dumps({
+            "license": "MIT",
+            "dependencies": {"react": "1", "zod": "1"},
+        }))
+
+        result = stats(root)
+        assert result["source_files"] == 2, result  # app.tsx plus package.json
+        assert result["loc"] == 3, result
+        assert result["runtime_deps"] == 2, result
+        assert result["framework"] == "React", result
+        assert result["licence"] == "MIT", result
+    print("self-test OK: source counts exclude vendored files and package metadata is reported")
+
 if __name__ == "__main__":
-    if len(sys.argv) < 2: print(__doc__); sys.exit(0)
+    if sys.argv[1:] == ["--self-test"]:
+        self_test()
+        sys.exit(0)
+    if len(sys.argv) < 2: print(__doc__); sys.exit(2)
     rows = [stats(Path(a)) for a in sys.argv[1:]]
     for r in rows: print(json.dumps(r, indent=2))
     if len(rows) == 2:

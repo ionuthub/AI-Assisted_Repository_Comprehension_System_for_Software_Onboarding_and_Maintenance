@@ -28,14 +28,16 @@ export interface Project {
   summary: ProjectSummary;
   files: ProjectFile[];
   /**
-   * Ingestion coverage. `files` is capped, so these record how much of the repository
-   * the analysis actually saw. Retrieval quality is bounded by this, and any result
-   * reported from a session should state it rather than imply whole-repository coverage.
+   * Ingestion coverage. `files` contains only readable files and is capped, so these record
+   * both how many candidates were selected and how much of the repository the analysis
+   * actually saw. Retrieval quality is bounded by this, and any result reported from a
+   * session should state it rather than imply whole-repository coverage.
    */
   ingestion?: {
     totalCandidateFiles: number;
     /** Every blob the repository contains, before any filter. */
     totalRepositoryFiles: number;
+    /** Files selected for content fetching before unreadable entries are removed. */
     includedFiles: number;
     filesWithContent: number;
     treeTruncatedByGitHub: boolean;

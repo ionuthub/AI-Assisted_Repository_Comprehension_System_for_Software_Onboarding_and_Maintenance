@@ -1,4 +1,10 @@
 import { Redis } from '@upstash/redis';
+import {
+  encodeGenerationEvent,
+  extractJsonObjects,
+  successfulFinishReason,
+  type GenerationUsageMetadata,
+} from '../src/lib/generationProtocol';
 
 // Allowed origins are configured via ALLOWED_ORIGINS (comma-separated); the list below is
 // the fallback for local development plus this project's production Vercel domain.
@@ -177,11 +183,35 @@ export default async function handler(req: Request): Promise<Response> {
 
       if (!stream) {
         const data = await response.json();
-        const explanation = data.candidates?.[0]?.content?.parts?.[0]?.text;
-        return new Response(JSON.stringify({ explanation }), { status: 200, headers: { ...securityHeaders, 'Content-Type': 'application/json' } });
+        const candidate = data.candidates?.[0];
+        const explanation = candidate?.content?.parts
+          ?.map((part: { text?: string }) => part.text || '')
+          .join('');
+        const finishReason = candidate?.finishReason;
+        const usageMetadata = data.usageMetadata;
+
+        if (!explanation || !successfulFinishReason(finishReason)) {
+          return new Response(
+            JSON.stringify({
+              error: explanation
+                ? 'Generation ended before completion'
+                : 'Generation returned no answer',
+              finishReason,
+              usageMetadata,
+            }),
+            { status: 502, headers: { ...securityHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+
+        return new Response(JSON.stringify({ explanation, finishReason, usageMetadata }), {
+          status: 200,
+          headers: { ...securityHeaders, 'Content-Type': 'application/json' },
+        });
       }
 
-      // Handle Streaming
+      // The browser receives newline-delimited structured events rather than undifferentiated
+      // text. The terminal event preserves Gemini's finish reason and usage metadata, so a
+      // token-limited or safety-stopped answer cannot look identical to a completed answer.
       const encoder = new TextEncoder();
       const decoder = new TextDecoder();
       const { readable, writable } = new TransformStream();
@@ -189,79 +219,82 @@ export default async function handler(req: Request): Promise<Response> {
 
       (async () => {
         const reader = response.body?.getReader();
-        if (!reader) return writer.close();
-
         let buffer = '';
+        let finishReason: string | undefined;
+        let usageMetadata: GenerationUsageMetadata | undefined;
+
+        const emit = (event: Parameters<typeof encodeGenerationEvent>[0]) =>
+          writer.write(encoder.encode(encodeGenerationEvent(event)));
+
+        const consumeObjects = async (objects: unknown[]) => {
+          for (const raw of objects) {
+            const data = raw as {
+              candidates?: Array<{
+                content?: { parts?: Array<{ text?: string }> };
+                finishReason?: string;
+              }>;
+              usageMetadata?: GenerationUsageMetadata;
+            };
+            const candidate = data.candidates?.[0];
+            const text = candidate?.content?.parts
+              ?.map((part) => part.text || '')
+              .join('');
+            if (text) await emit({ type: 'text', text });
+            if (candidate?.finishReason) finishReason = candidate.finishReason;
+            if (data.usageMetadata) usageMetadata = data.usageMetadata;
+          }
+        };
 
         try {
+          if (!reader) throw new Error('Gemini response body was empty');
+
           while (true) {
             const { done, value } = await reader.read();
             if (done) break;
 
             buffer += decoder.decode(value, { stream: true });
-
-            while (true) {
-              let openBraces = 0;
-              let inString = false;
-              let escape = false;
-              let startIndex = -1;
-              let endIndex = -1;
-
-              for (let i = 0; i < buffer.length; i++) {
-                const char = buffer[i];
-                if (escape) {
-                  escape = false;
-                  continue;
-                }
-                if (char === '\\') {
-                  escape = true;
-                  continue;
-                }
-                if (char === '"') {
-                  inString = !inString;
-                  continue;
-                }
-                if (inString) continue;
-
-                if (char === '{') {
-                  if (openBraces === 0) startIndex = i;
-                  openBraces++;
-                } else if (char === '}') {
-                  openBraces--;
-                  if (openBraces === 0 && startIndex !== -1) {
-                    endIndex = i;
-                    break;
-                  }
-                }
-              }
-
-              if (endIndex !== -1) {
-                const jsonStr = buffer.substring(startIndex, endIndex + 1);
-                buffer = buffer.substring(endIndex + 1);
-
-                try {
-                  const data = JSON.parse(jsonStr);
-                  const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
-                  if (text) {
-                    await writer.write(encoder.encode(text));
-                  }
-                } catch (e) {
-                  // Skip invalid JSON
-                }
-              } else {
-                break;
-              }
-            }
+            const parsed = extractJsonObjects(buffer);
+            buffer = parsed.rest;
+            await consumeObjects(parsed.objects);
           }
+
+          buffer += decoder.decode();
+          const parsed = extractJsonObjects(buffer);
+          buffer = parsed.rest;
+          await consumeObjects(parsed.objects);
+
+          if (buffer.replace(/\s/g, '').replaceAll(',', '').replaceAll('[', '').replaceAll(']', '')) {
+            throw new Error('Gemini stream ended with incomplete JSON');
+          }
+
+          if (!successfulFinishReason(finishReason)) {
+            await emit({
+              type: 'error',
+              error: finishReason
+                ? 'Generation ended before completion'
+                : 'Generation ended without a finish reason',
+              finishReason,
+              usageMetadata,
+            });
+          } else {
+            await emit({ type: 'complete', finishReason, usageMetadata });
+          }
+        } catch (error) {
+          await emit({
+            type: 'error',
+            error: error instanceof Error ? error.message : 'Generation stream failed',
+            finishReason,
+            usageMetadata,
+          }).catch(() => undefined);
         } finally {
-          writer.close();
+          await writer.close().catch(() => undefined);
         }
       })();
 
       return new Response(readable, {
         headers: {
           ...securityHeaders,
-          'Content-Type': 'text/event-stream',
+          'Content-Type': 'application/x-ndjson; charset=utf-8',
           'Cache-Control': 'no-cache',
           'Connection': 'keep-alive',
         },

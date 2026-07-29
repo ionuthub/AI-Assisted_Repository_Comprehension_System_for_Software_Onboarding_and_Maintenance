@@ -28,10 +28,12 @@ Proposal commitment: "Before the study, the tool's own answer accuracy is measur
 several repositories against a ground-truth set. This figure acts as a gate ... and
 identifies specific questions where the tool is known to be inaccurate."
 
-Method: copy `study/accuracy-gate.template.json` per repository; write 10–15 questions and
-your own correct answers FIRST (from reading the code, before asking the tool); then ask
-the tool each question and paste its verbatim answer; mark true/false; have a second
-marker spot-check a sample. Score with `python3 analysis/accuracy_gate.py <files>`.
+Method: copy `study/accuracy-gate.template.json` per repository and settle 10–15 questions and
+answers before asking the tool. Researcher-confirmed ground truth is preferred. The present
+artefact instead uses disclosed machine-assisted answers stamped VERIFIED BY TOOL; the capture
+requires the explicit `--accept-tool-verified` flag and records that weaker provenance. Capture
+the tool's verbatim answers, mark true/false, and have a human second marker spot-check a
+pre-declared sample. Score both repositories together with `npm run gate:score`.
 Outputs: the gate accuracy figure for AE2, and `seeded_candidates.json` — the ONLY
 legitimate source for `seededAnswerShown` values in the study answer keys. If the gate
 shows very low accuracy, stop and discuss with the supervisor before proceeding: that is
@@ -100,8 +102,11 @@ hand-checkable cases. n = 12–20 → report as exploratory (Wohlin et al., 2012
 | Pilot before main study | Step 4 pilot note |
 | Observer-timed, answer key + rubric, blind second-marking | Run-sheet + rubric template |
 
-## What the researcher must produce personally (cannot be delegated to any AI)
+## What remains the researcher's responsibility
 
-The ground-truth answers, the tool's verbatim recorded answers, the correctness markings,
-the choice of repositories, every participant's data, and the interpretation of results.
-This protocol and its scripts are instruments; the research is yours.
+AI assistance and automation must be disclosed, and neither can take responsibility for the
+research judgement. The researcher must approve the study design and repository choice, make or
+adopt the correctness judgements recorded in the gate, safeguard every participant's data, and
+own the interpretation and reporting of results. In this artefact the ground-truth drafts,
+verification passes, verbatim capture, and existing second marking all used machines; those facts
+must remain visible rather than being described as work that could not be delegated.

@@ -13,6 +13,7 @@ export interface RetrievedEvidence {
   endLine: number;
   totalLines: number;
   omittedLines: number;
+  omittedCharacters: number;
 }
 
 export interface UnverifiedMention {
@@ -140,6 +141,8 @@ export default function EvidencePanel({
                     <p className="px-3 py-2 text-meta font-mono text-muted-foreground border-b border-border">
                       Lines {item.startLine}–{item.endLine} of {item.totalLines}
                       {item.omittedLines > 0 && ` · ${item.omittedLines} lines not sent`}
+                      {item.omittedCharacters > 0 &&
+                        ` · ${item.omittedCharacters} characters not sent`}
                     </p>
                     <pre className="text-code font-mono text-foreground/90 p-3 overflow-x-auto max-h-72 whitespace-pre-wrap">
                       {item.excerpt}
@@ -174,8 +177,8 @@ export default function EvidencePanel({
             <h3 className="text-ui font-semibold text-foreground">No evidence · 0 files retrieved</h3>
           </header>
           <p className="px-4 py-3 text-ui text-foreground leading-relaxed">
-            Nothing in this repository supports the answer below. Check it against the source
-            before relying on any of it.
+            No matching evidence was found in the files searched. Check the answer against the
+            source before relying on it.
           </p>
         </div>
       )}
@@ -208,7 +211,8 @@ export default function EvidencePanel({
 
       {indexedFileCount !== undefined && totalFileCount !== undefined && (
         <p className="text-meta text-muted-foreground leading-relaxed">
-          Retrieved by keyword match over {indexedFileCount} of {totalFileCount} indexed files.
+          Retrieved by keyword match after searching {indexedFileCount} of {totalFileCount}
+          {" "}repository files.
           {totalFileCount > indexedFileCount &&
             ` ${totalFileCount - indexedFileCount} files could not be searched.`}
           {hasEvidence &&

@@ -3,12 +3,12 @@ import { ProjectFile } from "@/types/project";
 // Standard programming syntax keywords and common English stopwords to exclude
 const STOPWORDS = new Set([
   // Programming keywords
-  "const", "let", "var", "function", "class", "export", "import", "default",
+  "const", "let", "var", "import",
   "return", "async", "await", "try", "catch", "finally", "if", "else", "for",
   "while", "do", "switch", "case", "break", "continue", "null", "undefined",
   "true", "false", "this", "super", "new", "throw", "typeof", "instanceof",
-  "extends", "implements", "interface", "package", "private", "protected",
-  "public", "static", "yield", "from", "as",
+  "extends", "implements", "package", "private", "protected",
+  "public", "yield", "from", "as",
   // "api", "router" and "route" were previously listed here. They are domain terms, not
   // language keywords: the query "api router" tokenised to nothing, retrieval returned no
   // matches, and the question was then sent to the model with no repository context.
@@ -76,10 +76,11 @@ export function tokenize(text: string): string[] {
 export const buildSearchIndex = (files: ProjectFile[]): SearchIndex => {
   const docTokens: Record<string, string[]> = {};
   const df: Record<string, number> = {};
-  const totalDocs = files.length;
+  const readableFiles = files.filter((file) => file.content !== null && file.content !== undefined);
+  const totalDocs = readableFiles.length;
 
   // 1. Tokenize files and count document frequencies
-  files.forEach(file => {
+  readableFiles.forEach(file => {
     // Index file content and file path name (path contains valuable context!)
     const fileContent = file.content || "";
     const pathContent = file.path.replace(/\//g, " ");
@@ -220,6 +221,8 @@ export interface ExcerptRegion {
   totalLines: number;
   /** Lines of the file not included in this excerpt, and therefore never seen by the model. */
   omittedLines: number;
+  /** Characters of the file not included, including a truncated portion of a cited line. */
+  omittedCharacters: number;
 }
 
 /**
@@ -244,32 +247,61 @@ export function selectExcerptRegion(
   const lines = content.split("\n");
   const totalLines = lines.length;
 
-  const head = (): ExcerptRegion => {
+  const windowFrom = (start: number) => {
+    const parts: string[] = [];
     let used = 0;
-    let endLine = 0;
-    for (let i = 0; i < lines.length; i++) {
-      const next = used + lines[i].length + 1;
-      if (next > maxChars && endLine > 0) break;
-      used = next;
-      endLine = i + 1;
+    let end = start;
+
+    while (end < totalLines && used < maxChars) {
+      const separator = end > start ? "\n" : "";
+      const available = maxChars - used - separator.length;
+      if (available <= 0) break;
+
+      const piece = lines[end].slice(0, available);
+      parts.push(separator + piece);
+      used += separator.length + piece.length;
+      end += 1;
+
+      // The rest of this line is outside the budget. Do not score it and then silently
+      // slice it away: that can select an excerpt whose only match is never emitted.
+      if (piece.length < lines[end - 1].length) break;
     }
+
+    const text = parts.join("");
     return {
-      text: lines.slice(0, endLine).join("\n"),
+      text,
+      start,
+      end,
+      omittedCharacters: Math.max(content.length - text.length, 0),
+    };
+  };
+
+  const head = (): ExcerptRegion => {
+    const window = windowFrom(0);
+    const includedLines = Math.max(window.end - window.start, 1);
+    return {
+      text: window.text,
       startLine: 1,
-      endLine: Math.max(endLine, 1),
+      endLine: includedLines,
       totalLines,
-      omittedLines: Math.max(totalLines - Math.max(endLine, 1), 0),
+      omittedLines: Math.max(totalLines - includedLines, 0),
+      omittedCharacters: window.omittedCharacters,
     };
   };
 
   if (content.length <= maxChars) {
-    return { text: content, startLine: 1, endLine: totalLines, totalLines, omittedLines: 0 };
+    return {
+      text: content,
+      startLine: 1,
+      endLine: totalLines,
+      totalLines,
+      omittedLines: 0,
+      omittedCharacters: 0,
+    };
   }
 
   const queryTerms = new Set(tokenize(query));
   if (queryTerms.size === 0) return head();
-
-  const lineTokens = lines.map((line) => tokenize(line));
 
   let bestStart = 0;
   let bestEnd = 0; // exclusive
@@ -280,44 +312,39 @@ export function selectExcerptRegion(
   // emitted, so the region that wins is the region that is sent and cited. Scoring a larger
   // window and trimming it afterwards can discard the match that selected it.
   for (let start = 0; start < totalLines; start++) {
+    const window = windowFrom(start);
     const distinct = new Set<string>();
     let occurrences = 0;
-    let used = 0;
-    let end = start;
 
-    while (end < totalLines) {
-      const next = used + lines[end].length + (end > start ? 1 : 0);
-      if (next > maxChars && end > start) break;
-      used = next;
-      for (const token of lineTokens[end]) {
-        if (queryTerms.has(token)) {
-          distinct.add(token);
-          occurrences += 1;
-        }
+    for (const token of tokenize(window.text)) {
+      if (queryTerms.has(token)) {
+        distinct.add(token);
+        occurrences += 1;
       }
-      end += 1;
     }
 
     if (distinct.size > bestDistinct || (distinct.size === bestDistinct && occurrences > bestOccurrences)) {
       bestDistinct = distinct.size;
       bestOccurrences = occurrences;
       bestStart = start;
-      bestEnd = end;
+      bestEnd = window.end;
     }
 
-    if (end >= totalLines) break;
+    if (window.end >= totalLines) break;
   }
 
   // No query term occurs anywhere in the file: the head is as defensible as any other region.
   if (bestDistinct <= 0) return head();
 
-  const text = lines.slice(bestStart, bestEnd).join("\n");
+  const best = windowFrom(bestStart);
+  const includedLines = Math.max(bestEnd - bestStart, 1);
 
   return {
-    text: text.length > maxChars ? text.slice(0, maxChars) : text,
+    text: best.text,
     startLine: bestStart + 1,
     endLine: bestEnd,
     totalLines,
-    omittedLines: Math.max(totalLines - (bestEnd - bestStart), 0),
+    omittedLines: Math.max(totalLines - includedLines, 0),
+    omittedCharacters: best.omittedCharacters,
   };
 }

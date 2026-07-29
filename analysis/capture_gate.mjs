@@ -41,6 +41,54 @@ const arg = (name, fallback) => {
 };
 const flag = (name) => argv.includes(`--${name}`);
 
+function parseTruthQuestions(markdown) {
+  const headers = [...markdown.matchAll(/^## Q(\d+)\b/gm)];
+  const questions = new Map();
+  for (let index = 0; index < headers.length; index += 1) {
+    const match = headers[index];
+    const block = markdown.slice(match.index, headers[index + 1]?.index ?? markdown.length);
+    const status = block.match(/^\*\*Status:\s*([A-Z][A-Z -]*[A-Z])(?:\s+—|\.\*\*|\*\*)/m)?.[1]?.trim();
+    const question = block.match(/^>\s*(.+?)\s*$/m)?.[1]?.trim();
+    const id = Number(match[1]);
+    if (questions.has(id)) throw new Error(`Duplicate ground-truth question Q${id}`);
+    questions.set(id, { id, status, question });
+  }
+  return questions;
+}
+
+function nextArchiveRun(entries, repository) {
+  const escaped = repository.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  const pattern = new RegExp(`^${escaped}-run(\\d+)\\.json$`);
+  const numbers = entries
+    .map((entry) => entry.match(pattern)?.[1])
+    .filter(Boolean)
+    .map(Number);
+  return (numbers.length ? Math.max(...numbers) : 0) + 1;
+}
+
+function selfTest() {
+  const truth = parseTruthQuestions(`
+## Q1 — first
+**Status: VERIFIED BY TOOL — today.**
+> First question?
+## Q2 — second
+**Status: CONFIRMED — today.**
+> Second question?
+`);
+  if (truth.size !== 2 || truth.get(1)?.question !== "First question?") {
+    throw new Error("ground-truth block parsing failed");
+  }
+  if (nextArchiveRun(["repo-run1.json", "repo-run3.json"], "repo") !== 4) {
+    throw new Error("archive numbering is not max-suffix plus one");
+  }
+  console.log("self-test OK: truth blocks bind by ID and archive gaps cannot overwrite a run");
+}
+
+if (flag("self-test")) {
+  selfTest();
+  process.exit(0);
+}
+
 const APP = arg("url", "https://repo-comprehension-system.vercel.app/");
 const REPO = arg("repo");
 const GATE = arg("gate");
@@ -50,6 +98,17 @@ const SHOTS = "study/gate-screenshots";
 if (!REPO || !GATE) {
   console.error("Need --repo and --gate. See the comment at the top of this file.");
   process.exit(2);
+}
+
+const gate = JSON.parse(readFileSync(GATE, "utf8"));
+if (!Array.isArray(gate.items) || gate.items.length === 0) {
+  console.error(`${GATE} has no gate items.`);
+  process.exit(1);
+}
+const gateIds = gate.items.map((item) => item.id);
+if (new Set(gateIds).size !== gateIds.length) {
+  console.error(`${GATE} has duplicate question IDs.`);
+  process.exit(1);
 }
 
 // --- interlock -------------------------------------------------------------------------
@@ -65,18 +124,44 @@ if (!REPO || !GATE) {
 // is weaker but not nothing. Running on tool-verified ground truth is a defensible choice
 // provided it is a choice — declared in advance, recorded in the output, and disclosed in the
 // write-up rather than discovered by a marker. That is what --accept-tool-verified does.
-if (TRUTH && !flag("force")) {
-  const statuses = [...readFileSync(TRUTH, "utf8").matchAll(/^\*\*Status:\s*([A-Z][A-Z -]*[A-Z])/gm)]
-    .map((m) => m[1].trim());
-  const settled = statuses.filter(
-    (s) => s === "CONFIRMED" || (flag("accept-tool-verified") && s === "VERIFIED BY TOOL")
-  ).length;
-  const unsettled = statuses.length - settled;
+if (!flag("force")) {
+  if (!TRUTH) {
+    console.error("Need --truth unless --force is supplied. Nothing was captured.");
+    process.exit(1);
+  }
 
-  if (unsettled > 0) {
+  const truth = parseTruthQuestions(readFileSync(TRUTH, "utf8"));
+  const truthIds = [...truth.keys()];
+  const mismatches = [];
+  if (truth.size !== gate.items.length) {
+    mismatches.push(`ground truth has ${truth.size} questions; gate has ${gate.items.length}`);
+  }
+  for (const item of gate.items) {
+    const settled = truth.get(item.id);
+    if (!settled) {
+      mismatches.push(`Q${item.id} is absent from the ground truth`);
+    } else if (settled.question !== item.question) {
+      mismatches.push(`Q${item.id} question text differs between gate and ground truth`);
+    }
+  }
+  for (const id of truthIds) {
+    if (!gateIds.includes(id)) mismatches.push(`ground truth Q${id} is absent from the gate`);
+  }
+
+  const statuses = [...truth.values()].map((item) => item.status).filter(Boolean);
+  if (statuses.length !== truth.size) mismatches.push("one or more ground-truth blocks has no status");
+  const settledCount = statuses.filter(
+    (status) =>
+      status === "CONFIRMED" ||
+      (flag("accept-tool-verified") && status === "VERIFIED BY TOOL")
+  ).length;
+  const unsettled = truth.size - settledCount;
+
+  if (mismatches.length > 0 || unsettled > 0) {
     const stamps = [...new Set(statuses)].sort().join(", ");
     console.error(
-      `\n${unsettled} of ${statuses.length} answers in ${TRUTH} are not settled.\n` +
+      (mismatches.length ? `\n${mismatches.join("\n")}\n` : "") +
+        `\n${unsettled} of ${truth.size} answers in ${TRUTH} are not settled.\n` +
         `Statuses present: ${stamps}\n\n` +
         (flag("accept-tool-verified")
           ? "Running with --accept-tool-verified, so VERIFIED BY TOOL counts as settled. The\n" +
@@ -94,7 +179,6 @@ if (TRUTH && !flag("force")) {
 
 // --- capture ---------------------------------------------------------------------------
 
-const gate = JSON.parse(readFileSync(GATE, "utf8"));
 const questions = gate.items.map((item) => ({ id: item.id, question: item.question }));
 mkdirSync(SHOTS, { recursive: true });
 
@@ -107,18 +191,19 @@ mkdirSync(SHOTS, { recursive: true });
 const ARCHIVE = "study/gate-runs";
 if (gate.items.some((i) => i.toolAnswer)) {
   mkdirSync(ARCHIVE, { recursive: true });
-  // Count archived captures, not archived files: each run leaves a .json *and* a screenshot
-  // directory, so counting both made the second run number itself three.
-  const previous = readdirSync(ARCHIVE).filter(
-    (f) => f.startsWith(`${gate.repository}-run`) && f.endsWith(".json")
-  );
-  const n = previous.length + 1;
-  writeFileSync(join(ARCHIVE, `${gate.repository}-run${n}.json`), JSON.stringify(gate, null, 1) + "\n");
+  // Use the largest suffix plus one. Counting files overwrote run3 when run2 was absent.
+  const entries = readdirSync(ARCHIVE);
+  const n = nextArchiveRun(entries, gate.repository);
+  const archiveGate = join(ARCHIVE, `${gate.repository}-run${n}.json`);
+  const archiveShots = join(ARCHIVE, `${gate.repository}-run${n}-screenshots`);
+  if (existsSync(archiveGate) || existsSync(archiveShots)) {
+    throw new Error(`Refusing to overwrite existing archive run ${n} for ${gate.repository}`);
+  }
+  writeFileSync(archiveGate, JSON.stringify(gate, null, 1) + "\n");
   const stale = readdirSync(SHOTS).filter((f) => f.startsWith(`${gate.repository}-q`));
   if (stale.length) {
-    const dir = join(ARCHIVE, `${gate.repository}-run${n}-screenshots`);
-    mkdirSync(dir, { recursive: true });
-    for (const f of stale) renameSync(join(SHOTS, f), join(dir, f));
+    mkdirSync(archiveShots);
+    for (const f of stale) renameSync(join(SHOTS, f), join(archiveShots, f));
   }
   console.log(`Archived the previous capture as ${gate.repository}-run${n}.`);
 }
@@ -144,10 +229,10 @@ async function readEvidence() {
   // The panel carries aria-busy while retrieval is in flight; the heading changes when done.
   await page
     .locator('section[aria-label="Evidence"][aria-busy="true"]')
-    .waitFor({ state: "detached", timeout: 120_000 })
-    .catch(() => {});
+    .waitFor({ state: "detached", timeout: 120_000 });
 
   const heading = (await panel.locator("h3").first().innerText().catch(() => "")).trim();
+  if (!heading) throw new Error("Evidence panel appeared without a heading");
   const rows = await panel.locator("ol > li summary").all();
   const retrieved = [];
   for (const row of rows) {
@@ -162,9 +247,15 @@ async function readEvidence() {
   // having appeared. Anchor on the containing block instead.
   const unverified = await panel
     .locator('div:has(> header h3:text-matches("Unverified mentions")) ul li')
-    .allInnerTexts()
-    .catch(() => []);
+    .allInnerTexts();
   const coverage = (await panel.locator("> p").last().innerText().catch(() => "")).trim();
+  const expectedRetrieved = Number(heading.match(/Evidence · (\d+) files? retrieved/)?.[1] ?? 0);
+  if (expectedRetrieved !== retrieved.length) {
+    throw new Error(
+      `Evidence heading reports ${expectedRetrieved} files but ${retrieved.length} rows were captured`
+    );
+  }
+  if (!coverage) throw new Error("Evidence panel appeared without a coverage statement");
   return { heading, retrieved, unverified: unverified.map((u) => u.replace(/\s+/g, " ").trim()), coverage };
 }
 
@@ -177,9 +268,9 @@ async function readEvidence() {
  * *visible*, so on a clipped element it reports the clipped height and the shot is the same
  * size as before. Both attempts produced a plausible-looking image that stopped mid-answer.
  *
- * So the clipping is removed rather than worked around. Every scrolling ancestor of the answer
- * has its overflow and height constraints lifted, the viewport is grown to the resulting
- * document height, and the styles are restored afterwards.
+ * So the clipping is removed rather than worked around. Every clipped descendant and scrolling
+ * ancestor of the answer has its overflow and height constraints lifted, and the styles are
+ * restored afterwards. Checking ancestors alone misses content clipped inside a child.
  *
  * The check at the end is the part that matters. It compares scroll height to client height on
  * the same elements after the override: if anything can still scroll, content is still hidden,
@@ -192,30 +283,40 @@ async function captureFullAnswer(answerPanel, path) {
     return { complete: false, reason: "answer element not found" };
   }
 
-  const before = await page.evaluate((el) => {
+  await page.evaluate((el) => {
     const saved = [];
+    const descendants = Array.from(el.querySelectorAll("*")).reverse();
+    const ancestors = [];
     for (let node = el; node && node !== document.documentElement; node = node.parentElement) {
+      ancestors.push(node);
+    }
+    const candidates = [...new Set([...descendants, ...ancestors])];
+    for (const node of candidates) {
       const css = getComputedStyle(node);
-      const scrolls = /auto|scroll|hidden/.test(css.overflowY) && node.scrollHeight > node.clientHeight + 1;
+      const hidden = node.scrollHeight > node.clientHeight + 1;
+      const clips = /auto|scroll|hidden|clip/.test(css.overflowY);
       const capped = css.maxHeight !== "none" || css.height !== "auto";
-      if (!scrolls && !capped) continue;
+      if (!hidden || (!clips && !capped)) continue;
       saved.push({ node, overflowY: node.style.overflowY, maxHeight: node.style.maxHeight, height: node.style.height });
       node.style.overflowY = "visible";
       node.style.maxHeight = "none";
       node.style.height = "auto";
     }
     window.__gateRestore = saved;
-    return document.documentElement.scrollHeight;
+    return saved.length;
   }, handle);
 
-  const height = Math.min(12000, Math.max(900, Math.ceil(before) + 80));
-  await page.setViewportSize({ width: 1440, height });
   await page.waitForTimeout(250);
   await page.screenshot({ path, fullPage: true });
 
   const leftover = await page.evaluate((el) => {
     let worst = null;
+    const descendants = Array.from(el.querySelectorAll("*")).reverse();
+    const ancestors = [];
     for (let node = el; node && node !== document.documentElement; node = node.parentElement) {
+      ancestors.push(node);
+    }
+    for (const node of new Set([...descendants, ...ancestors])) {
       const hidden = node.scrollHeight - node.clientHeight;
       if (hidden > 4 && (!worst || hidden > worst.hidden)) {
         worst = { hidden, tag: node.tagName.toLowerCase(), cls: (node.className || "").toString().slice(0, 40) };
@@ -231,7 +332,6 @@ async function captureFullAnswer(answerPanel, path) {
   }, handle);
 
   await handle.dispose();
-  await page.setViewportSize({ width: 1440, height: 900 });
 
   return leftover
     ? { complete: false, reason: `${leftover.hidden}px still hidden in <${leftover.tag} class="${leftover.cls}">` }
@@ -246,17 +346,48 @@ for (const { id, question } of questions) {
 
   const answerPanel = page.locator('p:text-is("Your question") + h1 + div:not([aria-busy])').first();
   await answerPanel.waitFor({ timeout: 180_000 });
+  const generationStatus = await answerPanel.getAttribute("data-generation-status");
+  const finishReason = await answerPanel.getAttribute("data-finish-reason");
+  const promptTokenCount = await answerPanel.getAttribute("data-prompt-token-count");
+  const outputTokenCount = await answerPanel.getAttribute("data-output-token-count");
+  const totalTokenCount = await answerPanel.getAttribute("data-total-token-count");
+  if (generationStatus !== "complete" || finishReason !== "STOP") {
+    const visible = (await answerPanel.innerText()).replace(/\s+/g, " ").trim().slice(0, 240);
+    throw new Error(
+      `Q${id} generation incomplete: status=${generationStatus ?? "missing"}, ` +
+        `finishReason=${finishReason ?? "missing"}, answer=${JSON.stringify(visible)}`
+    );
+  }
   const evidence = await readEvidence();
 
   // Take the answer body only, not the panel chrome, so the recorded text is what a reader saw.
   const answer = (await answerPanel.innerText()).trim();
+  if (!answer) throw new Error(`Q${id} completed with a blank answer`);
   const shot = join(SHOTS, `${gate.repository}-q${String(id).padStart(2, "0")}.png`);
   const shotCheck = await captureFullAnswer(answerPanel, shot);
   if (!shotCheck.complete) {
-    console.log(`\n  ! Q${id} screenshot may be truncated: ${shotCheck.reason}`);
+    const message = `Q${id} screenshot may be truncated: ${shotCheck.reason}`;
+    console.error(`\n  ! ${message}`);
+    throw new Error(message);
   }
 
-  results.push({ id, question, answer, ...evidence, screenshot: shot });
+  results.push({
+    id,
+    question,
+    answer,
+    ...evidence,
+    screenshot: shot,
+    screenshotComplete: true,
+    generation: {
+      status: generationStatus,
+      finishReason,
+      usageMetadata: {
+        promptTokenCount: promptTokenCount === null ? null : Number(promptTokenCount),
+        candidatesTokenCount: outputTokenCount === null ? null : Number(outputTokenCount),
+        totalTokenCount: totalTokenCount === null ? null : Number(totalTokenCount),
+      },
+    },
+  });
   console.log(`${evidence.retrieved.length} files, ${answer.length} chars`);
 
   // Return to a clean state so the next question is not answered against a stale panel.
@@ -277,8 +408,11 @@ for (const item of gate.items) {
   item.toolUnverifiedMentions = captured.unverified;
   item.toolCoverage = captured.coverage;
   item.toolScreenshot = captured.screenshot;
-  // `correct` is deliberately untouched. Marking is the researcher's, and a script that
-  // pre-filled it would be scoring the tool against itself.
+  item.toolScreenshotComplete = captured.screenshotComplete;
+  item.toolGeneration = captured.generation;
+  // A fresh answer invalidates any verdict on the previous one. That previous verdict remains
+  // in the archived run; the new capture is deliberately unmarked for the researcher.
+  item.correct = null;
 }
 gate.capturedFrom = APP;
 gate.capturedRepository = REPO;
@@ -287,12 +421,13 @@ gate.capturedRepository = REPO;
 gate.groundTruthProvenance = flag("force")
   ? "Run with --force: ground truth was not settled at capture time."
   : flag("accept-tool-verified")
-    ? "Ground truth verified by machine review (caller counts, re-counted quantifiers, " +
-      "mechanically validated citations) rather than read line by line by the researcher. " +
+    ? "Ground truth verified by machine review (caller counts, re-counted quantifiers, and a " +
+      "citation checker that reported zero failures; NOTE results were not structurally " +
+      "validated) rather than read line by line by the researcher. " +
       "Disclose in the methodology; see study/AI-DISCLOSURE.md."
     : "Ground truth confirmed by the researcher before capture.";
 
 writeFileSync(GATE, JSON.stringify(gate, null, 1) + "\n");
 console.log(`\nWrote ${results.length} answers into ${GATE}.`);
 console.log(`Screenshots in ${SHOTS}/.`);
-console.log("`correct` is still null on every item — that is yours to fill in.");
+console.log("`correct` is null on every item — the fresh answers must be marked by the researcher.");

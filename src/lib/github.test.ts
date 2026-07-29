@@ -1,7 +1,11 @@
-import { describe, it, expect } from 'vitest';
-import { partitionTreeFiles } from './github';
+import { afterEach, describe, it, expect, vi } from 'vitest';
+import { fetchRepositoryProject, partitionTreeFiles } from './github';
 
 const blob = (path: string, size = 100) => ({ path, type: 'blob' as const, size });
+
+afterEach(() => {
+  vi.restoreAllMocks();
+});
 
 describe('partitionTreeFiles', () => {
   it('indexes supported source files', () => {
@@ -73,5 +77,45 @@ describe('partitionTreeFiles — vendored directories', () => {
   it('does not exclude source files whose names contain an ignored word', () => {
     const { included } = partitionTreeFiles([blob('src/utils/distance.ts'), blob('src/lib/builder.ts')]);
     expect(included).toHaveLength(2);
+  });
+});
+
+describe('fetchRepositoryProject', () => {
+  it('removes unreadable files from the returned corpus while recording their exclusion', async () => {
+    vi.spyOn(globalThis, 'fetch').mockImplementation(async (input) => {
+      const url = String(input);
+      if (url.endsWith('/repos/example/project')) {
+        return new Response(JSON.stringify({
+          name: 'project',
+          owner: { login: 'example' },
+          description: null,
+          language: 'TypeScript',
+          default_branch: 'main',
+        }), { status: 200 });
+      }
+      if (url.includes('/git/trees/main')) {
+        return new Response(JSON.stringify({
+          tree: [blob('src/app.ts'), blob('src/unreadable.ts')],
+          truncated: false,
+        }), { status: 200 });
+      }
+      if (url.endsWith('/src/app.ts')) {
+        return new Response('export const app = true;', { status: 200 });
+      }
+      if (url.endsWith('/src/unreadable.ts')) {
+        return new Response('failed', { status: 500 });
+      }
+      throw new Error(`Unexpected URL ${url}`);
+    });
+
+    const project = await fetchRepositoryProject('https://github.com/example/project');
+
+    expect(project.files.map((file) => file.path)).toEqual(['src/app.ts']);
+    expect(project.ingestion?.includedFiles).toBe(2);
+    expect(project.ingestion?.filesWithContent).toBe(1);
+    expect(project.ingestion?.excluded).toContainEqual({
+      path: 'src/unreadable.ts',
+      reason: 'Could not be read',
+    });
   });
 });

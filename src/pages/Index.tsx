@@ -39,6 +39,10 @@ import { searchRepository, selectExcerptRegion, SearchResult } from "@/lib/seman
 import { detectCodeBlock } from "@/lib/blockDetector";
 import RepositoryOverview from "@/components/RepositoryOverview";
 import { analyzeProject } from "@/lib/projectAnalyzer";
+import {
+  consumeGenerationStream,
+  type GenerationCompleteEvent,
+} from "@/lib/generationProtocol";
 
 interface RecentRepoItem {
   name: string;
@@ -136,6 +140,10 @@ const Index = () => {
   const [qaAnswer, setQaAnswer] = useState("");
   const [qaEvidence, setQaEvidence] = useState<RetrievedEvidence[]>([]);
   const [isQaLoading, setIsQaLoading] = useState(false);
+  const [qaGenerationStatus, setQaGenerationStatus] = useState<
+    'idle' | 'loading' | 'complete' | 'error'
+  >('idle');
+  const [qaCompletion, setQaCompletion] = useState<GenerationCompleteEvent | null>(null);
 
   const [githubUrl, setGithubUrl] = useState("");
   const [recentRepos, setRecentRepos] = useState<RecentRepoItem[]>([]);
@@ -242,6 +250,8 @@ const Index = () => {
     setWorkspaceView('qa');
     setQaQuestion(questionText);
     setIsQaLoading(true);
+    setQaGenerationStatus('loading');
+    setQaCompletion(null);
     setQaAnswer("");
     setQaEvidence([]);
 
@@ -275,6 +285,7 @@ const Index = () => {
             endLine: region.endLine,
             totalLines: region.totalLines,
             omittedLines: region.omittedLines,
+            omittedCharacters: region.omittedCharacters,
           });
         }
       });
@@ -302,30 +313,42 @@ const Index = () => {
         })
       });
 
-      if (!response.ok) throw new Error('Streaming failed');
+      if (!response.ok) {
+        const failure = await response.json().catch(() => ({}));
+        throw new Error(failure.error || `Generation request failed (${response.status})`);
+      }
 
-      const reader = response.body?.getReader();
-      const decoder = new TextDecoder();
-      if (!reader) throw new Error('Response body was empty');
+      if (!response.body) throw new Error('Response body was empty');
 
       let fullText = "";
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
-        // stream: true keeps a multi-byte character split across chunk boundaries intact;
-        // without it such characters decode to U+FFFD in the answer the participant reads.
-        fullText += decoder.decode(value, { stream: true });
+      const completion = await consumeGenerationStream(response.body, (text) => {
+        fullText += text;
         setQaAnswer(fullText);
-      }
-      fullText += decoder.decode();
+      });
+      if (!fullText.trim()) throw new Error('Generation completed without an answer');
+
       setQaAnswer(fullText);
+      setQaCompletion(completion);
+      setQaGenerationStatus('complete');
       // The evidence count is recorded with the timing so an ungrounded answer is
       // identifiable in the exported metrics rather than indistinguishable from a
       // grounded one.
-      recordMetric('qa_response', performance.now() - qaStart, `question ${questionText.length} chars, ${evidenceFileCount} evidence files`);
+      const outputTokens = completion.usageMetadata?.candidatesTokenCount;
+      recordMetric(
+        'qa_response',
+        performance.now() - qaStart,
+        `question ${questionText.length} chars, ${evidenceFileCount} evidence files, ` +
+          `finish ${completion.finishReason}, output tokens ${outputTokens ?? 'unknown'}`
+      );
     } catch (error) {
       console.error("QA error:", error);
-      setQaAnswer("I'm sorry, I encountered an error communicating with the AI service. Please verify server keys and try again.");
+      setQaGenerationStatus('error');
+      setQaCompletion(null);
+      setQaAnswer(
+        `Answer generation did not complete: ${
+          error instanceof Error ? error.message : 'unknown generation error'
+        }. Please try again.`
+      );
     } finally {
       setIsQaLoading(false);
     }
@@ -740,6 +763,8 @@ const Index = () => {
                            question={qaQuestion}
                            answer={qaAnswer}
                            isLoading={isQaLoading}
+                           generationStatus={qaGenerationStatus}
+                           completion={qaCompletion}
                            evidence={qaEvidence}
                            excludedPaths={excludedPathReasons}
                            indexedFileCount={project.ingestion?.filesWithContent ?? project.files.length}

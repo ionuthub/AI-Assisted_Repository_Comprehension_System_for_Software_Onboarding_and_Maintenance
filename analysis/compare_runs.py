@@ -18,6 +18,7 @@ Usage:
     python3 compare_runs.py --self-test
 """
 import json
+import re
 import sys
 from difflib import SequenceMatcher
 from pathlib import Path
@@ -31,19 +32,37 @@ def evidence_key(item: dict) -> list[tuple]:
     return [(e.get("rank"), e.get("path"), e.get("score")) for e in item.get("toolEvidence") or []]
 
 
+PATH_RE = re.compile(r"\bsrc/[\w./-]+\.\w+")
+
+
+def paths_named(item: dict) -> set:
+    """
+    Source files the answer names.
+
+    Textual similarity is a poor measure of whether two answers say the same thing: the same
+    claim rephrased scores low, and two different claims in the same house style score high.
+    For a question of the form "where does X happen", the set of files named is much closer to
+    the actual content of the answer, and it is what marking turns on.
+    """
+    return set(PATH_RE.findall(item.get("toolAnswer") or ""))
+
+
 def compare(a_path: Path, b_path: Path) -> bool:
     a, b = json.loads(a_path.read_text()), json.loads(b_path.read_text())
     a_items = {i["id"]: i for i in a["items"]}
     b_items = {i["id"]: i for i in b["items"]}
 
     print(f"{a_path.name}  ->  {b_path.name}\n")
-    print(" Q   answer   retrieval   note")
-    retrieval_drift, ratios = [], []
+    print(" Q   wording   files named   retrieval   note")
+    retrieval_drift, ratios, overlaps = [], [], []
 
     for qid in sorted(set(a_items) | set(b_items)):
         ia, ib = a_items.get(qid, {}), b_items.get(qid, {})
         ratio = similarity(ia.get("toolAnswer", ""), ib.get("toolAnswer", ""))
         ratios.append(ratio)
+        pa, pb = paths_named(ia), paths_named(ib)
+        overlap = len(pa & pb) / len(pa | pb) if (pa | pb) else 1.0
+        overlaps.append(overlap)
         same_evidence = evidence_key(ia) == evidence_key(ib)
         if not same_evidence:
             retrieval_drift.append(qid)
@@ -57,12 +76,14 @@ def compare(a_path: Path, b_path: Path) -> bool:
             if not before and after:
                 notes.append(f"{field} now captured")
         print(
-            f"{qid:3d}   {ratio:5.0%}    {'same' if same_evidence else 'DIFFERENT':9}   "
-            f"{'; '.join(notes)}"
+            f"{qid:3d}   {ratio:5.0%}     {overlap:5.0%}       "
+            f"{'same' if same_evidence else 'DIFFERENT':9}   {'; '.join(notes)}"
         )
 
     mean = sum(ratios) / len(ratios) if ratios else 0
-    print(f"\nMean answer similarity: {mean:.0%}")
+    mean_paths = sum(overlaps) / len(overlaps) if overlaps else 0
+    print(f"\nMean wording similarity: {mean:.0%}")
+    print(f"Mean overlap in files named: {mean_paths:.0%}  <- the substantive measure")
     print(
         "Retrieval identical on every question."
         if not retrieval_drift
@@ -72,7 +93,10 @@ def compare(a_path: Path, b_path: Path) -> bool:
     if mean < 1.0:
         print(
             "\nAnswer wording differs between runs. Report the run of record and note that the\n"
-            "generation step is not deterministic; the marking applies to the recorded answers."
+            "generation step is not deterministic; the marking applies to the recorded answers.\n"
+            "Wording similarity is the weaker signal — two runs can say the same thing in very\n"
+            "different words. Overlap in the files named is the one to quote when arguing that a\n"
+            "single run's marking would have held."
         )
     return not retrieval_drift
 

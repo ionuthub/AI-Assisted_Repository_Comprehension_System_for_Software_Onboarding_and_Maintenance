@@ -107,7 +107,11 @@ mkdirSync(SHOTS, { recursive: true });
 const ARCHIVE = "study/gate-runs";
 if (gate.items.some((i) => i.toolAnswer)) {
   mkdirSync(ARCHIVE, { recursive: true });
-  const previous = readdirSync(ARCHIVE).filter((f) => f.startsWith(`${gate.repository}-run`));
+  // Count archived captures, not archived files: each run leaves a .json *and* a screenshot
+  // directory, so counting both made the second run number itself three.
+  const previous = readdirSync(ARCHIVE).filter(
+    (f) => f.startsWith(`${gate.repository}-run`) && f.endsWith(".json")
+  );
   const n = previous.length + 1;
   writeFileSync(join(ARCHIVE, `${gate.repository}-run${n}.json`), JSON.stringify(gate, null, 1) + "\n");
   const stale = readdirSync(SHOTS).filter((f) => f.startsWith(`${gate.repository}-q`));

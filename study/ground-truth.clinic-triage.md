@@ -17,16 +17,23 @@ Each question carries a status:
   it.
 - **NOT CHECKED** — draft only. Not ground truth.
 
-Progress: **0 confirmed. 10 verified by tool, 2 corrected and awaiting re-check.** Nothing here
+Progress: **0 confirmed. 9 verified by tool, 3 corrected and awaiting re-check.** Nothing here
 has yet been read and signed off by the researcher, which is the only status that permits the
 gate to run.
 
-A note on the retraction in Q7, because it is the useful one. The second pass explained the
-inert clinician preference by saying a trailing sort destroyed it. Challenged, that explanation
-proved wrong — the seed data gives every clinician's Nth slot an identical timestamp, so ties
-are universal and a stable sort would have preserved the preference completely. The conclusion
-held; the reason given for it did not. An answer can be right for a reason that is wrong, and
-only a question aimed at the reason will find it.
+A note on Q7, because it is the useful one. Its conclusion — the clinician preference never
+operates — has survived every pass. The *reason* given for it has now been wrong twice. The
+first attempt said a trailing sort destroyed the preference; it does not. The second said the
+comparison across clinicians is always a tie; it is not, because a slot's service is
+`person[3][slotIndex % person[3].length]`, so clinicians with different service counts offer a
+matching slot at different indices and collide only where those indices coincide. An answer can
+be right for a reason that is wrong, and a wrong reason can survive being corrected once.
+
+Both wrong reasons were written while correcting something else. That is the pattern worth
+carrying into the sign-off: every defect found in the most recent pass sat in text added or
+strengthened by the previous one, and each was an absolute introduced in the course of sounding
+more rigorous. When correcting an answer, fix the false thing and add the missing thing, and
+leave the scope of everything else exactly as it was. Corrections should make claims narrower.
 
 ## How to check an answer
 
@@ -65,16 +72,15 @@ To validate every line reference in this file, from the artefact repository:
 
 The cross-check found a consistent gap in the original drafts: they described what the code
 *declares* and under-reported where the declared intent never reaches the running application.
-Five instances, all verified — the API pipeline is never loaded, the continuity finder's
+Six instances, all verified — the API pipeline is never loaded, the continuity finder's
 clinician preference is never supplied, the calculated priority band is always overridden by
-the interface, a set written by the scheduling listener is never read, and the store's
-`setPriority` action has no callers at all.
+the interface, a set written by the scheduling listener is never read, `reserveSlot` has no
+callers, and the store's `setPriority` action has none either.
 
-The fifth was found late, by a third review, and it had been written into two answers as
-though it were a live path. That is worth recording rather than quietly fixing: this file's
-own summary announced that it had gone looking for exactly this class of thing and declared
-the search complete at four. A stated intention to look for a kind of error is not the same as
-having found all of them.
+This count has now been wrong twice, stopping at four and then at five while the answers
+themselves documented more. Both times the omission was found by someone re-counting rather
+than re-reading. A stated intention to look for a kind of error is not the same as having found
+all of them, and a summary that enumerates is a quantifier like any other.
 
 Those facts are now in the answers, which raises the standard the tool is being measured
 against. A tool that sees three files of 2,500 characters cannot perform reachability analysis
@@ -86,8 +92,7 @@ would have been against the original drafts, and say so when reporting it.
 
 ## Q1 — orientation
 
-**Status: CROSS-CHECKED — corrected 29 July, awaiting re-check. A false universal about
-module reads was removed.**
+**Status: VERIFIED BY TOOL — 29 July, caller-counted.**
 
 > Where does execution start in this project?
 
@@ -120,7 +125,8 @@ not about the modules elsewhere in the application.
 
 ## Q2 — config-driven behaviour
 
-**Status: VERIFIED BY TOOL — 29 July, caller-counted.**
+**Status: CROSS-CHECKED — corrected 29 July, awaiting re-check. The previous correction
+introduced an absolute that did not survive; this one narrows rather than strengthens.**
 
 > How is a referral given its priority band?
 
@@ -141,6 +147,7 @@ src/store/useClinicStore.ts:61
 src/store/useClinicStore.ts:94-107
 src/pages/ReferralDetailPage.tsx:26-28
 src/pages/ReferralDetailPage.tsx:49
+src/pages/ReferralDetailPage.tsx:96-104
 
 **Notes**
 
@@ -157,17 +164,23 @@ state to `referral?.priority ?? "green"` and passes it unconditionally to `accep
 override is therefore never `undefined`, so `calculateBand` never determines a stored band
 through the UI. Its result reaches the operator only as a suggestion in `PriorityPanel`.
 
-The store exposes a `setPriority` action that would change a stored band after acceptance, and
-nothing calls it. `grep -rn setPriority src` returns four lines: the interface declaration, the
+A band *can* be changed after acceptance, but not through the action named for it. The Accept
+button is relabelled "Update priority" whenever the status is not `incoming`, stays enabled
+until the referral is booked, and calls `acceptReferral` again with the panel's current
+selection — which stores the new band, re-runs `checkEligibility`, re-emits `referral:accepted`
+and writes an audit entry reading "Referral accepted" for what the interface called an update.
+
+The store also exposes a `setPriority` action for the same purpose, and nothing calls it. `grep -rn setPriority src` returns four lines: the interface declaration, the
 implementation, and two in `ReferralDetailPage` that are the component's own `useState` setter,
 not the store action — a name collision, and the reason an earlier version of this answer
-presented the action as a live path.
+presented the action as a live path. Striking the clause outright then went too far in the
+other direction, implying nothing re-bands after acceptance when the Accept button does.
 
-The absence was confirmed by enumeration rather than by the grep alone. `useClinicStore` appears on
-twenty-seven lines across seven files — five pages, `Layout` and `eligibility.test.ts` — and no
-selector and no `getState()` call among them reaches `state.setPriority`. (A count of distinct
-references rather than matching lines gives fifteen; both routes agree that none is the one in
-question.) The audit entry the
+The absence was confirmed by enumeration rather than by the grep alone. `useClinicStore` appears
+on twenty-seven lines across seven files — `eligibility.test.ts` (9), `ReferralDetailPage` (6),
+`AuditLogPage` (3), `ClinicianOverviewPage` (3), `Layout` (3), `ReferralListPage` (2), and the
+store's own definition (1) — of which sixteen are `state.` or `getState().` member references.
+None reaches `state.setPriority`. The audit entry the
 action writes, "Priority changed", can therefore never appear in the application.
 
 ---
@@ -310,7 +323,8 @@ operation.
 
 ## Q7 — legacy path
 
-**Status: VERIFIED BY TOOL — 29 July, caller-counted.**
+**Status: CROSS-CHECKED — corrected 29 July, awaiting re-check. The previous correction
+introduced an absolute that did not survive; this one narrows rather than strengthens.**
 
 > Which slot-finding implementation runs for a follow-up referral, and why that one?
 
@@ -340,10 +354,13 @@ misleading comment as the Internet Explorer shim in Q1.
 
 The clinician preference never operates, but not because of the trailing sort. `startsAt` is
 derived from `slotIndex` alone in the seed data — `clinicianIndex` affects only
-`durationMinutes` — so every clinician's Nth slot carries an identical timestamp. Slots at
-different indices still differ in time; what matters is that the comparison across clinicians
-is always a tie, and `Array.prototype.sort` is stable. The preference at lines 14-18 would
-therefore survive the sort at line 24 intact.
+`durationMinutes` — so two clinicians' slots at the same index carry an identical timestamp. A
+slot's service is `person[3][slotIndex % person[3].length]`, though, so clinicians offering
+different numbers of services match a given service at different indices and coincide only
+sometimes: for a Cardiology referral, `c1` contributes indices 0, 2, 4 and 6 while `c4`
+contributes 2 and 5, so one pair out of six ties. Ties arise only where two clinicians both
+offer a matching slot at the same index; `sort` is stable, so the preference survives those and
+never gets a chance to matter elsewhere, where the earlier time simply wins.
 
 What makes it inert is that `preferredClinicianId` is `referral.assignedClinicianId`, and that
 field is undefined at every call site in the repository. It appears three times in `src/`: the
@@ -399,8 +416,7 @@ listener writes to a set nothing reads.
 
 ## Q9 — applied
 
-**Status: CROSS-CHECKED — the CSS claim was already corrected before the caller-count pass
-saw it; awaiting re-check against the current wording.**
+**Status: VERIFIED BY TOOL — 29 July, caller-counted.**
 
 > Where would a new referral type be added, and what else would need changing?
 
@@ -430,7 +446,9 @@ src/triage/routes/routine.ts:1-11
 src/tests/registry.test.ts:7-8
 src/pages/ReferralListPage.tsx:84-87
 src/styles.css:682-691
+src/styles.css:692-702
 src/styles.css:936-939
+src/styles.css:940-951
 
 **Notes**
 
@@ -447,7 +465,8 @@ type uses. The badge collides; the dot is merely meaningless.
 
 ## Q10 — applied
 
-**Status: VERIFIED BY TOOL — 29 July, caller-counted.**
+**Status: CROSS-CHECKED — corrected 29 July, awaiting re-check. The previous correction
+introduced an absolute that did not survive; this one narrows rather than strengthens.**
 
 > If the priority rules changed, what else would be affected?
 
@@ -494,13 +513,19 @@ preselected from it.
 `calculateBand` does determine a stored band in exactly one place in the repository:
 `eligibility.test.ts:11` calls `acceptReferral` without the override argument. No UI path does.
 
-No seed referral carries a `priority` at all — `grep -c priority src/data/seed.ts` returns
-zero — so `referral?.priority ?? "green"` resolves to `"green"` for every referral in the
-application, not merely for unbanded ones. Accepting without touching the panel therefore
-always stores green.
+No seed referral carries a `priority`, so on a first visit `referral?.priority ?? "green"`
+resolves to green and an operator who presses Accept without touching the panel stores green
+even when the suggestion is red. That is as far as the claim goes. The `useState` initialiser
+runs once per mount, so after a band has been stored, navigating away and back re-seeds the
+local state from it.
+
+(The supporting grep is case-sensitive: `grep -ci priority src/data/seed.ts` returns 1, matching
+an audit fixture reading "Priority set to green". The conclusion stands on the referral
+fixtures, not on the command.)
 
 An earlier version of this Note claimed `setPriority` offered another route to a stored band.
-It does not: the store action has no callers. See Q2.
+It does not: the store action has no callers, and the route that does exist is the Accept
+button. See Q2.
 
 ---
 

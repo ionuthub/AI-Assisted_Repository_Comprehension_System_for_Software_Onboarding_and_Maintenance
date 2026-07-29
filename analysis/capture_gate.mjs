@@ -131,8 +131,12 @@ async function readEvidence() {
     const m = text.match(/^(\d+)\s+(\S+)\s+([\d.]+)$/);
     retrieved.push(m ? { rank: +m[1], path: m[2], score: +m[3] } : { raw: text });
   }
+  // The heading sits inside a <header>, so the list is a sibling of that header and not of
+  // the <h3>. A `h3 ~ ul` selector therefore never matches and silently reports zero unverified
+  // mentions on every question — which is indistinguishable in the output from the panel not
+  // having appeared. Anchor on the containing block instead.
   const unverified = await panel
-    .locator('h3:has-text("Unverified mentions") ~ ul li')
+    .locator('div:has(> header h3:text-matches("Unverified mentions")) ul li')
     .allInnerTexts()
     .catch(() => []);
   const coverage = (await panel.locator("> p").last().innerText().catch(() => "")).trim();
@@ -152,7 +156,16 @@ for (const { id, question } of questions) {
   // Take the answer body only, not the panel chrome, so the recorded text is what a reader saw.
   const answer = (await answerPanel.innerText()).trim();
   const shot = join(SHOTS, `${gate.repository}-q${String(id).padStart(2, "0")}.png`);
+  // fullPage does not help here: the answer sits in a container that scrolls internally, so the
+  // document itself is only ever one viewport tall and the capture stops mid-answer. Grow the
+  // viewport to the answer's own height first, so the whole thing is on screen when the shot is
+  // taken. The recorded text was always complete — innerText ignores scroll — but a screenshot
+  // that shows two thirds of an answer is not appendix evidence.
+  const box = await answerPanel.boundingBox().catch(() => null);
+  const needed = Math.min(4000, Math.ceil((box?.height ?? 0) + 400));
+  if (needed > 900) await page.setViewportSize({ width: 1440, height: needed });
   await page.screenshot({ path: shot, fullPage: true });
+  await page.setViewportSize({ width: 1440, height: 900 });
 
   results.push({ id, question, answer, ...evidence, screenshot: shot });
   console.log(`${evidence.retrieved.length} files, ${answer.length} chars`);
@@ -173,6 +186,7 @@ for (const item of gate.items) {
   item.toolEvidence = captured.retrieved;
   item.toolEvidenceHeading = captured.heading;
   item.toolUnverifiedMentions = captured.unverified;
+  item.toolCoverage = captured.coverage;
   item.toolScreenshot = captured.screenshot;
   // `correct` is deliberately untouched. Marking is the researcher's, and a script that
   // pre-filled it would be scoring the tool against itself.

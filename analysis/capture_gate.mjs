@@ -21,7 +21,7 @@
  * reaches the write-up instead of being reconstructed by a marker.
  *
  * Usage:
- *   node analysis/capture_gate.mjs --repo https://github.com/ionuthub/Repo-B \
+ *   node analysis/capture_gate.mjs --repo https://github.com/ionuthub/clinic-triage \
  *                                 --gate study/accuracy-gate.clinic-triage.json \
  *                                 --truth study/ground-truth.clinic-triage.md
  *

@@ -23,12 +23,12 @@ Install once:
 Then, per repository:
 
     node analysis/capture_gate.mjs \
-      --repo https://github.com/ionuthub/Repo-B \
+      --repo https://github.com/ionuthub/clinic-triage \
       --gate study/accuracy-gate.clinic-triage.json \
       --truth study/ground-truth.clinic-triage.md
 
     node analysis/capture_gate.mjs \
-      --repo https://github.com/ionuthub/Repo-A \
+      --repo https://github.com/ionuthub/warehouse-dispatch \
       --gate study/accuracy-gate.warehouse-dispatch.json \
       --truth study/ground-truth.warehouse-dispatch.md
 

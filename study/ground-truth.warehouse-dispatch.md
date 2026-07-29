@@ -2,6 +2,9 @@
 
 **This is the list of correct answers for the accuracy gate.** Twelve questions.
 
+Verified against `ionuthub/warehouse-dispatch` at `937be9d`. If that repository moves, these answers
+describe a commit it no longer has, and the line references will drift first.
+
 Each question carries a status:
 
 - **CONFIRMED** — the researcher has read the code and signed it off. Usable.
@@ -84,7 +87,7 @@ cannot be unseen, and the gate stops measuring anything.
 
 To validate every line reference in this file:
 
-    python3 analysis/check_citations.py study/ground-truth.warehouse-dispatch.md /path/to/Repo-A
+    python3 analysis/check_citations.py study/ground-truth.warehouse-dispatch.md /path/to/warehouse-dispatch
 
 ---
 

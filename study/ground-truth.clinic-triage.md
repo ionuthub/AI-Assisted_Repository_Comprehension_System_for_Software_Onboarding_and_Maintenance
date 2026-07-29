@@ -2,6 +2,9 @@
 
 **This is the list of correct answers for the accuracy gate.** Twelve questions.
 
+Verified against `ionuthub/clinic-triage` at `67d7a5a`. If that repository moves, these answers
+describe a commit it no longer has, and the line references will drift first.
+
 Each question carries a status:
 
 - **CONFIRMED** — the researcher has read the code and signed it off. Usable.
@@ -71,7 +74,7 @@ cannot be unseen, and the gate stops measuring anything.
 
 To validate every line reference in this file, from the artefact repository:
 
-    python3 analysis/check_citations.py study/ground-truth.clinic-triage.md /path/to/Repo-B
+    python3 analysis/check_citations.py study/ground-truth.clinic-triage.md /path/to/clinic-triage
 
 ## A note on what these answers now assert
 

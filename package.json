@@ -14,7 +14,10 @@
     "test:coverage": "vitest run --coverage",
     "test:e2e": "playwright test",
     "test": "npm run test:unit -- run && npm run test:e2e",
-    "typecheck": "tsc -p tsconfig.app.json --noEmit && tsc -p tsconfig.api.json --noEmit"
+    "typecheck": "tsc -p tsconfig.app.json --noEmit && tsc -p tsconfig.api.json --noEmit",
+    "gate:clinic": "node analysis/capture_gate.mjs --repo https://github.com/ionuthub/clinic-triage --gate study/accuracy-gate.clinic-triage.json --truth study/ground-truth.clinic-triage.md --accept-tool-verified",
+    "gate:warehouse": "node analysis/capture_gate.mjs --repo https://github.com/ionuthub/warehouse-dispatch --gate study/accuracy-gate.warehouse-dispatch.json --truth study/ground-truth.warehouse-dispatch.md --accept-tool-verified",
+    "gate:score": "python3 analysis/accuracy_gate.py study/accuracy-gate.clinic-triage.json study/accuracy-gate.warehouse-dispatch.json"
   },
   "dependencies": {
     "@babel/standalone": "^7.29.0",
@@ -82,6 +85,7 @@
     "eslint-plugin-react-refresh": "^0.4.20",
     "globals": "^15.15.0",
     "jsdom": "^27.4.0",
+    "playwright": "^1.57.0",
     "postcss": "^8.5.6",
     "tailwindcss": "^3.4.17",
     "terser": "^5.44.0",

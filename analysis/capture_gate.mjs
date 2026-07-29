@@ -33,6 +33,7 @@
 import { chromium } from "playwright";
 import { readFileSync, writeFileSync, mkdirSync, existsSync, renameSync, readdirSync } from "node:fs";
 import { join } from "node:path";
+import { execFileSync } from "node:child_process";
 
 const argv = process.argv.slice(2);
 const arg = (name, fallback) => {
@@ -94,6 +95,10 @@ const REPO = arg("repo");
 const GATE = arg("gate");
 const TRUTH = arg("truth");
 const SHOTS = "study/gate-screenshots";
+const TOOL_VERSION = arg(
+  "tool-version",
+  execFileSync("git", ["rev-parse", "--short", "HEAD"], { encoding: "utf8" }).trim()
+);
 
 if (!REPO || !GATE) {
   console.error("Need --repo and --gate. See the comment at the top of this file.");
@@ -297,10 +302,35 @@ async function captureFullAnswer(answerPanel, path) {
       const clips = /auto|scroll|hidden|clip/.test(css.overflowY);
       const capped = css.maxHeight !== "none" || css.height !== "auto";
       if (!hidden || (!clips && !capped)) continue;
-      saved.push({ node, overflowY: node.style.overflowY, maxHeight: node.style.maxHeight, height: node.style.height });
+      saved.push({
+        node,
+        overflowY: node.style.overflowY,
+        maxHeight: node.style.maxHeight,
+        minHeight: node.style.minHeight,
+        height: node.style.height,
+        flex: node.style.flex,
+      });
       node.style.overflowY = "visible";
       node.style.maxHeight = "none";
       node.style.height = "auto";
+      node.style.minHeight = "unset";
+      const parentCss = node.parentElement ? getComputedStyle(node.parentElement) : null;
+      if (parentCss?.display.includes("flex") && parentCss.flexDirection === "column") {
+        node.style.flex = "none";
+      }
+    }
+
+    // Flex items can retain their old allocated height even after overflow is visible. Expand
+    // each box to its actual scroll height, deepest first; repeat because expanding a child can
+    // increase an ancestor's scroll height on the next layout pass.
+    for (let pass = 0; pass < 4; pass += 1) {
+      for (const node of candidates) {
+        if (node.scrollHeight <= node.clientHeight + 1) continue;
+        const border = node.offsetHeight - node.clientHeight;
+        const expanded = node.scrollHeight + Math.max(border, 0);
+        node.style.height = `${expanded}px`;
+        node.style.minHeight = `${expanded}px`;
+      }
     }
     window.__gateRestore = saved;
     return saved.length;
@@ -325,7 +355,9 @@ async function captureFullAnswer(answerPanel, path) {
     for (const s of window.__gateRestore || []) {
       s.node.style.overflowY = s.overflowY;
       s.node.style.maxHeight = s.maxHeight;
+      s.node.style.minHeight = s.minHeight;
       s.node.style.height = s.height;
+      s.node.style.flex = s.flex;
     }
     delete window.__gateRestore;
     return worst;
@@ -416,6 +448,8 @@ for (const item of gate.items) {
 }
 gate.capturedFrom = APP;
 gate.capturedRepository = REPO;
+gate.toolVersion = TOOL_VERSION;
+gate.capturedAt = new Date().toISOString();
 // Provenance travels with the data. A figure whose ground truth was machine-verified is
 // reportable; one whose provenance has to be reconstructed afterwards is not.
 gate.groundTruthProvenance = flag("force")

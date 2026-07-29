@@ -2,6 +2,7 @@ import { Redis } from '@upstash/redis';
 import {
   encodeGenerationEvent,
   extractJsonObjects,
+  GENERATION_CONFIG,
   successfulFinishReason,
   type GenerationUsageMetadata,
 } from '../src/lib/generationProtocol';
@@ -162,7 +163,7 @@ export default async function handler(req: Request): Promise<Response> {
         parts: [{ text: m.content }]
       })),
       systemInstruction: { parts: [{ text: systemPrompt }] },
-      generationConfig: { temperature: 0.7, maxOutputTokens: 2000 }
+      generationConfig: GENERATION_CONFIG,
     };
 
     const controller = new AbortController();

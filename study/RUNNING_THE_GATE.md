@@ -38,6 +38,10 @@ The capture drives the deployed site, not the local checkout. Before a run, conf
 deployment contains the exact commit being evaluated and record that SHA; otherwise the gate
 JSON describes different code from the repository beside it.
 
+The gate JSON also records the generation parameters. The current ceiling is 4,096 output
+tokens; the earlier 2,000-token ceiling produced `MAX_TOKENS` on ordinary gate questions and is
+therefore not a valid complete-answer capture.
+
 `playwright` is already in `devDependencies`, so `npm install` fetches the library.
 `playwright install chromium` downloads the browser it drives, which is a separate step and a
 few hundred megabytes.

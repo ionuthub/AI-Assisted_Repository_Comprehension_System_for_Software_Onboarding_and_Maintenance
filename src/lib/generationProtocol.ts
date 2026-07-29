@@ -5,6 +5,12 @@ export interface GenerationUsageMetadata {
   [key: string]: unknown;
 }
 
+/** Shared by the deployed proxy and local Vite middleware so captures are reproducible. */
+export const GENERATION_CONFIG = {
+  temperature: 0.7,
+  maxOutputTokens: 4096,
+} as const;
+
 export interface GenerationCompleteEvent {
   type: "complete";
   finishReason: string;

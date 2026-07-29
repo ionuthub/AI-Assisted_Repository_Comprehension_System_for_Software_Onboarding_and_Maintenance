@@ -4,6 +4,7 @@ import path from "path";
 import {
   encodeGenerationEvent,
   extractJsonObjects,
+  GENERATION_CONFIG,
   successfulFinishReason,
   type GenerationUsageMetadata,
 } from "./src/lib/generationProtocol";
@@ -87,7 +88,7 @@ export default defineConfig(({ mode }) => {
                   parts: [{ text: m.content }]
                 })),
                 systemInstruction: { parts: [{ text: systemPrompt }] },
-                generationConfig: { temperature: 0.7, maxOutputTokens: 2000 }
+                generationConfig: GENERATION_CONFIG,
               };
 
               const apiResponse = await fetch(url, {

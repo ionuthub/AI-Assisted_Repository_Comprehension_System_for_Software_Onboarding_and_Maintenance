@@ -10,10 +10,15 @@
  * directly, because what the gate measures is the tool as a participant will use it: same
  * ingestion, same file cap, same prompt, same model.
  *
- * It refuses to run until every answer in the corresponding ground-truth file is marked
- * CONFIRMED. That is not bureaucracy. Reading the tool's answer before your own is settled
- * makes the comparison meaningless, and the interlock exists because the temptation to look
- * first is strongest exactly when the work is nearly done.
+ * It refuses to run until every answer in the corresponding ground-truth file is settled.
+ * That is not bureaucracy. Reading the tool's answer before your own is settled makes the
+ * comparison meaningless, and the interlock exists because the temptation to look first is
+ * strongest exactly when the work is nearly done.
+ *
+ * "Settled" means CONFIRMED — the researcher read the code — or, with
+ * --accept-tool-verified, VERIFIED BY TOOL. The second is weaker and legitimate, provided it
+ * is chosen rather than defaulted into: the flag records the provenance in the gate file so it
+ * reaches the write-up instead of being reconstructed by a marker.
  *
  * Usage:
  *   node analysis/capture_gate.mjs --repo https://github.com/ionuthub/Repo-B \
@@ -22,7 +27,8 @@
  *
  *   --url <app>   deployed application (default https://repo-comprehension-system.vercel.app/)
  *   --headed      watch it run
- *   --force       skip the sign-off interlock (records why in the output)
+ *   --accept-tool-verified  treat VERIFIED BY TOOL as settled, and record that it was
+ *   --force       skip the interlock entirely (records why in the output)
  */
 import { chromium } from "playwright";
 import { readFileSync, writeFileSync, mkdirSync } from "node:fs";
@@ -48,17 +54,39 @@ if (!REPO || !GATE) {
 
 // --- interlock -------------------------------------------------------------------------
 
+// Two things are being guarded here, and only one of them is negotiable.
+//
+// The non-negotiable one is ordering: every answer must be settled before the tool is asked
+// anything. Reading the tool's answer first turns the ground truth into a judgement about
+// whether the tool looks right, and the accuracy figure stops meaning anything.
+//
+// The negotiable one is who settled it. CONFIRMED means the researcher read the code.
+// VERIFIED BY TOOL means machine review with caller counts and re-counted quantifiers, which
+// is weaker but not nothing. Running on tool-verified ground truth is a defensible choice
+// provided it is a choice — declared in advance, recorded in the output, and disclosed in the
+// write-up rather than discovered by a marker. That is what --accept-tool-verified does.
 if (TRUTH && !flag("force")) {
-  const statuses = [...readFileSync(TRUTH, "utf8").matchAll(/^\*\*Status:\s*([A-Z ]+)/gm)]
+  const statuses = [...readFileSync(TRUTH, "utf8").matchAll(/^\*\*Status:\s*([A-Z][A-Z -]*[A-Z])/gm)]
     .map((m) => m[1].trim());
-  const unconfirmed = statuses.filter((s) => s !== "CONFIRMED").length;
-  if (unconfirmed > 0) {
+  const settled = statuses.filter(
+    (s) => s === "CONFIRMED" || (flag("accept-tool-verified") && s === "VERIFIED BY TOOL")
+  ).length;
+  const unsettled = statuses.length - settled;
+
+  if (unsettled > 0) {
+    const stamps = [...new Set(statuses)].sort().join(", ");
     console.error(
-      `\n${unconfirmed} of ${statuses.length} answers in ${TRUTH} are not CONFIRMED.\n\n` +
-        "The gate compares the tool's answers against ground truth settled beforehand. Asking\n" +
-        "the tool first turns the ground truth into a judgement about whether the tool looks\n" +
-        "right, and the accuracy figure stops meaning anything.\n\n" +
-        "Finish signing off, then run this again. --force overrides and is recorded in the output.\n"
+      `\n${unsettled} of ${statuses.length} answers in ${TRUTH} are not settled.\n` +
+        `Statuses present: ${stamps}\n\n` +
+        (flag("accept-tool-verified")
+          ? "Running with --accept-tool-verified, so VERIFIED BY TOOL counts as settled. The\n" +
+            "answers above are neither that nor CONFIRMED — they are still mid-correction, and\n" +
+            "a gate run against them measures nothing.\n"
+          : "The gate compares the tool's answers against ground truth settled beforehand.\n\n" +
+            "If the researcher has read and signed off each answer, mark them CONFIRMED.\n" +
+            "If the ground truth rests on machine review instead, that is a defensible choice\n" +
+            "but it must be an explicit one: pass --accept-tool-verified, which records the\n" +
+            "provenance in the gate file so it reaches the write-up.\n")
     );
     process.exit(1);
   }
@@ -151,7 +179,15 @@ for (const item of gate.items) {
 }
 gate.capturedFrom = APP;
 gate.capturedRepository = REPO;
-if (flag("force")) gate.captureNote = "Run with --force: ground truth was not fully confirmed.";
+// Provenance travels with the data. A figure whose ground truth was machine-verified is
+// reportable; one whose provenance has to be reconstructed afterwards is not.
+gate.groundTruthProvenance = flag("force")
+  ? "Run with --force: ground truth was not settled at capture time."
+  : flag("accept-tool-verified")
+    ? "Ground truth verified by machine review (caller counts, re-counted quantifiers, " +
+      "mechanically validated citations) rather than read line by line by the researcher. " +
+      "Disclose in the methodology; see study/AI-DISCLOSURE.md."
+    : "Ground truth confirmed by the researcher before capture.";
 
 writeFileSync(GATE, JSON.stringify(gate, null, 1) + "\n");
 console.log(`\nWrote ${results.length} answers into ${GATE}.`);

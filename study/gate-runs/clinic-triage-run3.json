@@ -1,0 +1,373 @@
+{
+ "repository": "clinic-triage",
+ "date": "",
+ "toolVersion": "77e39cb",
+ "model": "gemini-3.5-flash",
+ "retrieval": {
+  "topK": 3,
+  "excerptChars": 2500,
+  "fileCap": 50
+ },
+ "items": [
+  {
+   "id": 1,
+   "pattern": "orientation",
+   "question": "Where does execution start in this project?",
+   "correctAnswer": "",
+   "toolAnswer": "Based on the provided repository context, the main application entry point (such as a `main.ts`, `index.ts`, or server startup file) is not present. Therefore, the context does not contain the information required to determine where production execution starts for the overall project.\n\nHowever, for the test suite, execution begins via the Vitest testing framework targeting the test files, such as:\n\n**`src/tests/eligibility.test.ts`**: This file executes unit tests for acceptance eligibility, initializing state by reading from the seed data in `src/data/seed.ts` and dispatching actions through the store state manager (`useClinicStore`).",
+   "correct": null,
+   "toolEvidence": [
+    {
+     "rank": 1,
+     "path": "src/triage/validation.ts",
+     "score": 0.09
+    },
+    {
+     "rank": 2,
+     "path": "src/data/seed.ts",
+     "score": 0.04
+    },
+    {
+     "rank": 3,
+     "path": "src/tests/eligibility.test.ts",
+     "score": 0.04
+    }
+   ],
+   "toolEvidenceHeading": "Evidence · 3 files retrieved",
+   "toolUnverifiedMentions": [],
+   "toolScreenshot": "study/gate-screenshots/clinic-triage-q01.png",
+   "toolCoverage": "Retrieved by keyword match over 50 of 55 indexed files. 5 files could not be searched. Scores measure shared wording, not correctness; a bar is full at 0.60."
+  },
+  {
+   "id": 2,
+   "pattern": "config-driven behaviour",
+   "question": "How is a referral given its priority band?",
+   "correctAnswer": "",
+   "toolAnswer": "Based on the provided codebase, a referral is assigned its priority band through a combination of an automated clinical suggestion (calculated from rules and policies) and a manual selection interface.\n\n---\n\n1. Automated Banding Calculation (`src/triage/banding.ts`)\n\nThe clinical priority band is calculated dynamically using the `calculateBand(referral)` function. The calculation proceeds as follows:\n\n1. **Context Assembly**:\n\nThe function merges the referral's clinical signals and its type into a single context object:\n\n```typescript\n\nconst context = { ...referral.signals, type: referral.type };\n\n```\n\n2. **Rule Matching**:\n\nIt evaluates a set of predefined `priorityRules` (imported from `src/config/priorityRules`) against the context to find matching escalation rules:\n\n```typescript\n\nconst matched = priorityRules.filter((rule) => rule.matches(context));\n\n```\n\n3. **Score Accumulation**:\n\nThe total score is calculated by taking the base points designated for the referral's type (defined in `referralPolicies`) and adding the points accrued from each matched rule:\n\n```typescript\n\nconst score =\n\nreferralPolicies[referral.type].basePoints +\n\nmatched.reduce((total, rule) => total + rule.points, 0);\n\n```\n\n4. **Threshold Evaluation**:\n\nThe score is compared against the `bandThresholds` (imported from `src/config/priorityRules`). It assigns the first band where the score meets or exceeds the threshold's `minimum`. If no thresholds match, it defaults to `\"green\"`:\n\n```typescript\n\nconst band =\n\nbandThresholds.find((threshold) => score >= threshold.minimum)?.band ??\n\n\"green\";\n\n```\n\nThe function returns a `BandingDecision` object containing the calculated `band` (`\"red\" | \"amber\" | \"green\"`), the total `score`, the list of matched rule IDs, and the `targetHours` for clinical response.\n\n---\n\n2. Manual Assignment Interface (`src/components/PriorityPanel.tsx`)\n\nThe calculated suggested band is presented to the user in the `PriorityPanel` component, where they make the final assignment:\n\n**Rendering the Suggestion**:\n\nThe component calls `calculateBand(referral)` to display the suggested band, target response hours, and the list of matched signals (rules).\n\n**Selection / Override**:\n\nIt renders three priority options mapping to `PriorityBand` types:\n\n* **Priority 1 (Red)**: Review within hours\n\n* **Priority 2 (Amber)**: Review within days\n\n* **Priority 3 (Green)**: Routine scheduling\n\nWhen an option is clicked, it invokes the `onSelect(band)` callback to commit the selected priority band to the domain state.\n\n---\n\n3. State Representation (`src/hooks/useReferralFilters.ts`)\n\nThe assigned priority band is persisted on the referral object as `referral.priority` (typed as `PriorityBand`). As seen in the filtering logic, a referral is considered \"unbanded\" if this property has not yet been set:\n\n```typescript\n\nconst matchesBand =\n\nband === \"all\" ||\n\n(band === \"unbanded\"\n\n? !referral.priority\n\n: referral.priority === band);\n\n```",
+   "correct": null,
+   "toolEvidence": [
+    {
+     "rank": 1,
+     "path": "src/components/PriorityPanel.tsx",
+     "score": 0.59
+    },
+    {
+     "rank": 2,
+     "path": "src/triage/banding.ts",
+     "score": 0.49
+    },
+    {
+     "rank": 3,
+     "path": "src/hooks/useReferralFilters.ts",
+     "score": 0.39
+    }
+   ],
+   "toolEvidenceHeading": "Evidence · 3 files retrieved",
+   "toolUnverifiedMentions": [
+    "src/components/PriorityPanel.ts Not retrieved"
+   ],
+   "toolScreenshot": "study/gate-screenshots/clinic-triage-q02.png",
+   "toolCoverage": "Retrieved by keyword match over 50 of 55 indexed files. 5 files could not be searched. Scores measure shared wording, not correctness; a bar is full at 0.60."
+  },
+  {
+   "id": 3,
+   "pattern": "handler registry",
+   "question": "Which code decides how a given referral type is processed?",
+   "correctAnswer": "",
+   "toolAnswer": "The routing and processing decisions for a given referral type are managed by the registry in **`src/triage/routes/registry.ts`**.\n\nKey Components & Control Flow\n\n1. **The Registry Map (`handlers`)**:\n\nA module-scoped `Map` associates a `ReferralType` with a specific `RouteHandler` function:\n\n```typescript\n\nconst handlers = new Map<ReferralType, RouteHandler>();\n\n```\n\n2. **Handler Registration (`registerRoute`)**:\n\nIndividual routing strategies register themselves into this map by calling:\n\n```typescript\n\nexport function registerRoute(type: ReferralType, handler: RouteHandler): void {\n\nhandlers.set(type, handler);\n\n}\n\n```\n\n3. **Execution Decision (`routeReferral`)**:\n\nWhen a referral needs to be processed, the `routeReferral` function dynamically resolves the appropriate processor based on the referral's `type` property. It retrieves the registered `RouteHandler` and executes it to produce a `RouteOutcome`:\n\n```typescript\n\nexport function routeReferral(referral: Referral): RouteOutcome {\n\nconst handler = handlers.get(referral.type);\n\nif (!handler)\n\nthrow new Error(`No routing handler registered for ${referral.type}`);\n\nreturn handler(referral);\n\n}\n\n```\n\nArchitectural Impact & Trade-offs\n**Open-Closed Principle**: This design allows developers to define and register new processing behaviors for different referral types without modifying the core routing logic in `registry.ts`.\n**Runtime Dependency**: Because registration happens dynamically via `registerRoute`, there is a runtime risk of a `No routing handler registered...` error if a handler is not imported and registered before `routeReferral` is called.",
+   "correct": null,
+   "toolEvidence": [
+    {
+     "rank": 1,
+     "path": "src/hooks/useReferralFilters.ts",
+     "score": 0.36
+    },
+    {
+     "rank": 2,
+     "path": "src/triage/routes/registry.ts",
+     "score": 0.35
+    },
+    {
+     "rank": 3,
+     "path": "src/api/referrals-api.ts",
+     "score": 0.32
+    }
+   ],
+   "toolEvidenceHeading": "Evidence · 3 files retrieved",
+   "toolUnverifiedMentions": [],
+   "toolScreenshot": "study/gate-screenshots/clinic-triage-q03.png",
+   "toolCoverage": "Retrieved by keyword match over 50 of 55 indexed files. 5 files could not be searched. Scores measure shared wording, not correctness; a bar is full at 0.60."
+  },
+  {
+   "id": 4,
+   "pattern": "cross-cutting concern",
+   "question": "Everywhere eligibility is checked — list every place it happens.",
+   "correctAnswer": "",
+   "toolAnswer": "Based on the provided codebase, eligibility checks (via the `checkEligibility` function) are performed in the following two locations:\n\n1. Nightly Reverification Job\n**File:** `src/jobs/nightlyReverification.ts`\n**Function:** `runNightlyReverification`\n**Control Flow & Context:**\n\nThis asynchronous job filters through a list of referrals to find candidates with a status of `\"accepted\"` or `\"booked\"`. It then iterates through these candidates and calls `checkEligibility(referral)`. If a referral is no longer eligible, it appends the failure to a report and emits an `\"eligibility:failed\"` event with the phase set to `\"nightly\"`.\n\n**Code Reference:**\n\n```typescript\n\n// src/jobs/nightlyReverification.ts (Lines 18-20)\n\nfor (const referral of candidates) {\n\nawait Promise.resolve();\n\nconst result = checkEligibility(referral);\n\n```\n\n2. Appointment Booking Validation\n**File:** `src/triage/validation.ts`\n**Function:** `checkAppointment`\n**Control Flow & Context:**\n\nBefore a requested appointment slot is booked for a referral, this function performs an eligibility check. If the patient is ineligible, it emits an `\"eligibility:failed\"` event with the phase set to `\"booking\"` and throws an error containing the concatenated failure reasons, halting the booking flow.\n\n**Code Reference:**\n\n```typescript\n\n// src/triage/validation.ts (Lines 11-12)\n\nexport function checkAppointment(\n\nreferral: Referral,\n\nclinician: Clinician,\n\nslotId: string,\n\nactor: string,\n\n): Appointment {\n\nconst eligibility = checkEligibility(referral);\n\n```",
+   "correct": null,
+   "toolEvidence": [
+    {
+     "rank": 1,
+     "path": "src/jobs/nightlyReverification.ts",
+     "score": 0.13
+    },
+    {
+     "rank": 2,
+     "path": "src/triage/validation.ts",
+     "score": 0.11
+    },
+    {
+     "rank": 3,
+     "path": "src/triage/eligibility.ts",
+     "score": 0.11
+    }
+   ],
+   "toolEvidenceHeading": "Evidence · 3 files retrieved",
+   "toolUnverifiedMentions": [],
+   "toolScreenshot": "study/gate-screenshots/clinic-triage-q04.png",
+   "toolCoverage": "Retrieved by keyword match over 50 of 55 indexed files. 5 files could not be searched. Scores measure shared wording, not correctness; a bar is full at 0.60."
+  },
+  {
+   "id": 5,
+   "pattern": "pipeline chain",
+   "question": "What happens to an outgoing API request before it is sent?",
+   "correctAnswer": "",
+   "toolAnswer": "Based on the provided codebase, an outgoing API request passes through a composed pipeline of middleware stages before reaching the terminal transport layer.\n\nHere is the exact sequence of operations that occur to an outgoing request:\n\n1. Initialization and Normalization\n\nWhen an API call is initiated (for example, via `submitReferral` or `recordBooking` in `src/api/referrals-api.ts`), it calls the `apiRequest` function in `src/api/api-client.ts`.\n\nThis function ensures that the `headers` property is initialized to at least an empty object if it was not provided:\n\n```typescript\n\n// src/api/api-client.ts\n\nexport function apiRequest<T>(\n\nrequest: Omit<ApiRequest, \"headers\"> & { headers?: Record<string, string> },\n\n): Promise<ApiResponse<T>> {\n\nreturn composed({ ...request, headers: request.headers ?? {} }).then(\n\n(response) => response as ApiResponse<T>,\n\n);\n\n}\n\n```\n\n2. The Middleware Pipeline Execution\n\nThe normalized request is passed to `composed`, which is created by composing the middleware stages defined in `src/api/api-client.ts` using `Array.prototype.reduceRight`:\n\n```typescript\n\n// src/api/api-client.ts\n\nconst stages: ApiStage[] = [traceStage, authStage, redactStage];\n\nconst composed = stages.reduceRight<ApiNext>(\n\n(next, stage) => (request) => stage(request, next),\n\ntransport,\n\n);\n\n```\n\nBecause `reduceRight` processes the array from right to left starting with the `transport` as the initial accumulator, the resulting execution order of the request is **left-to-right**:\n\n1. **`traceStage`** (imported from `src/api/pipeline/trace-stage`): Receives the request first, performs its tracing operations, and calls `next(request)`.\n\n2. **`authStage`** (imported from `src/api/pipeline/auth-stage`): Receives the request next, handles authentication/authorization headers, and calls `next(request)`.\n\n3. **`redactStage`** (imported from `src/api/pipeline/redact-stage`): Receives the request third, handles sensitive data redaction, and calls `next(request)`.\n\n*(Note: The exact implementation details of `traceStage`, `authStage`, and `redactStage` are not present in the provided context).*\n\n3. Terminal Transport Execution\n\nAfter passing through all three stages, the request reaches the terminal `transport` function defined in `src/api/api-client.ts`. This acts as the final handler:\n\n```typescript\n\n// src/api/api-client.ts\n\nconst transport: ApiNext = (request) =>\n\nPromise.resolve({\n\nstatus: 200,\n\ndata: request.body ?? { ok: true },\n\nrequestId: request.headers[\"X-Trace-Id\"] ?? \"local\",\n\n});\n\n```\n\nCurrently, this transport layer resolves locally with a mock response containing the request body (or `{ ok: true }` if empty) and extracts the trace ID from the request headers (`X-Trace-Id`).",
+   "correct": null,
+   "toolEvidence": [
+    {
+     "rank": 1,
+     "path": "src/api/pipeline/types.ts",
+     "score": 0.67
+    },
+    {
+     "rank": 2,
+     "path": "src/api/api-client.ts",
+     "score": 0.56
+    },
+    {
+     "rank": 3,
+     "path": "src/api/referrals-api.ts",
+     "score": 0.52
+    }
+   ],
+   "toolEvidenceHeading": "Evidence · 3 files retrieved",
+   "toolUnverifiedMentions": [],
+   "toolScreenshot": "study/gate-screenshots/clinic-triage-q05.png",
+   "toolCoverage": "Retrieved by keyword match over 50 of 55 indexed files. 5 files could not be searched. Scores measure shared wording, not correctness; a bar is full at 0.60."
+  },
+  {
+   "id": 6,
+   "pattern": "misleading name",
+   "question": "Does checkAppointment change any state, or does it only check?",
+   "correctAnswer": "",
+   "toolAnswer": "Yes, `checkAppointment` **does change state**. It does not only perform validation checks.\n\nSpecifically, it performs the following state mutations and side effects:\n\n1. In-place Argument Mutation\n\n`checkAppointment` mutates the `clinician` object passed to it as an argument. Once eligibility and slot availability checks pass, it updates the matched slot's `bookedReferralId` property in-place:\n\n```typescript\n\nslot.bookedReferralId = referral.id;\n\n```\n\n*(Source: `src/triage/validation.ts`, line 34)*\n\nThis side effect is explicitly verified in the unit tests, where a deep clone is used to prevent test pollution, and the assertion verifies that the slot has been mutated:\n\n```typescript\n\nexpect(slot.bookedReferralId).toBe(referral.id);\n\n```\n\n*(Source: `src/tests/scheduling.test.ts`, line 25)*\n\n2. Event Emission (Side Effects)\n\nThe function emits events to the `clinicEvents` event bus depending on the outcome of the checks:\n\n**On Failure (Eligibility)**: It emits `eligibility:failed` before throwing an error (`src/triage/validation.ts`, line 13).\n**On Success**: It emits `appointment:booked` containing the newly created appointment object and the patient's name (`src/triage/validation.ts`, line 35).\n\n---\n\nArchitectural Impact on the Store\n\nIn the state management store (`src/store/useClinicStore.ts`), the `bookAppointment` action relies directly on this in-place mutation.\n\nBecause `checkAppointment` mutates the `clinician` reference retrieved from the current state, the store updates its slice by spreading the mutated array:\n\n```typescript\n\nconst appointment = checkAppointment(referral, clinician, slotId, state.actor);\n\nset((current) => ({\n\nappointments: [...current.appointments, appointment],\n\nclinicians: [...current.clinicians], // Relies on the in-place mutation of the clinician reference\n\n// ...\n\n}));\n\n```\n\n*(Source: `src/store/useClinicStore.ts`, lines 117–125)*",
+   "correct": null,
+   "toolEvidence": [
+    {
+     "rank": 1,
+     "path": "src/triage/validation.ts",
+     "score": 0.21
+    },
+    {
+     "rank": 2,
+     "path": "src/store/useClinicStore.ts",
+     "score": 0.13
+    },
+    {
+     "rank": 3,
+     "path": "src/tests/scheduling.test.ts",
+     "score": 0.1
+    }
+   ],
+   "toolEvidenceHeading": "Evidence · 3 files retrieved",
+   "toolUnverifiedMentions": [],
+   "toolScreenshot": "study/gate-screenshots/clinic-triage-q06.png",
+   "toolCoverage": "Retrieved by keyword match over 50 of 55 indexed files. 5 files could not be searched. Scores measure shared wording, not correctness; a bar is full at 0.60."
+  },
+  {
+   "id": 7,
+   "pattern": "legacy path",
+   "question": "Which slot-finding implementation runs for a follow-up referral, and why that one?",
+   "correctAnswer": "",
+   "toolAnswer": "Based on the provided repository context, the exact slot-finding implementation that runs for a follow-up referral is determined dynamically at runtime, but the exact mapping configuration is located in a file not included in the context (`src/config/priorityRules.ts`).\n\nHere is the technical breakdown of the control flow and how the implementation is resolved:\n\nResolution Mechanism\n\nIn `src/scheduling/service.ts`, the `availableSlots` function determines the finder implementation using the following lookup:\n\n```typescript\n\nconst finder = finders[referralPolicies[referral.type].finder];\n\n```\n\nThe `finders` registry (defined in `src/scheduling/service.ts`) maps string keys to specific `SlotFinder` implementations:\n\n`'standard'`: Maps to `findSlots` (imported from `src/scheduling/slotFinder.ts`).\n`'continuity'`: Maps to `findContinuitySlots` (imported from `src/scheduling/oldSlotFinder.ts`).\nMissing Context & Logical Inference\n\nBecause the contents of `src/config/priorityRules.ts` are not provided in the context, we cannot verify with absolute certainty which key (`'standard'` or `'continuity'`) is mapped to the follow-up referral's type (`referral.type`).\n\nHowever, the domain logic strongly points to **`continuity` (`findContinuitySlots`)** for the following reasons:\n\n1. **Clinical Intent**: In `src/triage/routes/followUp.ts`, the triage route for `\"followUp\"` explicitly includes the instruction `\"Prefer the previous care team\"`.\n\n2. **Parameter Passing**: The `availableSlots` function passes `preferredClinicianId: referral.assignedClinicianId` to the finder (defined in the `SlotSearch` interface in `src/scheduling/types.ts`). This parameter is designed to support continuity of care by identifying slots associated with a specific, previously assigned clinician.\n\nMaintenance & Architecture Impact\n**Loose Coupling**: The scheduling service (`src/scheduling/service.ts`) is decoupled from specific referral types. It relies on the `referralPolicies` configuration object to map types to finding strategies.\n**Strategy Pattern**: By using the `finders` registry, adding a new slot-allocation strategy only requires implementing the `SlotFinder` interface (from `src/scheduling/types.ts`) and registering it in `src/scheduling/service.ts`.",
+   "correct": null,
+   "toolEvidence": [
+    {
+     "rank": 1,
+     "path": "src/triage/routes/followUp.ts",
+     "score": 0.47
+    },
+    {
+     "rank": 2,
+     "path": "src/scheduling/service.ts",
+     "score": 0.35
+    },
+    {
+     "rank": 3,
+     "path": "src/scheduling/types.ts",
+     "score": 0.32
+    }
+   ],
+   "toolEvidenceHeading": "Evidence · 3 files retrieved",
+   "toolUnverifiedMentions": [
+    "src/config/priorityRules.ts Not retrieved",
+    "src/scheduling/slotFinder.ts Not retrieved",
+    "src/scheduling/oldSlotFinder.ts Not retrieved"
+   ],
+   "toolScreenshot": "study/gate-screenshots/clinic-triage-q07.png",
+   "toolCoverage": "Retrieved by keyword match over 50 of 55 indexed files. 5 files could not be searched. Scores measure shared wording, not correctness; a bar is full at 0.60."
+  },
+  {
+   "id": 8,
+   "pattern": "event emitter",
+   "question": "What reacts when a scheduling event is emitted?",
+   "correctAnswer": "",
+   "toolAnswer": "Based on the codebase, when an `\"appointment:booked\"` event is emitted via the global `clinicEvents` channel (defined in `src/events/channel.ts`), two modules react by registering listeners:\n\n1. Scheduling State Tracker (`src/scheduling/eventListener.ts`)\n\nThe event listener in this module tracks recently booked slots:\n\n**Reaction**: It extracts `appointment.slotId` from the event payload and adds it to an in-memory `Set<string>` named `recentlyBooked`.\n**Impact**: This state is used to determine if a slot was recently booked via the exported `wasRecentlyBooked(slotId: string)` helper function.\n\n```typescript\n\n// src/scheduling/eventListener.ts\n\nclinicEvents.on(\"appointment:booked\", ({ appointment }) => {\n\nrecentlyBooked.add(appointment.slotId);\n\n});\n\n```\n\n2. Audit Logger (`src/audit/logger.ts`)\n\nThe audit logging module listens to the event to maintain an audit trail:\n\n**Reaction**: It prepends (`unshift`) a structured `AuditEntry` object to an in-memory `eventEntries` array.\n**Payload Mapping**: It maps the event's `appointment` and `patientName` details to create an entry with severity `\"info\"`, capture the actor (`appointment.bookedBy`), and record the action description.\n**Impact**: This log history is exposed via the `getEventAudit()` function.\n\n```typescript\n\n// src/audit/logger.ts\n\nclinicEvents.on(\"appointment:booked\", ({ appointment, patientName }) => {\n\neventEntries.unshift({\n\nid: `event-${appointment.id}`,\n\noccurredAt: new Date().toISOString(),\n\nactor: appointment.bookedBy,\n\naction: \"Appointment booked\",\n\nreferralId: appointment.referralId,\n\ndetail: `Booked ${patientName} with clinician ${appointment.clinicianId}`,\n\nseverity: \"info\",\n\n});\n\n});\n\n```",
+   "correct": null,
+   "toolEvidence": [
+    {
+     "rank": 1,
+     "path": "src/scheduling/eventListener.ts",
+     "score": 0.19
+    },
+    {
+     "rank": 2,
+     "path": "src/audit/logger.ts",
+     "score": 0.18
+    },
+    {
+     "rank": 3,
+     "path": "src/events/channel.ts",
+     "score": 0.14
+    }
+   ],
+   "toolEvidenceHeading": "Evidence · 3 files retrieved",
+   "toolUnverifiedMentions": [],
+   "toolScreenshot": "study/gate-screenshots/clinic-triage-q08.png",
+   "toolCoverage": "Retrieved by keyword match over 50 of 55 indexed files. 5 files could not be searched. Scores measure shared wording, not correctness; a bar is full at 0.60."
+  },
+  {
+   "id": 9,
+   "pattern": "applied",
+   "question": "Where would a new referral type be added, and what else would need changing?",
+   "correctAnswer": "",
+   "toolAnswer": "Based on the provided codebase context, adding a new referral type requires updating the domain types, triage routing, banding logic, and UI filters.\n\nHere is where the changes must be made and what they entail:\n\n1. Domain Type Definition\n\nThe core domain types are defined in `src/types/domain` (imported in `src/hooks/useReferralFilters.ts` [lines 5-6]).\n\n**Change:** Add the new literal string representing the referral type to the `ReferralType` union type (e.g., `export type ReferralType = \"urgent\" | \"routine\" | \"safeguarding\" | \"your-new-type\"`).\n2. Triage Routing Registry\n\nReferral routing is handled dynamically via `loadRoutes` and `routeReferral` from `src/triage/routes/registry` and `src/triage/routes/loadRoutes` (referenced in `src/tests/registry.test.ts` [lines 3-4]).\n\n**Change:** If the new referral type requires custom routing behavior (similar to how urgent referrals require a phone call in `src/tests/registry.test.ts` [lines 11-14]), you will need to:\n\n* Create or modify a route handler. Since `loadRoutes` dynamically loads handlers (tested in `src/tests/registry.test.ts` [line 9]: *\"loads four handlers dynamically\"*), you likely need to add a new route handler file to the routes directory so it is picked up by the loader.\n\n* Update tests in `src/tests/registry.test.ts` to assert the routing behavior of the new type.\n\n3. Banding and Target Policy\n\nPriority banding and SLA targets are calculated via `calculateBand` in `src/triage/banding` (referenced in `src/tests/banding.test.ts` [line 3]).\n\n**Change:** Update `calculateBand` inside `src/triage/banding` to define the priority band (e.g., `\"red\"`, `\"amber\"`, `\"green\"`) and the target resolution hours (similar to the 336-hour target for routine work in `src/tests/banding.test.ts` [lines 11-14]) for the new referral type.\n**Change:** Add corresponding test cases to `src/tests/banding.test.ts` to verify the priority band and matched rules for the new type.\n4. Referral Filters and UI\n\nThe filtering logic is encapsulated in `src/hooks/useReferralFilters.ts`.\n\n**Change:** The hook defines `TypeFilter` as `ReferralType | \"all\"` (`src/hooks/useReferralFilters.ts` [line 8]). Because it maps directly to `ReferralType`, the filter hook will automatically support the new type. However, any UI component rendering the filter controls (e.g., a dropdown selecting `TypeFilter`) must be updated to include the new option.\n5. Seed Data\n\nMock data is imported from `src/data/seed` (referenced in `src/tests/registry.test.ts` [line 2] and `src/tests/banding.test.ts` [line 2]).\n\n**Change:** Add a mock referral of the new type to `seedReferrals` in `src/data/seed` to ensure it is available for integration tests and local development.",
+   "correct": null,
+   "toolEvidence": [
+    {
+     "rank": 1,
+     "path": "src/tests/registry.test.ts",
+     "score": 0.29
+    },
+    {
+     "rank": 2,
+     "path": "src/tests/banding.test.ts",
+     "score": 0.26
+    },
+    {
+     "rank": 3,
+     "path": "src/hooks/useReferralFilters.ts",
+     "score": 0.19
+    }
+   ],
+   "toolEvidenceHeading": "Evidence · 3 files retrieved",
+   "toolUnverifiedMentions": [],
+   "toolScreenshot": "study/gate-screenshots/clinic-triage-q09.png",
+   "toolCoverage": "Retrieved by keyword match over 50 of 55 indexed files. 5 files could not be searched. Scores measure shared wording, not correctness; a bar is full at 0.60."
+  },
+  {
+   "id": 10,
+   "pattern": "applied",
+   "question": "If the priority rules changed, what else would be affected?",
+   "correctAnswer": "",
+   "toolAnswer": "Based on the provided codebase, changing the priority rules (`priorityRules` exported from `src/config/priorityRules`) would have immediate downstream effects on the triage logic, the user interface, and the test suite.\n\nHere is the exact impact analysis:\n\n1. Triage Logic & Banding Decisions (`src/triage/banding.ts`)\n\nThe `calculateBand` function relies directly on `priorityRules` to evaluate a referral. If the rules are modified (e.g., changing their matching criteria, point values, or IDs):\n\n**Score Calculation**: The `score` is calculated by summing the base points of the referral type and the `points` of all matched rules (lines 18–20). Altering rule point values directly shifts the final score.\n**Band Allocation**: The calculated `score` is compared against `bandThresholds` to determine the `PriorityBand` (\"red\", \"amber\", or \"green\") (lines 21–23). A change in rules can shift a referral into a different priority band.\n**Matched Rules Tracking**: The decision returns `matchedRules`, which is an array of the matched rule IDs (`rule.id`) (line 26).\n2. User Interface (`src/components/PriorityPanel.tsx`)\n\nThe `PriorityPanel` component displays the results of `calculateBand(referral)` (line 17). Changes to the rules will alter the following UI elements:\n\n**Suggested Band & Target Hours**: The suggested band label and target response hours displayed in the paragraph (lines 27–29) will change if the priority band shifts.\n**Score Badge**: The displayed score (`Score {decision.score}`) will update (line 25).\n**Suggested Badge**: The visual `Suggested` indicator on the buttons (line 47) will shift to a different option if the band changes.\n**Signals Considered List**: The component renders a list of matched rules, replacing hyphens with spaces (`rule.replaceAll(\"-\", \" \")`) (lines 51–63). If rule IDs are renamed or different rules match, this list will display different text or fall back to \"No escalation signals matched.\"\n3. Test Suite (`src/tests/banding.test.ts`)\n\nThe test suite contains assertions that are highly sensitive to the rules configuration:\n\n**Safeguarding Test**: `it(\"gives safeguarding work the highest band\")` (lines 5–10) expects the band to be `\"red\"`. If rules governing safeguarding or general point thresholds change, this test may fail.\n**Explainability Test**: `it(\"records matched rules for explainability\")` (lines 15–18) asserts that `matchedRules.length > 0` for a referral with a `deterioration` signal. If the rule matching `deterioration` is modified or removed, this test will fail.",
+   "correct": null,
+   "toolEvidence": [
+    {
+     "rank": 1,
+     "path": "src/triage/banding.ts",
+     "score": 0.21
+    },
+    {
+     "rank": 2,
+     "path": "src/tests/banding.test.ts",
+     "score": 0.17
+    },
+    {
+     "rank": 3,
+     "path": "src/components/PriorityPanel.tsx",
+     "score": 0.15
+    }
+   ],
+   "toolEvidenceHeading": "Evidence · 3 files retrieved",
+   "toolUnverifiedMentions": [
+    "src/components/PriorityPanel.ts Not retrieved"
+   ],
+   "toolScreenshot": "study/gate-screenshots/clinic-triage-q10.png",
+   "toolCoverage": "Retrieved by keyword match over 50 of 55 indexed files. 5 files could not be searched. Scores measure shared wording, not correctness; a bar is full at 0.60."
+  },
+  {
+   "id": 11,
+   "pattern": "pipeline chain",
+   "question": "Are safeguarding referrals treated differently anywhere? Where?",
+   "correctAnswer": "",
+   "toolAnswer": "Based on the provided codebase context, safeguarding referrals are treated differently in two main areas:\n\n1. Triage Routing and Instructions\n\nIn **`src/triage/routes/safeguarding.ts`** (lines 1-12), safeguarding referrals are registered under a dedicated route (`\"safeguarding\"`) that returns specialized handling instructions and metadata:\n\n**Restricted Summary**: The summary is formatted explicitly as `\"Restricted safeguarding review for {patient.name}\"`.\n**Required Phone Call**: The property `requiresPhoneCall` is set to `true`.\n**Specific Safety Instructions**: The `instructions` array contains safety-critical steps:\n\n* `\"Do not leave a voicemail\"`\n\n* `\"Check safe contact method\"`\n\n* `\"Notify safeguarding lead\"`\n\n**Recommended Service**: It defaults the `recommendedService` to `\"Community nursing\"`.\n2. Urgency Banding\n\nIn **`src/tests/banding.test.ts`** (lines 5-10), tests verify that safeguarding referrals are prioritized with the highest urgency band:\n\nThe test `\"gives safeguarding work the highest band\"` asserts that passing a referral with `type === \"safeguarding\"` to the `calculateBand` function (defined in `src/triage/banding`) returns a band of **`\"red\"`**.",
+   "correct": null,
+   "toolEvidence": [
+    {
+     "rank": 1,
+     "path": "src/triage/routes/safeguarding.ts",
+     "score": 0.27
+    },
+    {
+     "rank": 2,
+     "path": "src/tests/eligibility.test.ts",
+     "score": 0.19
+    },
+    {
+     "rank": 3,
+     "path": "src/tests/banding.test.ts",
+     "score": 0.13
+    }
+   ],
+   "toolEvidenceHeading": "Evidence · 3 files retrieved",
+   "toolUnverifiedMentions": [],
+   "toolScreenshot": "study/gate-screenshots/clinic-triage-q11.png",
+   "toolCoverage": "Retrieved by keyword match over 50 of 55 indexed files. 5 files could not be searched. Scores measure shared wording, not correctness; a bar is full at 0.60."
+  },
+  {
+   "id": 12,
+   "pattern": "misleading name",
+   "question": "Where is a slot actually booked?",
+   "correctAnswer": "",
+   "toolAnswer": "Based on the provided codebase context, slot booking is handled in two primary places:\n\n1. In-Memory Slot Reservation\n\nIn `src/scheduling/service.ts`, the `reserveSlot` function is responsible for marking a slot as booked. It performs a guard check to ensure the slot is not already booked and returns a new slot object with the `bookedReferralId` set:\n\n```typescript\n\n// src/scheduling/service.ts, lines 21-25\n\nexport function reserveSlot(slot: Slot, referralId: string): Slot {\n\nif (slot.bookedReferralId)\n\nthrow new Error(\"This slot has already been booked\");\n\nreturn { ...slot, bookedReferralId: referralId };\n\n}\n\n```\n\n2. Event-Driven Booking Tracking\n\nIn `src/scheduling/eventListener.ts`, the system listens to the `\"appointment:booked\"` event emitted via the `clinicEvents` channel. When this event is received, the slot's ID is added to a local, in-memory `Set` to track recently booked slots:\n\n```typescript\n\n// src/scheduling/eventListener.ts, lines 3-5\n\nclinicEvents.on(\"appointment:booked\", ({ appointment }) => {\n\nrecentlyBooked.add(appointment.slotId);\n\n});\n\n```\n\n*Note: The actual persistence layer (e.g., database writes) or the dispatcher of the `\"appointment:booked\"` event is not present in the provided source files.*",
+   "correct": null,
+   "toolEvidence": [
+    {
+     "rank": 1,
+     "path": "src/scheduling/service.ts",
+     "score": 0.5
+    },
+    {
+     "rank": 2,
+     "path": "src/scheduling/eventListener.ts",
+     "score": 0.45
+    },
+    {
+     "rank": 3,
+     "path": "src/scheduling/slotFinder.ts",
+     "score": 0.44
+    }
+   ],
+   "toolEvidenceHeading": "Evidence · 3 files retrieved",
+   "toolUnverifiedMentions": [],
+   "toolScreenshot": "study/gate-screenshots/clinic-triage-q12.png",
+   "toolCoverage": "Retrieved by keyword match over 50 of 55 indexed files. 5 files could not be searched. Scores measure shared wording, not correctness; a bar is full at 0.60."
+  }
+ ],
+ "notes": "QUESTION STEMS ONLY. correctAnswer must be written by the researcher from reading the code, BEFORE the tool is asked anything. toolAnswer is pasted verbatim from the tool afterwards. 'correct' is the researcher's marking. Questions may be reworded or replaced; they are drafted to cover each architectural pattern once so the gate exercises the same structures the study tasks will target.",
+ "capturedFrom": "https://repo-comprehension-system.vercel.app/",
+ "capturedRepository": "https://github.com/ionuthub/clinic-triage",
+ "groundTruthProvenance": "Ground truth verified by machine review (caller counts, re-counted quantifiers, mechanically validated citations) rather than read line by line by the researcher. Disclose in the methodology; see study/AI-DISCLOSURE.md."
+}

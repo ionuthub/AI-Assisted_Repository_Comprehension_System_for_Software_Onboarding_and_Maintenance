@@ -80,15 +80,24 @@ To validate every line reference in this file, from the artefact repository:
 
 The cross-check found a consistent gap in the original drafts: they described what the code
 *declares* and under-reported where the declared intent never reaches the running application.
-Six instances, all verified — the API pipeline is never loaded, the continuity finder's
-clinician preference is never supplied, the calculated priority band is always overridden by
-the interface, a set written by the scheduling listener is never read, `reserveSlot` has no
-callers, and the store's `setPriority` action has none either.
+The instances are recorded in the answers that establish them: the API pipeline is never loaded
+(Q5); the continuity finder's clinician preference is never supplied (Q7); the calculated
+priority band is always overridden by the interface, so `calculateBand` is not even evaluated on
+a UI path (Q2, Q10); a set written by the scheduling listener is never read (Q8); two of the
+three declared events have no subscriber across four emit sites (Q8); every rule declares a
+`band` that `calculateBand` never reads (Q2); `reserveSlot` has no callers (Q12); and the store's
+`setPriority` has none either (Q2).
 
-This count has now been wrong twice, stopping at four and then at five while the answers
-themselves documented more. Both times the omission was found by someone re-counting rather
-than re-reading. A stated intention to look for a kind of error is not the same as having found
-all of them, and a summary that enumerates is a quantifier like any other.
+A borderline case, left out deliberately: the "nightly" reverification is never scheduled and
+runs only from a button (Q4). It does reach the running application — just never in the manner
+its name declares — so whether it belongs depends on where the category is drawn, and drawing
+that line is a judgement rather than a count.
+
+This paragraph used to carry a running count. It was wrong four times — stopping at two, four,
+five and six while the answers below documented more each time — and each correction was found
+by someone re-counting rather than re-reading. The count is gone rather than corrected again: a
+summary that enumerates is a quantifier like any other, and this one had no reader who needed
+the number. Where the instances are is what matters, and the questions say.
 
 Those facts are now in the answers, which raises the standard the tool is being measured
 against. A tool that sees three files of 2,500 characters cannot perform reachability analysis
@@ -429,12 +438,15 @@ listener writes to a set nothing reads.
 
 **Answer**
 
-Four changes are mandatory, three of them enforced by the compiler under `strict`. Add the
+Four changes are mandatory. Two are omissions the compiler reports under `strict`; the third is
+the edit that causes it to report them, and the fourth fails only at run time. Add the
 literal to `ReferralType`; add a complete entry to `referralPolicies`, which is a
 `Record<ReferralType, ReferralPolicy>`; extend the object literal inside `humaniseType`, which
 is indexed by `ReferralType` and will not compile without the new key; and add a route module
-that registers a handler, since `routeReferral` throws at runtime for an unregistered type. The
-route loader discovers the module automatically.
+that registers a handler, since `routeReferral` throws at runtime for an unregistered type — the
+handler map is a `Map` and enforces nothing at compile time. The route loader discovers the
+module automatically. The `humaniseType` error is gated on `noImplicitAny`, so the `strict`
+qualifier is load-bearing rather than decorative.
 
 Beyond that: `registry.test.ts` asserts that exactly four handlers register and will fail; the
 pathway filter on the referral list is a hardcoded list of `<option>` elements, so a new type

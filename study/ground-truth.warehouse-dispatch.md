@@ -21,14 +21,15 @@ Progress: **0 confirmed. 12 verified by tool.** Nothing here
 has yet been read and signed off by the researcher, which is the only status that permits the
 gate to run.
 
-Two independent reviews. The first found an outright factual error in Q1 and four places where
-the answer was correct but under-cited. The second found one more: Q4 claimed "exactly three
-call sites" when there are five, two of them in `reservation.test.ts`. Every claim was
-re-verified here before being accepted.
+Several independent review passes, each reporting per question, with every claim re-verified
+here before being accepted. Their findings are recorded in the status line of the answer they
+touched.
 
-Both defects found across the two repositories were of the same kind — an absolute quantifier
-that had not been checked against a plain grep. "Exactly three", "the only path", "can be
-changed". Where an answer counts or excludes something, count it again.
+Almost every defect found across both repositories has been the same kind: an absolute
+quantifier nobody re-checked. "Exactly three", "the only path", "can be changed", "returns
+five". Where an answer counts or excludes something, count it again — and see the note on
+grep's blind spots below, because several of these counts were wrong in ways a plain search
+cannot show you.
 
 Two observations that belong outside any single answer.
 
@@ -39,12 +40,26 @@ side-effect imports. Question 1 therefore has a structurally different answer in
 repository. The orientation question is already known to fail retrieval in both, so nothing in
 the study turns on it, but it should be recorded rather than discovered later.
 
-The second is more consequential and was not planned. The two repositories differ in how much
-declared-but-unreachable behaviour they contain. Here it is narrow: `ZoneRule.pricing` is
-written on every rule and read nowhere, and `registeredHandlerTypes` is exported with no
-callers. In clinic-triage an entire subsystem is unreachable — nothing outside `src/api/`
-imports from it, so the request pipeline is never loaded. This repository has no equivalent:
-`src/dispatch/orderService.ts` imports `apiClient`, so the API path here is live.
+The second is more consequential and was not planned. The two repositories differ in the *kind*
+of declared-but-unreachable behaviour they contain, not merely the amount. Here it is
+distributed: individual exports with no callers — `fetchOrders` and `fetchOrder` (Q5),
+`getLowStockSignals` (Q8), `registeredHandlerTypes` (Q9), and, described in no answer,
+`availableStock` and `resetMockServer` — plus `ZoneRule.pricing`, written on every rule and read
+nowhere (Q10). `availableStock` is the one worth knowing about on its own merits: its body is
+`Math.max(0, item.onHand - item.reserved)`, the same expression inlined verbatim at
+`allocator.ts:38`, so it is a dead duplicate of live logic rather than an unused helper.
+
+In clinic-triage the shape is different: an entire module graph is never loaded, because nothing
+outside `src/api/` imports from it. This repository has no equivalent. `orderService.ts` imports
+`apiClient` and `saveOrder` is called from the store at `useWarehouseStore.ts:152, 185, 222` and
+`242` with full order bodies, so the interceptor chain executes and the hazardous branch can
+fire.
+
+This paragraph used to carry a running count. It was wrong four times — stopping at two, four,
+five and six while the answers below documented more each time — and each correction was found
+by someone re-counting rather than re-reading. The count is gone rather than corrected again: a
+summary that enumerates is a quantifier like any other, and this one had no reader who needed
+the number. Where the instances are is what matters, and the questions say.
 
 That asymmetry was not designed. The seven planted patterns are mirrored between the pair and
 remain so; reachability is not one of them and emerged from generation. It does not threaten
@@ -209,13 +224,20 @@ src/store/useWarehouseStore.ts:88-125
 `commitReleasedStock` does not create a reservation; it consumes on-hand stock and removes the
 corresponding reservation (src/stock/stockService.ts:16-37).
 
-The list is complete by two independent routes. `applyStockReservation` has three call sites in
-application code, named above, plus the store's installation of the revalidation job. It also
-has two more in `reservation.test.ts`, at lines 22 and 31, which build orders by hand; an
-earlier version of this note said "exactly three call sites" without that qualification, and
-`grep -rn applyStockReservation src` returns five. Grepping instead for every direct write to
-`item.reserved` returns three: the reservation function itself, the reset inside revalidation,
-and the release path in `commitReleasedStock`. Both searches agree on the application paths.
+The list is complete by two independent routes. `grep -rn applyStockReservation src` returns ten
+lines: four imports, the definition, and five call sites — the three application paths named
+above plus two in `reservation.test.ts`, at lines 22 and 31, which build orders by hand.
+
+Grepping instead for a direct write to `item.reserved` returns two, at `reservation.ts:40` and
+`stockService.ts:27`. Three places set a reserved value, but the third does not assign to the
+property: `revalidation.ts:16` writes `{ ...item, reserved: 0 }` into a fresh object inside a
+`.map`, so no search for an assignment can find it. That is the same structural blindness as
+the line break described above, one variant along, and it is why the count and the search result
+differ.
+
+Neither search reveals an application path missing from the list above. They do not simply
+agree: the write-based search surfaces `commitReleasedStock`, which is not a call site and which
+this note has already excluded as consuming a reservation rather than creating one.
 
 ---
 
@@ -386,6 +408,7 @@ appear and be verified.
 src/types/domain.ts:1
 src/config/zoneRules.ts:14-26
 src/dispatch/handlers/registry.ts:3-32
+src/dispatch/handlers/registry.ts:34-36
 src/dispatch/handlers/standardHandler.ts:1-22
 src/data/seedData.ts:167-324
 src/pages/OrderListPage.tsx:15-21

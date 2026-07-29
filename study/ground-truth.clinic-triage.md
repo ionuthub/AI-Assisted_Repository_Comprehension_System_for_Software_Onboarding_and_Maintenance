@@ -11,6 +11,10 @@ Each question carries a status:
 - **CROSS-CHECKED and re-verified** — as above, and then challenged a third time because the
   answer makes an absolute claim ("exactly three", "nothing ever"). One claim did not survive
   that pass and was withdrawn; see Q7.
+- **VERIFIED BY TOOL** — reviewed against the repository including caller counts, with every
+  quantifier re-counted and every "this happens" claim resolved to its callers. This is the
+  strongest statement a machine pass can make. It is not CONFIRMED and does not substitute for
+  it.
 - **NOT CHECKED** — draft only. Not ground truth.
 
 Progress: **2 confirmed, 10 cross-checked and awaiting sign-off**, of which the four carrying
@@ -22,6 +26,32 @@ proved wrong — the seed data gives every clinician's Nth slot an identical tim
 are universal and a stable sort would have preserved the preference completely. The conclusion
 held; the reason given for it did not. An answer can be right for a reason that is wrong, and
 only a question aimed at the reason will find it.
+
+## How to check an answer
+
+Three checks, in this order. The third is the one that has caught every defect so far that the
+other two could not.
+
+1. **Do the cited lines say what the answer says?** Open them and read. `check_citations.py`
+   validates that a range spans the declaration it names; it cannot tell you whether the prose
+   about it is true.
+
+2. **Is every quantifier true?** Where an answer counts or excludes — "exactly three", "the
+   only path", "nothing else" — count it again yourself. Every defect found across both
+   repositories has been a quantifier nobody re-checked.
+
+3. **Does anything actually call it?** For each claim that something *happens*, resolve the
+   symbol to its callers. This is the check that catches an answer describing real, correct,
+   unreachable code, and neither of the first two checks can do it: the cited lines exist and
+   behave as described, and the count of grep hits looks healthy.
+
+   Counting grep hits is not enough, and here it would have confirmed the error rather than
+   found it. `grep setPriority` in clinic-triage returns four lines, including
+   `onSelect={setPriority}`, which reads exactly like a live call site. It is a local `useState`
+   setter that happens to share the name of a store action nothing invokes. Resolve each hit to
+   its binding and count only those reaching the imported or store-held symbol. Warehouse-dispatch
+   carries the same hazard in a milder form: `ZoneCard` declares a local `const reserved`
+   alongside the `item.reserved` the stock code writes.
 
 Do not open the tool until all twelve are confirmed. Once an answer is seen from the tool it
 cannot be unseen, and the gate stops measuring anything.
@@ -125,6 +155,11 @@ nothing calls it. `grep -rn setPriority src` returns four lines: the interface d
 implementation, and two in `ReferralDetailPage` that are the component's own `useState` setter,
 not the store action — a name collision, and the reason an earlier version of this answer
 presented the action as a live path.
+
+The absence was confirmed by enumeration rather than by the grep alone. `useClinicStore` is
+referenced twenty-seven times across five pages, `Layout` and `eligibility.test.ts`; no
+selector and no `getState()` call anywhere reaches `state.setPriority`. The audit entry the
+action writes, "Priority changed", can therefore never appear in the application.
 
 ---
 

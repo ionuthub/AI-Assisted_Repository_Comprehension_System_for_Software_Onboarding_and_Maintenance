@@ -8,6 +8,10 @@ Each question carries a status:
 - **CROSS-CHECKED** — drafted with AI assistance, then independently reviewed against the
   repository by a second pass, with every factual claim verified by grep or by reading the
   cited lines. Still needs the researcher's sign-off before use.
+- **VERIFIED BY TOOL** — reviewed against the repository including caller counts, with every
+  quantifier re-counted and every "this happens" claim resolved to its callers. This is the
+  strongest statement a machine pass can make. It is not CONFIRMED and does not substitute for
+  it.
 - **NOT CHECKED** — draft only. Not ground truth.
 
 Progress: **0 confirmed, 12 cross-checked and awaiting sign-off.**
@@ -43,6 +47,32 @@ the timed tasks, which target the seven patterns. It does mean the same gate que
 in clinic-triage than here, so the two per-repository accuracy figures are not directly
 comparable and should be reported as a pooled figure with the asymmetry stated. Recording it
 now, before scoring, is what keeps it a limitation rather than an excuse.
+
+## How to check an answer
+
+Three checks, in this order. The third is the one that has caught every defect so far that the
+other two could not.
+
+1. **Do the cited lines say what the answer says?** Open them and read. `check_citations.py`
+   validates that a range spans the declaration it names; it cannot tell you whether the prose
+   about it is true.
+
+2. **Is every quantifier true?** Where an answer counts or excludes — "exactly three", "the
+   only path", "nothing else" — count it again yourself. Every defect found across both
+   repositories has been a quantifier nobody re-checked.
+
+3. **Does anything actually call it?** For each claim that something *happens*, resolve the
+   symbol to its callers. This is the check that catches an answer describing real, correct,
+   unreachable code, and neither of the first two checks can do it: the cited lines exist and
+   behave as described, and the count of grep hits looks healthy.
+
+   Counting grep hits is not enough, and here it would have confirmed the error rather than
+   found it. `grep setPriority` in clinic-triage returns four lines, including
+   `onSelect={setPriority}`, which reads exactly like a live call site. It is a local `useState`
+   setter that happens to share the name of a store action nothing invokes. Resolve each hit to
+   its binding and count only those reaching the imported or store-held symbol. Warehouse-dispatch
+   carries the same hazard in a milder form: `ZoneCard` declares a local `const reserved`
+   alongside the `item.reserved` the stock code writes.
 
 Do not open the tool until all twelve are checked. Once an answer is seen from the tool it
 cannot be unseen, and the gate stops measuring anything.

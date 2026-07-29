@@ -17,8 +17,9 @@ Each question carries a status:
   it.
 - **NOT CHECKED** — draft only. Not ground truth.
 
-Progress: **2 confirmed, 10 cross-checked and awaiting sign-off**, of which the four carrying
-absolute claims have been re-verified.
+Progress: **0 confirmed. 10 verified by tool, 2 corrected and awaiting re-check.** Nothing here
+has yet been read and signed off by the researcher, which is the only status that permits the
+gate to run.
 
 A note on the retraction in Q7, because it is the useful one. The second pass explained the
 inert clinician preference by saying a trailing sort destroyed it. Challenged, that explanation
@@ -85,7 +86,8 @@ would have been against the original drafts, and say so when reporting it.
 
 ## Q1 — orientation
 
-**Status: CONFIRMED — 28 July. Corrected: `App.tsx` range.**
+**Status: CROSS-CHECKED — corrected 29 July, awaiting re-check. A false universal about
+module reads was removed.**
 
 > Where does execution start in this project?
 
@@ -94,7 +96,7 @@ would have been against the original drafts, and say so when reporting it.
 Browser execution starts in `src/main.tsx`, which finds the `root` element and renders `App`
 inside React strict mode. `App` itself defines the client routes. Importing the module also
 installs the scheduling and audit event listeners: lines 7 and 8 are bare side-effect imports,
-so the act of importing registers the listeners — nothing reads a value from either module.
+so neither statement binds a name and the act of importing is the whole effect.
 
 **Files and lines**
 
@@ -108,12 +110,17 @@ The comment at src/main.tsx:5 states that an Internet Explorer compatibility shi
 No shim is imported and no code acts on it. The comment describes something the code does not
 do.
 
+An earlier version of this answer said nothing reads a value from either module. That is true
+of `scheduling/eventListener`, whose only export has no callers, and false of `audit/logger`:
+`AuditLogPage` imports `getEventAudit` and calls it, which is what Q8 relies on when it says
+the audit list reaches the screen. The claim about lines 7 and 8 is about those two statements,
+not about the modules elsewhere in the application.
+
 ---
 
 ## Q2 — config-driven behaviour
 
-**Status: CROSS-CHECKED — sign-off withdrawn 29 July. A third review found a false clause in
-an answer that had already been confirmed. Needs re-reading.**
+**Status: VERIFIED BY TOOL — 29 July, caller-counted.**
 
 > How is a referral given its priority band?
 
@@ -167,7 +174,7 @@ action writes, "Priority changed", can therefore never appear in the application
 
 ## Q3 — handler registry
 
-**Status: CROSS-CHECKED — awaiting sign-off. Two ranges corrected.**
+**Status: VERIFIED BY TOOL — 29 July, caller-counted.**
 
 > Which code decides how a given referral type is processed?
 
@@ -199,8 +206,7 @@ independently asserts that four handlers register.
 
 ## Q4 — cross-cutting concern
 
-**Status: CROSS-CHECKED and re-verified — awaiting sign-off. Notes were factually wrong and
-have been replaced.**
+**Status: VERIFIED BY TOOL — 29 July, caller-counted.**
 
 > Everywhere eligibility is checked — list every place it happens.
 
@@ -238,8 +244,7 @@ presses the verify button on the audit log page.
 
 ## Q5 — interceptor / pipeline chain
 
-**Status: CROSS-CHECKED and re-verified — awaiting sign-off. One range corrected; two facts
-added, one of them strengthened on re-verification.**
+**Status: VERIFIED BY TOOL — 29 July, caller-counted.**
 
 > What happens to an outgoing API request before it is sent?
 
@@ -282,7 +287,7 @@ includes `src`, so these files are still type-checked and a break in them still 
 
 ## Q6 — misleading name
 
-**Status: CROSS-CHECKED — awaiting sign-off. Range corrected; no other change.**
+**Status: VERIFIED BY TOOL — 29 July, caller-counted.**
 
 > Does `checkAppointment` change any state, or does it only check?
 
@@ -305,8 +310,7 @@ operation.
 
 ## Q7 — legacy path
 
-**Status: CROSS-CHECKED and re-verified — awaiting sign-off. Two ranges corrected; four facts
-added, one of which was withdrawn on re-verification and replaced with a firmer one.**
+**Status: VERIFIED BY TOOL — 29 July, caller-counted.**
 
 > Which slot-finding implementation runs for a follow-up referral, and why that one?
 
@@ -361,8 +365,7 @@ behavioural divergence between the two paths.
 
 ## Q8 — event emitter
 
-**Status: CROSS-CHECKED and re-verified — awaiting sign-off. One range corrected; two facts
-added, one of them strengthened on re-verification.**
+**Status: VERIFIED BY TOOL — 29 July, caller-counted.**
 
 > What reacts when a scheduling event is emitted?
 
@@ -396,7 +399,8 @@ listener writes to a set nothing reads.
 
 ## Q9 — applied
 
-**Status: CROSS-CHECKED — awaiting sign-off. Mandatory changes reclassified; three files added.**
+**Status: CROSS-CHECKED — the CSS claim was already corrected before the caller-count pass
+saw it; awaiting re-check against the current wording.**
 
 > Where would a new referral type be added, and what else would need changing?
 
@@ -443,8 +447,7 @@ type uses. The badge collides; the dot is merely meaningless.
 
 ## Q10 — applied
 
-**Status: CROSS-CHECKED and re-verified — awaiting sign-off. Substantially reframed, and a
-false closing Note removed on 29 July.**
+**Status: VERIFIED BY TOOL — 29 July, caller-counted.**
 
 > If the priority rules changed, what else would be affected?
 
@@ -503,7 +506,7 @@ It does not: the store action has no callers. See Q2.
 
 ## Q11 — interceptor / pipeline chain
 
-**Status: CROSS-CHECKED — awaiting sign-off. Two ranges corrected; one site added.**
+**Status: VERIFIED BY TOOL — 29 July, caller-counted.**
 
 > Are safeguarding referrals treated differently anywhere? Where?
 
@@ -532,13 +535,18 @@ src/pages/ReferralListPage.tsx:10-15
 A non-safeguarding referral can still match the safeguarding-signal priority rule if its signal
 is set; the eligibility and redaction branches check the referral type specifically.
 
+"Five places" counts behavioural branches. A reader counting presentational differences reaches
+six, because `styles.css` groups safeguarding with urgent for both badge and dot colour — that
+is shared styling rather than safeguarding-specific handling, which is why it is not in the
+list.
+
 The route handler's text reads "Community nursing" with a lowercase n.
 
 ---
 
 ## Q12 — misleading name
 
-**Status: CROSS-CHECKED — awaiting sign-off. Three ranges corrected; no other change.**
+**Status: VERIFIED BY TOOL — 29 July, caller-counted.**
 
 > Where is a slot actually booked?
 

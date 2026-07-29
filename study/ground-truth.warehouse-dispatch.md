@@ -14,7 +14,9 @@ Each question carries a status:
   it.
 - **NOT CHECKED** — draft only. Not ground truth.
 
-Progress: **0 confirmed, 12 cross-checked and awaiting sign-off.**
+Progress: **0 confirmed. 11 verified by tool, 1 corrected and awaiting re-check.** Nothing here
+has yet been read and signed off by the researcher, which is the only status that permits the
+gate to run.
 
 Two independent reviews. The first found an outright factual error in Q1 and four places where
 the answer was correct but under-cited. The second found one more: Q4 claimed "exactly three
@@ -85,7 +87,7 @@ To validate every line reference in this file:
 
 ## Q1 — orientation
 
-**Status: CROSS-CHECKED — awaiting sign-off. One sentence was factually wrong and is corrected.**
+**Status: VERIFIED BY TOOL — 29 July, caller-counted.**
 
 > Where does execution start in this project?
 
@@ -115,7 +117,7 @@ is mocked in-process.
 
 ## Q2 — config-driven behaviour
 
-**Status: CROSS-CHECKED — awaiting sign-off. Verified exact; no change.**
+**Status: VERIFIED BY TOOL — 29 July, caller-counted.**
 
 > How is an order assigned to a warehouse zone?
 
@@ -145,7 +147,7 @@ result is `held` if the accepted allocations do not cover every line completely
 
 ## Q3 — handler registry
 
-**Status: CROSS-CHECKED — awaiting sign-off. Verified exact; one fact added.**
+**Status: VERIFIED BY TOOL — 29 July, caller-counted.**
 
 > Which code decides how a given order type is processed?
 
@@ -176,8 +178,7 @@ shadow one handler with another.
 
 ## Q4 — cross-cutting concern
 
-**Status: CROSS-CHECKED twice — awaiting sign-off. A second review found the completeness
-claim overstated; corrected.**
+**Status: VERIFIED BY TOOL — 29 July, caller-counted.**
 
 > Everywhere stock is reserved — list every place it happens.
 
@@ -214,7 +215,7 @@ and the release path in `commitReleasedStock`. Both searches agree on the applic
 
 ## Q5 — interceptor / pipeline chain
 
-**Status: CROSS-CHECKED — awaiting sign-off. Under-stated; two facts added.**
+**Status: VERIFIED BY TOOL — 29 July, caller-counted.**
 
 > What happens to an outgoing API request before it is sent?
 
@@ -238,6 +239,8 @@ src/api/mock-server.ts:4
 src/api/mock-server.ts:7-9
 src/api/mock-server.ts:14
 src/api/mock-server.ts:15
+src/dispatch/orderService.ts:11-15
+src/store/useWarehouseStore.ts:152
 
 **Notes**
 
@@ -253,11 +256,16 @@ deterministic". `handleRequest` awaits a 90-millisecond timeout at line 14. This
 comment in the pair that describes something the code does not do, alongside the Internet
 Explorer shim and the site-grouping claim in clinic-triage.
 
+Unlike its counterpart in clinic-triage, this chain genuinely executes. `saveOrder` is imported
+by the store and called at `useWarehouseStore.ts:152, 185, 222` and `242` with a full order as
+the body, so the hazardous branch can fire in the running application. `fetchOrders` and
+`fetchOrder` in the same module have no consumers, but no answer claims otherwise.
+
 ---
 
 ## Q6 — misleading name
 
-**Status: CROSS-CHECKED — awaiting sign-off. Verified exact; one fact added.**
+**Status: VERIFIED BY TOOL — 29 July, caller-counted.**
 
 > Does `validateShipment` change any state, or does it only check?
 
@@ -282,7 +290,7 @@ unreachable except through the hazardous branch. "D1-D3" is exact rather than ap
 
 ## Q7 — legacy path
 
-**Status: CROSS-CHECKED — awaiting sign-off. Verified exact; no change.**
+**Status: VERIFIED BY TOOL — 29 July, caller-counted.**
 
 > Which pricing implementation runs for a bulk order, and why that one?
 
@@ -308,7 +316,8 @@ does.
 
 ## Q8 — event emitter
 
-**Status: CROSS-CHECKED — awaiting sign-off. Under-cited; emitter and registration timing added.**
+**Status: CROSS-CHECKED — corrected 29 July, awaiting re-check. A parity fact was missing
+against the paired question in clinic-triage.**
 
 > What reacts when a dispatch event is emitted?
 
@@ -327,6 +336,8 @@ src/stock/stockService.ts:6-9
 src/dispatch/allocator.ts:71
 src/dispatch/releaseService.ts:57
 src/stock/stockService.ts:16-37
+src/stock/stockService.ts:4
+src/stock/stockService.ts:39-41
 src/notifications/service.ts:16
 
 **Notes**
@@ -341,11 +352,19 @@ import time, as a side effect of loading the file. The notification listeners su
 when `installNotificationListeners` is called from `App`. A question about what reacts to an
 event therefore has a different answer before that call than after it.
 
+The two also differ in whether their work is used. The notification listener publishes a
+notification a user sees. The stock service's listener appends to `lowStockSignals`, which is
+readable only through `getLowStockSignals`, and that function has no callers — the collector
+writes to an array nothing reads. This is the same shape as `recentlyBooked` in clinic-triage,
+and stating it here keeps the paired event-emitter question symmetric: without it, a reader who
+spots the dead collector is credited on one repository and not on the other for identical
+reasoning.
+
 ---
 
 ## Q9 — applied
 
-**Status: CROSS-CHECKED — awaiting sign-off. Under-cited; the hardcoded type filter added.**
+**Status: VERIFIED BY TOOL — 29 July, caller-counted.**
 
 > Where would a new order type be added, and what else would need changing?
 
@@ -383,7 +402,7 @@ and never called.
 
 ## Q10 — applied
 
-**Status: CROSS-CHECKED — awaiting sign-off. The decoy is confirmed dead.**
+**Status: VERIFIED BY TOOL — 29 July, caller-counted.**
 
 > If the zone rules changed, what else would be affected?
 
@@ -415,7 +434,7 @@ configuration file returns nothing. Pricing is decided by order type, not by zon
 
 ## Q11 — interceptor / pipeline chain
 
-**Status: CROSS-CHECKED — awaiting sign-off. Verified exact; no change.**
+**Status: VERIFIED BY TOOL — 29 July, caller-counted.**
 
 > Are hazardous orders treated differently anywhere? Where?
 
@@ -445,7 +464,7 @@ surcharge can also be triggered by a hazardous line in another order type.
 
 ## Q12 — misleading name
 
-**Status: CROSS-CHECKED — awaiting sign-off. Verified exact; one site added.**
+**Status: VERIFIED BY TOOL — 29 July, caller-counted.**
 
 > Where is a dock assigned to a shipment?
 

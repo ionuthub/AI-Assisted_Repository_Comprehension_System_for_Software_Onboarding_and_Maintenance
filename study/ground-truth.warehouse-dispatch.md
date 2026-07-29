@@ -12,17 +12,37 @@ Each question carries a status:
 
 Progress: **0 confirmed, 12 cross-checked and awaiting sign-off.**
 
-The independent review found one outright factual error, in Q1, and four places where the
-answer was correct but under-cited. Every claim it made was re-verified here before being
-accepted.
+Two independent reviews. The first found an outright factual error in Q1 and four places where
+the answer was correct but under-cited. The second found one more: Q4 claimed "exactly three
+call sites" when there are five, two of them in `reservation.test.ts`. Every claim was
+re-verified here before being accepted.
 
-One observation that belongs outside any single answer: this repository installs its listeners
-and creates its router differently from clinic-triage. Here the router is built once at module
-scope and the listeners are installed inside an effect; there the routes are declared inside
-the component and the listeners arrive through bare side-effect imports. Question 1 therefore
-has a structurally different answer in each repository. The orientation question is already
-known to fail retrieval in both, so nothing in the study turns on it, but it should be recorded
-rather than discovered later.
+Both defects found across the two repositories were of the same kind — an absolute quantifier
+that had not been checked against a plain grep. "Exactly three", "the only path", "can be
+changed". Where an answer counts or excludes something, count it again.
+
+Two observations that belong outside any single answer.
+
+This repository installs its listeners and creates its router differently from clinic-triage.
+Here the router is built once at module scope and the listeners are installed inside an effect;
+there the routes are declared inside the component and the listeners arrive through bare
+side-effect imports. Question 1 therefore has a structurally different answer in each
+repository. The orientation question is already known to fail retrieval in both, so nothing in
+the study turns on it, but it should be recorded rather than discovered later.
+
+The second is more consequential and was not planned. The two repositories differ in how much
+declared-but-unreachable behaviour they contain. Here it is narrow: `ZoneRule.pricing` is
+written on every rule and read nowhere, and `registeredHandlerTypes` is exported with no
+callers. In clinic-triage an entire subsystem is unreachable — nothing outside `src/api/`
+imports from it, so the request pipeline is never loaded. This repository has no equivalent:
+`src/dispatch/orderService.ts` imports `apiClient`, so the API path here is live.
+
+That asymmetry was not designed. The seven planted patterns are mirrored between the pair and
+remain so; reachability is not one of them and emerged from generation. It does not threaten
+the timed tasks, which target the seven patterns. It does mean the same gate question is harder
+in clinic-triage than here, so the two per-repository accuracy figures are not directly
+comparable and should be reported as a pooled figure with the asymmetry stated. Recording it
+now, before scoring, is what keeps it a limitation rather than an excuse.
 
 Do not open the tool until all twelve are checked. Once an answer is seen from the tool it
 cannot be unseen, and the gate stops measuring anything.
@@ -126,7 +146,8 @@ shadow one handler with another.
 
 ## Q4 — cross-cutting concern
 
-**Status: CROSS-CHECKED — awaiting sign-off. Verified complete.**
+**Status: CROSS-CHECKED twice — awaiting sign-off. A second review found the completeness
+claim overstated; corrected.**
 
 > Everywhere stock is reserved — list every place it happens.
 
@@ -151,10 +172,13 @@ src/store/useWarehouseStore.ts:88-125
 `commitReleasedStock` does not create a reservation; it consumes on-hand stock and removes the
 corresponding reservation (src/stock/stockService.ts:16-37).
 
-The list is complete by two independent routes. `applyStockReservation` has exactly three call
-sites, named above, plus the store's installation of the revalidation job. Grepping instead for
-every direct write to `item.reserved` returns three: the reservation function itself, the reset
-inside revalidation, and the release path in `commitReleasedStock`. Both searches agree.
+The list is complete by two independent routes. `applyStockReservation` has three call sites in
+application code, named above, plus the store's installation of the revalidation job. It also
+has two more in `reservation.test.ts`, at lines 22 and 31, which build orders by hand; an
+earlier version of this note said "exactly three call sites" without that qualification, and
+`grep -rn applyStockReservation src` returns five. Grepping instead for every direct write to
+`item.reserved` returns three: the reservation function itself, the reset inside revalidation,
+and the release path in `commitReleasedStock`. Both searches agree on the application paths.
 
 ---
 
@@ -180,7 +204,9 @@ src/api/interceptors/index.ts:13-19
 src/api/interceptors/auth-interceptor.ts:3-9
 src/api/interceptors/audit-interceptor.ts:3-11
 src/api/interceptors/hazardous-interceptor.ts:4-13
+src/api/mock-server.ts:4
 src/api/mock-server.ts:7-9
+src/api/mock-server.ts:14
 src/api/mock-server.ts:15
 
 **Notes**
@@ -191,6 +217,11 @@ The path rewrite has no effect on the response. `mock-server.ts:7-9` normalises
 `/controlled/orders` straight back to `/orders` before dispatching, so the rewritten path
 reaches nothing that treats it differently. The header and the metadata survive; the new path
 does not.
+
+The comment at `mock-server.ts:4` says the mock "always responds synchronously to keep tests
+deterministic". `handleRequest` awaits a 90-millisecond timeout at line 14. This is the third
+comment in the pair that describes something the code does not do, alongside the Internet
+Explorer shim and the site-grouping claim in clinic-triage.
 
 ---
 
@@ -313,6 +344,11 @@ module is discovered by the registry glob without editing a central import list.
 The order list's type filter is a hardcoded array rather than a derivation from `OrderType`, so
 a new type would be unfilterable in the interface and the compiler would not object.
 
+Nothing in this repository asserts a handler count, so unlike clinic-triage — where
+`registry.test.ts` fails the moment a fifth route module lands — no test breaks here on a new
+order type. `registeredHandlerTypes` would have made such a test possible, but it is exported
+and never called.
+
 ---
 
 ## Q10 — applied
@@ -365,7 +401,7 @@ dock D4. Current pricing also adds a hazardous fee when a line is hazardous.
 
 src/dispatch/handlers/hazardousHandler.ts:3-27
 src/config/zoneRules.ts:14-19
-src/config/zoneRules.ts:34
+src/config/zoneRules.ts:30-36
 src/api/interceptors/hazardous-interceptor.ts:4-13
 src/dispatch/validation.ts:29-30
 src/pricing/pricing.ts:16-20

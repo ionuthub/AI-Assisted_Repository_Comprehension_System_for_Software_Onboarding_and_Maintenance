@@ -34,9 +34,16 @@ To validate every line reference in this file, from the artefact repository:
 
 The cross-check found a consistent gap in the original drafts: they described what the code
 *declares* and under-reported where the declared intent never reaches the running application.
-Four instances, all verified — the API pipeline is never loaded, the continuity finder's
+Five instances, all verified — the API pipeline is never loaded, the continuity finder's
 clinician preference is never supplied, the calculated priority band is always overridden by
-the interface, and a set written by the scheduling listener is never read.
+the interface, a set written by the scheduling listener is never read, and the store's
+`setPriority` action has no callers at all.
+
+The fifth was found late, by a third review, and it had been written into two answers as
+though it were a live path. That is worth recording rather than quietly fixing: this file's
+own summary announced that it had gone looking for exactly this class of thing and declared
+the search complete at four. A stated intention to look for a kind of error is not the same as
+having found all of them.
 
 Those facts are now in the answers, which raises the standard the tool is being measured
 against. A tool that sees three files of 2,500 characters cannot perform reachability analysis
@@ -75,7 +82,8 @@ do.
 
 ## Q2 — config-driven behaviour
 
-**Status: CONFIRMED — 28 July, with one addition awaiting sign-off (final paragraph of Notes).**
+**Status: CROSS-CHECKED — sign-off withdrawn 29 July. A third review found a false clause in
+an answer that had already been confirmed. Needs re-reading.**
 
 > How is a referral given its priority band?
 
@@ -84,8 +92,7 @@ do.
 `calculateBand` sums the referral type's configured base points with the points of every rule
 whose `matches` predicate is satisfied, then takes the band of the first threshold the total
 meets — red from 9, amber from 4, otherwise green. On acceptance the store uses that calculated
-band unless the operator supplies an override, and the band can be changed again afterwards
-through `setPriority`.
+band unless the operator supplies an override.
 
 **Files and lines**
 
@@ -112,6 +119,12 @@ the interface an override is *always* supplied: `ReferralDetailPage` seeds its l
 state to `referral?.priority ?? "green"` and passes it unconditionally to `acceptReferral`. The
 override is therefore never `undefined`, so `calculateBand` never determines a stored band
 through the UI. Its result reaches the operator only as a suggestion in `PriorityPanel`.
+
+The store exposes a `setPriority` action that would change a stored band after acceptance, and
+nothing calls it. `grep -rn setPriority src` returns four lines: the interface declaration, the
+implementation, and two in `ReferralDetailPage` that are the component's own `useState` setter,
+not the store action — a name collision, and the reason an earlier version of this answer
+presented the action as a live path.
 
 ---
 
@@ -205,6 +218,7 @@ src/api/api-client.ts:11-28
 src/api/pipeline/trace-stage.ts:2-8
 src/api/pipeline/auth-stage.ts:2-12
 src/api/pipeline/redact-stage.ts:3-16
+src/api/pipeline/redact-stage.ts:17-18
 src/api/referrals-api.ts:3-9
 src/api/referrals-api.ts:10-16
 
@@ -285,9 +299,10 @@ misleading comment as the Internet Explorer shim in Q1.
 
 The clinician preference never operates, but not because of the trailing sort. `startsAt` is
 derived from `slotIndex` alone in the seed data — `clinicianIndex` affects only
-`durationMinutes` — so every clinician's Nth slot carries an identical timestamp, ties are
-universal rather than exceptional, and `Array.prototype.sort` is stable. The preference at
-lines 14-18 would therefore survive the sort at line 24 intact.
+`durationMinutes` — so every clinician's Nth slot carries an identical timestamp. Slots at
+different indices still differ in time; what matters is that the comparison across clinicians
+is always a tie, and `Array.prototype.sort` is stable. The preference at lines 14-18 would
+therefore survive the sort at line 24 intact.
 
 What makes it inert is that `preferredClinicianId` is `referral.assignedClinicianId`, and that
 field is undefined at every call site in the repository. It appears three times in `src/`: the
@@ -324,7 +339,7 @@ Those are the only two subscriptions in the repository: nothing listens for
 **Files and lines**
 
 src/events/channel.ts:5-22
-src/triage/validation.ts:36-40
+src/triage/validation.ts:37-40
 src/scheduling/eventListener.ts:1-8
 src/audit/logger.ts:1-17
 src/pages/AuditLogPage.tsx:15
@@ -359,8 +374,8 @@ route loader discovers the module automatically.
 
 Beyond that: `registry.test.ts` asserts that exactly four handlers register and will fail; the
 pathway filter on the referral list is a hardcoded list of `<option>` elements, so a new type
-would be unfilterable; and the type badge and dot styles are per-type CSS classes, so a new
-type renders unstyled. Seed data and type-specific eligibility or redaction rules are optional
+would be unfilterable; and the type badge and dot carry per-type CSS classes, so a new type
+falls back to the base rules. Seed data and type-specific eligibility or redaction rules are optional
 depending on whether the new type needs them.
 
 **Files and lines**
@@ -373,19 +388,26 @@ src/triage/routes/registry.ts:8-18
 src/triage/routes/routine.ts:1-11
 src/tests/registry.test.ts:7-8
 src/pages/ReferralListPage.tsx:84-87
-src/styles.css:692-700
-src/styles.css:936-947
+src/styles.css:682-691
+src/styles.css:936-939
 
 **Notes**
 
 The `TypeFilter` union in `useReferralFilters.ts:9` derives from `ReferralType` and widens
 automatically, so the hook itself needs no change — only the hardcoded options it drives.
 
+The styling consequence is subtler than "unstyled". There is no `.type-badge.type-routine`
+rule at all: routine already relies on the base `.type-badge`, so a new type would receive the
+same green badge and be indistinguishable from routine. The dot behaves differently — routine
+has its own green rule, so a new type would fall back to the base grey, a colour no existing
+type uses. The badge collides; the dot is merely meaningless.
+
 ---
 
 ## Q10 — applied
 
-**Status: CROSS-CHECKED and re-verified — awaiting sign-off. Substantially reframed.**
+**Status: CROSS-CHECKED and re-verified — awaiting sign-off. Substantially reframed, and a
+false closing Note removed on 29 July.**
 
 > If the priority rules changed, what else would be affected?
 
@@ -432,8 +454,13 @@ preselected from it.
 `calculateBand` does determine a stored band in exactly one place in the repository:
 `eligibility.test.ts:11` calls `acceptReferral` without the override argument. No UI path does.
 
-`setPriority` can change a stored band after acceptance, and is the only path by which a band
-other than the seeded one is stored without operator input at the panel.
+No seed referral carries a `priority` at all — `grep -c priority src/data/seed.ts` returns
+zero — so `referral?.priority ?? "green"` resolves to `"green"` for every referral in the
+application, not merely for unbanded ones. Accepting without touching the panel therefore
+always stores green.
+
+An earlier version of this Note claimed `setPriority` offered another route to a stored band.
+It does not: the store action has no callers. See Q2.
 
 ---
 
@@ -460,6 +487,7 @@ src/config/priorityRules.ts:34-39
 src/triage/routes/safeguarding.ts:1-11
 src/triage/eligibility.ts:4-25
 src/api/pipeline/redact-stage.ts:3-16
+src/api/pipeline/redact-stage.ts:17-18
 src/pages/ReferralListPage.tsx:10-15
 
 **Notes**

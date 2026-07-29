@@ -76,7 +76,14 @@ def construct_end(lines: list[str], start: int) -> int | None:
             elif ch in CLOSERS:
                 depth -= 1
         if opened and depth <= 0:
-            return n + 1
+            # Brackets are balanced, but a concise arrow body continues past them:
+            #   export const redactStage: ApiStage = async (request, next) =>
+            #     await next({ ...request, body: redactBody(request.body) });
+            # The parameter list closes on the first line while the declaration does not, so
+            # keep going until a line actually terminates the statement.
+            if strip_noise(lines[n]).rstrip().endswith((";", "}", ",")):
+                return n + 1
+            continue
         # A declaration that opens nothing on its own first line is complete on that line —
         # `export type ReferralType = "routine" | "urgent";` is the whole thing. Without this,
         # the scan ran on into the *next* declaration and reported the citation as too short.

@@ -5,7 +5,7 @@ against the run of record without sight of the first marker's verdicts, on the e
 first marker scored correct. Items scored incorrect were not re-examined: a disagreement there
 would raise the figure, and the risk being tested for is a figure that is too high.
 
-Four of the eight were checked. Three are disputed.
+All eight were checked. Three are disputed, five upheld.
 
 ## Disputed items
 
@@ -57,17 +57,40 @@ It also says `recentlyBooked` "can be queried downstream using the exported
 `wasRecentlyBooked(slotId)` helper". `wasRecentlyBooked` has no callers. The phrasing is
 literally defensible and leaves a reader with the opposite of the truth.
 
-## Agreed item
+## Upheld items
 
-**warehouse-dispatch Q7** — correct in both markings. The strategy resolution is traced through
-`pricingByType`, `pricingStrategyFor` and the delegation in `calculateOrderPrice`, with the
-configuration quoted.
+**clinic-triage Q3** — the decision point is identified exactly: the handler map, `registerRoute`,
+and `routeReferral` resolving on `referral.type`. The dynamic module loading that populates the
+map is not described, but the question asks what decides, not how the handlers arrive.
+
+**clinic-triage Q6** — the in-place mutation of `slot.bookedReferralId` and both emitted events
+are identified. Line references drift by two, which is not a basis for rejection when the
+content is exact.
+
+**warehouse-dispatch Q6** — the dock mutation, D4 for hazardous, D1–D3 by checksum for everything
+else, and the downstream read. Line references are exact.
+
+**warehouse-dispatch Q7** — the strategy resolution traced through `pricingByType`,
+`pricingStrategyFor` and the delegation in `calculateOrderPrice`, with the configuration quoted.
+
+**warehouse-dispatch Q12** — the assignment site, both branches and the propagation to
+`assignedDock`. Line references drift by two to four; content exact.
 
 ## What the disagreement has in common
 
 All three disputed items are cases where the answer describes what the code *declares* and the
 ground truth turns on whether it *runs*. The first marker accepted all three; the ground truth
 rejects all three.
+
+All three are also in clinic-triage, and none in warehouse-dispatch. That is not coincidence.
+Clinic-triage is the repository whose declared-but-unreachable behaviour is structural — a whole
+module graph that never loads — while warehouse-dispatch's is confined to individual dead
+exports. The disputes cluster exactly where the reachability questions are, which is what makes
+the pattern an explanation rather than a run of bad luck.
+
+The five upheld items are all questions with a single, local, present answer: where a mutation
+happens, which branch a lookup takes. On those the tool is accurate and the two markers agree.
+The distinction between the two groups is sharper than any accuracy figure.
 
 That is the same blind spot the tool under measurement has, in the marker measuring it. Both are
 language models, and the failure they share is the one that matters here. It is not a
@@ -79,19 +102,25 @@ figure.
 | Marking | clinic | warehouse | overall |
 | --- | --- | --- | --- |
 | First marker | 5/12 | 3/12 | 8/24 — 33% |
-| After these three | 2/12 | 3/12 | 5/24 — 21% |
+| Second marker | 2/12 | 3/12 | 5/24 — 21% |
 
-Four of the eight correct items were checked. If the remaining four contain disagreements at a
-similar rate, the figure falls further.
+Agreement between the two markers on the eight items examined: five of eight. Note that this is
+a biased sample by design — only items scored correct were re-examined, because a dispute among
+the items scored incorrect could only raise the figure and inflation is the risk being tested
+for. A full agreement statistic would require both markers to mark all twenty-four
+independently.
 
 ## Recommendation
 
-Do not record 33% yet. Two options, and the second is much stronger.
+Report 21% as the figure, 33% as the first marking, and this disagreement as part of the
+result rather than as a footnote to it. A number with two markings and a documented dispute is
+worth more than a number with one marking and none.
 
-Resolve the three disputes by reading the code at the cited lines and deciding. That is fifteen
-minutes and it settles them.
+The three disputes still need adjudicating by a person. That is now the whole ask: read clinic
+Q2, Q7 and Q8 against the cited lines and decide. Fifteen minutes, three questions, and it is
+the only step in this chain not produced by a machine.
 
-Or have a person mark the eight correct items independently. The disagreement documented here is
-the reason: two machine markers already disagree on three of four, in a characterisable
-direction, so a third machine opinion adds little. A human verdict on eight items breaks the
-chain and gives the reported figure a provenance that survives a viva.
+Q7 is the one to give to a human first if only one can be spared. The answer reaches the right
+conclusion, says openly that it is inferring rather than reading, and then asserts a mechanism
+that does not run. Whether that counts as a correct answer is a judgement about what the study
+is measuring, and it should not be settled by the kind of system being measured.

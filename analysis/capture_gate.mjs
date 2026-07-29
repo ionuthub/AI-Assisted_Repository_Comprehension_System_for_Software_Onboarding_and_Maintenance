@@ -145,7 +145,7 @@ for (const { id, question } of questions) {
   await page.fill("#workspace-ask", question);
   await page.press("#workspace-ask", "Enter");
 
-  const answerPanel = page.locator('section:has(h2:text-is("Answer")), [role="dialog"]:has-text("Answer")').first();
+  const answerPanel = page.locator('p:text-is("Your question") + h1 + div:not([aria-busy])').first();
   await answerPanel.waitFor({ timeout: 180_000 });
   const evidence = await readEvidence();
 

@@ -5,7 +5,47 @@ against the run of record without sight of the first marker's verdicts, on the e
 first marker scored correct. Items scored incorrect were not re-examined: a disagreement there
 would raise the figure, and the risk being tested for is a figure that is too high.
 
-All eight were checked. Three are disputed, five upheld.
+All eight were checked. Three were disputed and five upheld — but a procedural defect found
+afterwards means two of the three disputes were not what they appeared to be. That is dealt with
+first, because it changes how the rest of this document should be read.
+
+## The two markings were not against the same material
+
+`analysis/marking_sheet.py` built each block from a question's **Answer** only. It omitted the
+**Notes**. The first marker therefore worked from the Answer; this second marking worked from the
+whole ground-truth document, Answer and Notes together.
+
+Some of what follows is consequently not disagreement about a judgement. It is two markers
+answering different questions, and the difference was invisible to both until someone read the
+sheet builder.
+
+The standard is now stated explicitly and the Notes are shown, collapsed, beneath each Answer:
+**the Answer is the standard; the Notes are context.** Requiring a tool to reproduce every Note
+would set a bar nothing could meet, and it was not declared in advance. Under that rule:
+
+| | Answer only | Answer and Notes |
+| --- | --- | --- |
+| Q2 | incorrect — never reaches the store | incorrect |
+| Q7 | **correct** | incorrect |
+| Q8 | incorrect | incorrect |
+| Figure | **6/24 — 25%** | 5/24 — 21% |
+
+Q7 is the one that moves. Its Answer says the finder "sorts them so any preferred clinician comes
+first", which is what the tool said. That the preference never operates appears only in the
+Notes. Under the declared standard the tool's answer stands.
+
+Q8 does not move: its Answer states outright that these are the only two subscriptions and that
+nothing listens for `referral:accepted` or `eligibility:failed`. The tool omitted that from a
+displayed requirement.
+
+Q2 does not move either, though its grounds narrow. The Answer requires that the store uses the
+calculated band unless an override is supplied; the tool never reaches the store or names
+`acceptReferral`. The `band`-field trap it also omits is a Note and does not count.
+
+**6/24 is the figure to report**, with 5/24 as the stricter reading and both rules stated. The
+choice between them was made by asking which material had been shown, not by which produced a
+better number — and it is recorded here because that ordering is the only thing that makes the
+choice credible.
 
 ## Disputed items
 

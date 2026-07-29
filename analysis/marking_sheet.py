@@ -54,6 +54,18 @@ names the right file but misses two of the four places something happens is **in
 is deliberate — the questions were written to have complete answers, and a scheme that awarded
 half marks would make the resulting figure impossible to interpret.
 
+**What counts as the standard: the Answer, not the Notes.** Each question's Notes are shown
+collapsed beneath it, because a marker needs to know what is in the repository, but an answer is
+not incorrect merely for omitting something that appears only in a Note. The Notes record traps,
+reachability findings and counter-examples; requiring a tool to reproduce all of them would set a
+bar nothing could meet, and it was not the standard declared in advance.
+
+This has to be stated because it was previously left implicit, and two markers then marked the
+same items against different material — one seeing the Answer alone, one seeing the whole
+ground-truth document. Some of what looked like disagreement was two people answering different
+questions. Where an omission from a Note seems decisive, mark against the Answer and say so on
+the "Why" line; that keeps the stricter reading available without hiding it inside the figure.
+
 Mark against the ground truth, not against your impression of whether the answer sounds good. A
 fluent answer that omits the decisive fact is the case this whole study exists to measure.
 
@@ -70,11 +82,18 @@ BLOCK = """\
 
 > {question}
 
-### Ground truth
+### Ground truth — this is the standard
 
 {truth}
 
 **Files:** {truth_files}
+
+<details>
+<summary>Notes from the ground truth (context, not the standard)</summary>
+
+{truth_notes}
+
+</details>
 
 ### What the tool answered
 
@@ -119,6 +138,7 @@ def build(gate_path: Path, truth_path: Path) -> Path:
                 question=item["question"],
                 truth=t.get("answer", "(ground truth not found for this question)"),
                 truth_files=", ".join(t.get("files", "").split()) or "—",
+                truth_notes=t.get("notes") or "_none_",
                 heading=item.get("toolEvidenceHeading", "—"),
                 retrieved=retrieved,
                 unverified=("Unverified mentions: " + "; ".join(unver) + "\n") if unver else "",

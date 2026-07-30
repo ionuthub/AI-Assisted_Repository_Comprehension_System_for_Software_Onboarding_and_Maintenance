@@ -11,7 +11,8 @@ import { Play, CheckCircle, Clock, Download, Upload, AlertTriangle } from "lucid
 import SEO from "@/components/SEO";
 import {
   Condition, StudySession, StudyTask, TLX_SCALES, TlxRatings, GroundTruthFile,
-  tasksFromGroundTruth, susScore, tlxScore, sessionToCsv, download,
+  DEMO_ANSWER_KEY, tasksFromGroundTruth, isDemoTaskSet, canBeginTasks,
+  susScore, tlxScore, sessionToCsv, download,
 } from "@/lib/evaluation/session";
 import { readMetrics } from "@/lib/evaluation/metrics";
 import {
@@ -31,16 +32,6 @@ const SUS_QUESTIONS = [
   "I needed to learn a lot of things before I could get going with this system.",
 ];
 
-/** Built-in demonstration task set; real sessions import the study's answer key JSON. */
-const DEMO_TASKS: GroundTruthFile = {
-  repository: "demo",
-  tasks: [
-    { id: 1, kind: "locating", name: "Locate the routing structure", description: "Find the file defining the application's navigation paths.", expectedFiles: ["src/App.tsx"], answerKey: "Routing is declared in src/App.tsx." },
-    { id: 2, kind: "locating", name: "Locate authentication handling", description: "Find where session validation or login is handled.", expectedFiles: ["src/hooks/useGitHubAuth.ts"], answerKey: "Authentication is handled in src/hooks/useGitHubAuth.ts." },
-    { id: 3, kind: "applied", name: "Plan a change", description: "Where would a new user-profile feature be added, and what else would need to change? Explain your reasoning.", expectedFiles: [], answerKey: "Marked against the rubric: correct insertion point plus at least two affected areas." },
-  ],
-};
-
 type Phase = "setup" | "tasks" | "retention" | "tlx" | "sus" | "export";
 
 export default function EvaluationPage() {
@@ -52,7 +43,7 @@ export default function EvaluationPage() {
   const [condition, setCondition] = useState<Condition>("tool");
   const [order, setOrder] = useState<"manual-first" | "tool-first">("manual-first");
   const [repository, setRepository] = useState("");
-  const [tasks, setTasks] = useState<StudyTask[]>(tasksFromGroundTruth(DEMO_TASKS));
+  const [tasks, setTasks] = useState<StudyTask[]>(tasksFromGroundTruth(DEMO_ANSWER_KEY));
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // --- runtime ---
@@ -251,7 +242,22 @@ export default function EvaluationPage() {
               <span className="text-sm text-muted-foreground self-center">{tasks.length} tasks loaded</span>
             </div>
           </div>
-          <Button className="w-full" disabled={!participantId} onClick={() => setPhase("tasks")}>
+          {isDemoTaskSet(tasks) && (
+            <div className="flex items-start gap-2 rounded-md border border-warning/60 bg-warning/10 p-3">
+              <AlertTriangle className="w-4 h-4 text-warning shrink-0 mt-0.5" aria-hidden="true" />
+              <p className="text-meta text-muted-foreground">
+                <span className="font-semibold text-foreground">Demonstration tasks are loaded.</span>{" "}
+                Their answer keys are placeholders, so a session run on them would export in the
+                shape of study data with nothing to score against. Import the study's answer key
+                before beginning.
+              </p>
+            </div>
+          )}
+          <Button
+            className="w-full"
+            disabled={!canBeginTasks(participantId, tasks)}
+            onClick={() => setPhase("tasks")}
+          >
             Begin tasks
           </Button>
         </CardContent></Card>

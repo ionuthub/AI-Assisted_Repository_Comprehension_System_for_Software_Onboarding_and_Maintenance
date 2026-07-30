@@ -97,6 +97,44 @@ export interface GroundTruthFile {
   }[];
 }
 
+/**
+ * Built-in demonstration task set, loaded so the runner can be walked through before a
+ * study session begins. Its answer keys are placeholders, so a session run on it exports
+ * in exactly the shape of real data while scoring answers against nothing.
+ */
+export const DEMO_ANSWER_KEY: GroundTruthFile = {
+  repository: "demo",
+  tasks: [
+    { id: 1, kind: "locating", name: "Locate the routing structure", description: "Find the file defining the application's navigation paths.", expectedFiles: ["src/App.tsx"], answerKey: "Routing is declared in src/App.tsx." },
+    { id: 2, kind: "locating", name: "Locate authentication handling", description: "Find where session validation or login is handled.", expectedFiles: ["src/hooks/useGitHubAuth.ts"], answerKey: "Authentication is handled in src/hooks/useGitHubAuth.ts." },
+    { id: 3, kind: "applied", name: "Plan a change", description: "Where would a new user-profile feature be added, and what else would need to change? Explain your reasoning.", expectedFiles: [], answerKey: "Marked against the rubric: correct insertion point plus at least two affected areas." },
+  ],
+};
+
+/** Identity of a task set by what it asks and what it marks against, ignoring runtime capture. */
+function taskSetSignature(tasks: readonly { name: string; answerKey: string }[]): string {
+  return tasks.map((t) => `${t.name} :: ${t.answerKey}`).join("\n");
+}
+
+/** True while the loaded tasks are still the built-in demonstration set. */
+export function isDemoTaskSet(tasks: readonly { name: string; answerKey: string }[]): boolean {
+  return taskSetSignature(tasks) === taskSetSignature(DEMO_ANSWER_KEY.tasks);
+}
+
+/**
+ * Whether the setup phase may hand over to the task phase.
+ *
+ * Requires both an identifier to file the export under and a real answer key in place of
+ * the demo set: a session begun on the demo tasks yields an export a later analysis cannot
+ * distinguish from a genuine run, with every answer scored against a placeholder key.
+ */
+export function canBeginTasks(
+  participantId: string,
+  tasks: readonly { name: string; answerKey: string }[]
+): boolean {
+  return participantId.trim().length > 0 && tasks.length > 0 && !isDemoTaskSet(tasks);
+}
+
 export function tasksFromGroundTruth(gt: GroundTruthFile): StudyTask[] {
   return gt.tasks.map((t) => ({
     id: t.id,

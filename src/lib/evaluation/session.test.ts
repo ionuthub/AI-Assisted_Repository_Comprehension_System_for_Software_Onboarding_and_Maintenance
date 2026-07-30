@@ -1,5 +1,7 @@
 import { describe, it, expect } from 'vitest';
-import { susScore, tlxScore, sessionToCsv, tasksFromGroundTruth } from './session';
+import {
+  susScore, tlxScore, sessionToCsv, tasksFromGroundTruth, canBeginTasks, DEMO_ANSWER_KEY,
+} from './session';
 import type { StudySession, TlxRatings } from './session';
 
 const TLX_NEUTRAL: TlxRatings = {
@@ -73,6 +75,30 @@ describe('tasksFromGroundTruth', () => {
     // Seeded tasks previously defaulted to false, which is indistinguishable in the export
     // from a participant who was asked and failed to notice the error.
     expect(tasks[1].errorDetected).toBeNull();
+  });
+});
+
+describe('canBeginTasks', () => {
+  const importedKey = tasksFromGroundTruth({
+    repository: 'repoA',
+    tasks: [{ id: 1, kind: 'locating', name: 'Find the entry point', description: 'd', answerKey: 'src/main.tsx' }],
+  } as never);
+
+  it('blocks the demo task set, whose answer keys are placeholders', () => {
+    // The runner loads these by default, so without the guard a session could be run and
+    // exported end to end with every answer scored against a demonstration key.
+    expect(canBeginTasks('P01', tasksFromGroundTruth(DEMO_ANSWER_KEY))).toBe(false);
+  });
+
+  it('blocks a session with no participant identifier to file the export under', () => {
+    expect(canBeginTasks('', importedKey)).toBe(false);
+    expect(canBeginTasks('   ', importedKey)).toBe(false);
+  });
+
+  it('allows an identified participant once a real answer key is imported', () => {
+    expect(canBeginTasks('P01', importedKey)).toBe(true);
+    // An empty import is not a substitute for the demo set being replaced.
+    expect(canBeginTasks('P01', [])).toBe(false);
   });
 });
 

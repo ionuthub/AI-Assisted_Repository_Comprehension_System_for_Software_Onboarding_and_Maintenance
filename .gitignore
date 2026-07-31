@@ -40,3 +40,7 @@ test-results
 
 # TypeScript incremental build info (produced by `tsc -b`)
 *.tsbuildinfo
+
+# Compiled Python bytecode (produced by running the analysis/ scripts)
+__pycache__/
+*.pyc

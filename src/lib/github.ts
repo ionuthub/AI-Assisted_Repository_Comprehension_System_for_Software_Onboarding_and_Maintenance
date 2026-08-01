@@ -292,7 +292,13 @@ export const fetchFileContent = async (owner: string, repo: string, branch: stri
   // Public repositories are served directly from raw.githubusercontent.com. This
   // endpoint needs no authentication and is not subject to the API's request
   // budget, which matters when ingestion fetches up to fifty files in a burst.
-  const rawUrl = `https://raw.githubusercontent.com/${owner}/${repo}/${branch}/${path}`;
+  //
+  // Each segment is encoded separately so that "/" keeps separating directories
+  // while "#", "?" and spaces inside a filename stay part of the path. Interpolating
+  // the path raw meant a file such as "docs/C#-notes.md" was requested as "docs/C"
+  // with "-notes.md" treated as a URL fragment, silently fetching the wrong path.
+  const encodedPath = path.split("/").map(encodeURIComponent).join("/");
+  const rawUrl = `https://raw.githubusercontent.com/${owner}/${repo}/${branch}/${encodedPath}`;
 
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), REQUEST_TIMEOUT);

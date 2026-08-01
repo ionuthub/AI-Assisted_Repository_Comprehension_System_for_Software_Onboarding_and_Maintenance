@@ -641,7 +641,7 @@ const Index = () => {
                                isLoading={isFileLoading}
                                fileName={selectedFile}
                                fileContent={currentFileContent}
-                               onLineSelect={(line) => handleLineSelect(line)}
+                               onLineSelect={handleLineSelect}
                                selectedLine={selectedLine}
                                selectedLines={selectedLines}
                              />

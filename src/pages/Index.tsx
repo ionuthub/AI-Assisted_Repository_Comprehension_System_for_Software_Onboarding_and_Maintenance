@@ -7,25 +7,12 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
-import {
-  Search,
-  FileCode,
-  GitBranch,
-  Archive,
-  FolderOpen,
-  HelpCircle,
-  FileText,
-  Activity,
-  Layers,
-  Sparkles,
-  Zap
-} from "lucide-react";
+import { Search, GitBranch, Sparkles } from "lucide-react";
 import CodeViewer from "@/components/CodeViewer";
 import FolderTree from "@/components/FolderTree";
 import WorkspaceQAView, { type RetrievedEvidence } from "@/components/WorkspaceQAView";
 import WorkspaceSearchView from "@/components/WorkspaceSearchView";
 import FileInsightsPanel from "@/components/FileInsightsPanel";
-import DependencyGraph from "@/components/DependencyGraph";
 import CoveragePanel from "@/components/CoveragePanel";
 import SuggestedQuestions from "@/components/SuggestedQuestions";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
@@ -59,7 +46,7 @@ const INGESTION_STEPS = [
   { phase: "metadata" as const, label: "Resolving repository metadata" },
   { phase: "tree" as const, label: "Reading the file list" },
   { phase: "fetching" as const, label: "Fetching file contents" },
-  { phase: "indexing" as const, label: "Building the search index and dependency graph" },
+  { phase: "indexing" as const, label: "Building the search index" },
 ];
 
 function ingestionStepState(
@@ -75,7 +62,7 @@ function ingestionStepState(
   return "pending";
 }
 
-type WorkspaceView = 'overview' | 'code' | 'architecture' | 'search' | 'qa';
+type WorkspaceView = 'overview' | 'code' | 'search' | 'qa';
 
 /**
  * The four views, in the order a user moves through them: orient, locate, read, ask.
@@ -84,7 +71,6 @@ type WorkspaceView = 'overview' | 'code' | 'architecture' | 'search' | 'qa';
  */
 const WORKSPACE_TABS: { view: WorkspaceView; label: string; matches: WorkspaceView[] }[] = [
   { view: 'overview', label: 'Overview', matches: ['overview'] },
-  { view: 'architecture', label: 'Architecture', matches: ['architecture'] },
   { view: 'code', label: 'Code', matches: ['code'] },
   { view: 'qa', label: 'Answers', matches: ['qa', 'search'] },
 ];
@@ -128,7 +114,7 @@ const Index = () => {
   // The file explorer and the per-file panel are only meaningful when a file is the
   // subject. An answer or a result list is the whole task and takes the full width;
   // nested inside three columns the answer prose collapsed to roughly 250px.
-  const showsFileChrome = workspaceView === 'code' || workspaceView === 'architecture';
+  const showsFileChrome = workspaceView === 'code';
   const [searchVal, setSearchVal] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
   const [searchResults, setSearchResults] = useState<SearchResult[]>([]);
@@ -361,7 +347,7 @@ const Index = () => {
     <ErrorBoundary>
       <SEO
         title="Repository Comprehension System"
-        description="Understand unfamiliar codebases using static parsing, dependency graphing, semantic concept search, and grounded Q&A."
+        description="Understand unfamiliar codebases using a repository overview, semantic search, and answers grounded in the files they came from."
       />
       <div className="flex flex-col relative overflow-hidden min-h-[82vh]">
         <main className="flex-1 container mx-auto px-4 py-8 md:px-8 flex flex-col">
@@ -454,8 +440,8 @@ const Index = () => {
                     </Button>
                   </div>
                   <p className="text-meta text-muted-foreground">
-                    Search and questions work across most source and configuration files. The
-                    dependency graph and code analysis cover JavaScript and TypeScript only.
+                    Search and questions work across most source and configuration files.
+                    Import analysis on the overview covers JavaScript and TypeScript only.
                     Up to 50 files are indexed, and installed dependencies and build output
                     are skipped.
                   </p>
@@ -613,7 +599,6 @@ const Index = () => {
                             handleFileSelect(path);
                             setWorkspaceView('code');
                           }}
-                          onOpenGraph={() => setWorkspaceView('architecture')}
                         />
 
                         {project.ingestion && (
@@ -659,37 +644,6 @@ const Index = () => {
                                onLineSelect={(line) => handleLineSelect(line)}
                                selectedLine={selectedLine}
                                selectedLines={selectedLines}
-                             />
-                           </div>
-                         </div>
-                       )}
-
-                       {workspaceView === 'architecture' && (
-                         <div className="h-full flex flex-col bg-code-bg overflow-hidden">
-                           {/* VS Code style editor tab */}
-                           <div className="bg-secondary/40 border-b border-border/80 h-9 flex items-center justify-between shrink-0 select-none px-1">
-                             <div className="flex h-full items-center">
-                               <div className="bg-code-bg text-foreground border-r border-border/80 h-full px-3.5 flex items-center gap-2 text-sm border-t-2 border-t-accent font-mono font-semibold">
-                                 <Layers className="w-3.5 h-3.5 text-accent shrink-0" />
-                                 <span>architecture-map.svg</span>
-                               </div>
-                             </div>
-                             <Button
-                               size="sm"
-                               variant="ghost"
-                               className="h-6 w-6 p-0 hover:bg-secondary/60 text-muted-foreground mr-2 rounded-sm"
-                               onClick={() => setWorkspaceView('overview')}
-                             >
-                               ✕
-                             </Button>
-                           </div>
-                           <div className="flex-1 min-h-0 p-4">
-                             <DependencyGraph
-                               project={project}
-                               onFileSelect={(path) => {
-                                 handleFileSelect(path);
-                                 setWorkspaceView('code');
-                               }}
                              />
                            </div>
                          </div>

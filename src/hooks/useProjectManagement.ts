@@ -44,7 +44,7 @@ export const useProjectManagement = () => {
 
         setIsLoading(true);
         try {
-            const next = await fetchRepositoryProject(repoUrl.trim(), null, setIngestionProgress);
+            const next = await fetchRepositoryProject(repoUrl.trim(), setIngestionProgress);
             setProject(next);
             if (next.files.length > 0) setSelectedFile(next.files[0].path);
 
@@ -97,8 +97,7 @@ export const useProjectManagement = () => {
                     project.summary.owner!,
                     project.summary.repo!,
                     project.summary.branch ?? "main",
-                    path,
-                    null
+                    path
                 );
                 updateFileCache(path, fetched);
                 if (fetched.content) {

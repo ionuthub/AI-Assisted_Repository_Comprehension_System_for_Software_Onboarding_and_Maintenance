@@ -92,6 +92,39 @@ export default function WorkspaceQAView({
       );
     });
 
+  // The Answers tab is reachable from the workspace nav before any question has
+  // been asked. Rendering the answer layout in that state asserted a failure that
+  // never happened: an empty question heading over an empty answer, beside an
+  // evidence panel reporting "No evidence · 0 files retrieved" for a retrieval
+  // that was never run. The panel's no-evidence warning is a claim about an
+  // answer, and it must not render when there is no answer to make a claim about.
+  const nothingAskedYet = !question && !isLoading && generationStatus === 'idle';
+  if (nothingAskedYet) {
+    return (
+      <div className="h-full flex flex-col overflow-hidden bg-background">
+        <div className="flex items-center justify-between gap-4 px-6 py-3 border-b border-border shrink-0">
+          <h2 className="text-ui font-semibold text-foreground">Answer</h2>
+          <button
+            type="button"
+            onClick={onBackToOverview}
+            className="text-ui text-muted-foreground hover:text-foreground underline underline-offset-2"
+          >
+            Close
+          </button>
+        </div>
+        <div className="flex-1 flex items-center justify-center p-6">
+          <div className="text-center space-y-1.5 max-w-[44ch]">
+            <p className="text-ui font-medium text-foreground/80">No question asked yet.</p>
+            <p className="text-body text-muted-foreground">
+              Ask from the question bar above, a suggested question on the overview, or the
+              panel beside any file.
+            </p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="h-full flex flex-col overflow-hidden bg-background">
       <div className="flex items-center justify-between gap-4 px-6 py-3 border-b border-border shrink-0">

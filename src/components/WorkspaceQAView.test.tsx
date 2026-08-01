@@ -30,3 +30,44 @@ describe('MENTIONED_PATH', () => {
     expect(extract('the answer is fine.ts')).toEqual([]);
   });
 });
+
+// The Answers tab is reachable before any question exists. These tests pin the
+// empty state discovered in the 1 August smoke test: the view rendered its full
+// answer layout for a question that was never asked, and the evidence panel
+// reported "No evidence · 0 files retrieved" for a retrieval that never ran —
+// a manufactured failure state in an instrument whose subject is trust.
+import { render, screen } from '@testing-library/react';
+import WorkspaceQAView from './WorkspaceQAView';
+
+const idleProps = {
+  question: '',
+  answer: '',
+  isLoading: false,
+  generationStatus: 'idle' as const,
+  completion: null,
+  evidence: [],
+  indexedFileCount: 50,
+  totalFileCount: 54,
+  onBackToOverview: () => {},
+};
+
+describe('WorkspaceQAView before any question is asked', () => {
+  it('shows the empty state instead of the answer layout', () => {
+    render(<WorkspaceQAView {...idleProps} />);
+    expect(screen.getByText('No question asked yet.')).toBeInTheDocument();
+    expect(screen.queryByText('Your question')).not.toBeInTheDocument();
+  });
+
+  it('does not render the no-evidence warning for a retrieval that never ran', () => {
+    render(<WorkspaceQAView {...idleProps} />);
+    expect(screen.queryByText(/No evidence/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/0 files retrieved/)).not.toBeInTheDocument();
+  });
+
+  it('still renders the answer layout once a question exists', () => {
+    render(<WorkspaceQAView {...idleProps} question="Where does execution start?" generationStatus="complete" answer="In src/main.tsx." />);
+    expect(screen.getByText('Your question')).toBeInTheDocument();
+    expect(screen.getByText('Where does execution start?')).toBeInTheDocument();
+    expect(screen.queryByText('No question asked yet.')).not.toBeInTheDocument();
+  });
+});

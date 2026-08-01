@@ -76,6 +76,17 @@ Pilot: one full dry run on yourself now; one pilot participant after ethics appr
 whose data is used to fix task wording/timing and is excluded from analysis (state this
 in AE2).
 
+**Environment rule — pilots and participants use the same build.** Every session,
+including the researcher's own dry run, is run against the deployed application
+(https://repo-comprehension-system.vercel.app/), never against a local `npm run dev`
+server. The dev server and the deployed function once built the model prompt from
+separate code and had already drifted — different context caps, different request
+validation, different whitespace — so a pilot run locally was not exercising the
+instrument a participant meets. They now share src/lib/promptBuilder.ts, which removes
+the cause; running everything against the deployed build removes the class. Record the
+commit SHA of the deployed build alongside each session, as the accuracy gate already
+does in its `toolVersion` field.
+
 ## Step 5 — Analysis (already implemented, validated)
 
 `python3 analysis/analyze_sessions.py <sessions_dir>` computes exactly the proposal's

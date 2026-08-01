@@ -214,7 +214,7 @@ export default function EvidencePanel({
           Retrieved by keyword match after searching {indexedFileCount} of {totalFileCount}
           {" "}repository files.
           {totalFileCount > indexedFileCount &&
-            ` ${totalFileCount - indexedFileCount} files could not be searched.`}
+            ` ${totalFileCount - indexedFileCount} files were not indexed, so answers cannot draw on them.`}
           {hasEvidence &&
             ` Scores measure shared wording, not correctness; a bar is full at ${SCORE_BAR_FULL_SCALE.toFixed(
               2

@@ -36,7 +36,7 @@ export default defineConfig(({ mode }) => {
               "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; " +
               "font-src 'self' https://fonts.gstatic.com; " +
               "img-src 'self' data: https:; " +
-              "connect-src 'self' https://generativelanguage.googleapis.com https://*.supabase.co wss://*.supabase.co https://api.github.com https://raw.githubusercontent.com; " +
+              "connect-src 'self' https://generativelanguage.googleapis.com https://api.github.com https://raw.githubusercontent.com; " +
               "frame-ancestors 'none';"
             );
             next();

@@ -33,10 +33,8 @@ import { TAB_MODES, RETRIEVAL } from "@/constants/appConstants";
 import { useProjectStore } from "@/store/useProjectStore";
 import SEO from "@/components/SEO";
 import { recordMetric } from "@/lib/evaluation/metrics";
-import { useGitHubAuth } from "@/hooks/useGitHubAuth";
 import { useProjectManagement } from "@/hooks/useProjectManagement";
 import { searchRepository, selectExcerptRegion, SearchResult } from "@/lib/semanticSearch";
-import { detectCodeBlock } from "@/lib/blockDetector";
 import RepositoryOverview from "@/components/RepositoryOverview";
 import { analyzeProject } from "@/lib/projectAnalyzer";
 import {
@@ -108,7 +106,6 @@ const Index = () => {
     searchIndex
   } = useProjectStore();
 
-  const { githubToken, manualGithubToken, setManualGithubToken } = useGitHubAuth();
   
   const overview = useMemo(() => {
     if (!project) return null;
@@ -148,25 +145,26 @@ const Index = () => {
   const [githubUrl, setGithubUrl] = useState("");
   const [recentRepos, setRecentRepos] = useState<RecentRepoItem[]>([]);
 
-  const zipInputRef = useRef<HTMLInputElement>(null);
-  const folderInputRef = useRef<HTMLInputElement>(null);
 
   const {
-    processUploadedFiles,
     handleAnalyze,
     handleFileSelect,
     ingestionProgress
   } = useProjectManagement();
 
-  const handleLineSelect = (lineNumber: number) => {
+  const handleLineSelect = (lineNumber: number, isMultiSelect?: boolean) => {
     if (!currentFileContent) return;
-    const block = detectCodeBlock(currentFileContent, lineNumber);
-    const lines = new Set<number>();
-    for (let i = block.startLine; i <= block.endLine; i++) {
-      lines.add(i);
-    }
     setSelectedLine(lineNumber);
-    setSelectedLines(lines);
+    // Plain click starts a fresh selection; Ctrl/Cmd/Shift+click toggles the
+    // line in or out of the existing one.
+    if (!isMultiSelect) {
+      setSelectedLines(new Set([lineNumber]));
+      return;
+    }
+    const next = new Set(selectedLines);
+    if (next.has(lineNumber)) next.delete(lineNumber);
+    else next.add(lineNumber);
+    setSelectedLines(next);
   };
 
   // Load recent repositories from localStorage on mount
@@ -212,18 +210,9 @@ const Index = () => {
       return;
     }
     setMode(TAB_MODES.GITHUB);
-    handleAnalyze(githubUrl, "", manualGithubToken || githubToken);
+    handleAnalyze(githubUrl, "");
   };
 
-  const handleZipClick = () => zipInputRef.current?.click();
-  const handleFolderClick = () => folderInputRef.current?.click();
-
-  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files && e.target.files.length > 0) {
-      setMode(TAB_MODES.UPLOAD);
-      await processUploadedFiles(e.target.files);
-    }
-  };
 
   // Search submit handler
   const handleSearchSubmit = (e: React.FormEvent) => {
@@ -479,49 +468,12 @@ const Index = () => {
                 </div>
 
                 <div className="flex flex-wrap items-center gap-3">
-                  <input
-                    type="file"
-                    accept=".zip"
-                    ref={zipInputRef}
-                    onChange={handleFileChange}
-                    className="hidden"
-                    disabled={isLoading}
-                  />
-                  <Button
-                    type="button"
-                    variant="outline"
-                    onClick={handleZipClick}
-                    className="h-11 px-5 text-ui rounded-md border-border bg-card text-foreground hover:border-primary/60 hover:bg-surface-raised"
-                    disabled={isLoading}
-                  >
-                    Upload a .zip
-                  </Button>
-
-                  <input
-                    type="file"
-                    multiple
-                    ref={folderInputRef}
-                    onChange={handleFileChange}
-                    className="hidden"
-                    disabled={isLoading}
-                    {...({ webkitdirectory: "true", directory: "true" } as Record<string, string>)}
-                  />
-                  <Button
-                    type="button"
-                    variant="outline"
-                    onClick={handleFolderClick}
-                    className="h-11 px-5 text-ui rounded-md border-border bg-card text-foreground hover:border-primary/60 hover:bg-surface-raised"
-                    disabled={isLoading}
-                  >
-                    Choose a folder
-                  </Button>
-
                   <button
                     type="button"
                     onClick={() => {
                       setGithubUrl(EXAMPLE_REPOSITORY);
                       setMode(TAB_MODES.GITHUB);
-                      handleAnalyze(EXAMPLE_REPOSITORY, "", manualGithubToken || githubToken);
+                      handleAnalyze(EXAMPLE_REPOSITORY, "");
                     }}
                     className="text-ui text-primary underline underline-offset-2 hover:text-primary-glow disabled:opacity-50"
                     disabled={isLoading}
@@ -542,7 +494,7 @@ const Index = () => {
                               if (repo.url) {
                                 setGithubUrl(repo.url);
                                 setMode(TAB_MODES.GITHUB);
-                                handleAnalyze(repo.url, "", manualGithubToken || githubToken);
+                                handleAnalyze(repo.url, "");
                               }
                             }}
                             className="w-full flex items-center justify-between gap-4 px-4 py-3 text-left hover:bg-surface-raised transition-colors"
@@ -658,7 +610,7 @@ const Index = () => {
                           overview={overview}
                           staticAnalyses={staticAnalyses}
                           onFileSelect={(path) => {
-                            handleFileSelect(path, manualGithubToken || githubToken);
+                            handleFileSelect(path);
                             setWorkspaceView('code');
                           }}
                           onOpenGraph={() => setWorkspaceView('architecture')}
@@ -688,7 +640,7 @@ const Index = () => {
                          tree={scanResult?.folderTree || { name: "Root", path: "", type: "folder", children: [] }}
                          selectedFile={selectedFile}
                          onFileSelect={(path) => {
-                           handleFileSelect(path, manualGithubToken || githubToken);
+                           handleFileSelect(path);
                            setWorkspaceView('code');
                          }}
                        />
@@ -735,7 +687,7 @@ const Index = () => {
                              <DependencyGraph
                                project={project}
                                onFileSelect={(path) => {
-                                 handleFileSelect(path, manualGithubToken || githubToken);
+                                 handleFileSelect(path);
                                  setWorkspaceView('code');
                                }}
                              />
@@ -752,7 +704,7 @@ const Index = () => {
                            projectFiles={project.files}
                            onBackToOverview={() => setWorkspaceView('overview')}
                            onFileSelect={(path) => {
-                             handleFileSelect(path, manualGithubToken || githubToken);
+                             handleFileSelect(path);
                              setWorkspaceView('code');
                            }}
                          />
@@ -771,7 +723,7 @@ const Index = () => {
                            totalFileCount={project.ingestion?.totalRepositoryFiles ?? project.files.length}
                            onBackToOverview={() => setWorkspaceView('overview')}
                            onFileSelect={(path) => {
-                             handleFileSelect(path, manualGithubToken || githubToken);
+                             handleFileSelect(path);
                              setWorkspaceView('code');
                            }}
                          />
@@ -784,7 +736,7 @@ const Index = () => {
                          path={selectedFile}
                          analysis={selectedFile ? staticAnalyses[selectedFile] : null}
                          onFileSelect={(path) => {
-                           handleFileSelect(path, manualGithubToken || githubToken);
+                           handleFileSelect(path);
                            setWorkspaceView('code');
                          }}
                          onAsk={runQuestion}

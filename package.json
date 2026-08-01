@@ -19,7 +19,8 @@
     "gate:warehouse": "node analysis/capture_gate.mjs --repo https://github.com/ionuthub/warehouse-dispatch --gate study/accuracy-gate.warehouse-dispatch.json --truth study/ground-truth.warehouse-dispatch.md --accept-tool-verified",
     "gate:score": "python3 analysis/accuracy_gate.py study/accuracy-gate.clinic-triage.json study/accuracy-gate.warehouse-dispatch.json",
     "gate:mark": "python3 analysis/marking_sheet.py build study/accuracy-gate.clinic-triage.json study/ground-truth.clinic-triage.md && python3 analysis/marking_sheet.py build study/accuracy-gate.warehouse-dispatch.json study/ground-truth.warehouse-dispatch.md",
-    "gate:compare": "python3 analysis/compare_runs.py --latest study/accuracy-gate.clinic-triage.json && python3 analysis/compare_runs.py --latest study/accuracy-gate.warehouse-dispatch.json"
+    "gate:compare": "python3 analysis/compare_runs.py --latest study/accuracy-gate.clinic-triage.json && python3 analysis/compare_runs.py --latest study/accuracy-gate.warehouse-dispatch.json",
+    "measure:questions": "node analysis/score_questions.mjs"
   },
   "dependencies": {
     "@radix-ui/react-label": "^2.1.7",

@@ -134,9 +134,14 @@ export async function consumeGenerationStream(
   buffer += decoder.decode();
   consumeLine(buffer);
 
-  if (!completion) throw new Error("Generation stream ended without a completion event");
-  if (!successfulFinishReason(completion.finishReason)) {
-    throw new Error(`Generation ended before completion (finish reason: ${completion.finishReason})`);
+  // `completion` is assigned inside the consumeLine closure, which TypeScript's
+  // control-flow analysis cannot see — after the loop it still narrows the
+  // variable to null, then to never. Reading it into a freshly typed local
+  // restores the correct type without changing runtime behaviour.
+  const finished = completion as GenerationCompleteEvent | null;
+  if (!finished) throw new Error("Generation stream ended without a completion event");
+  if (!successfulFinishReason(finished.finishReason)) {
+    throw new Error(`Generation ended before completion (finish reason: ${finished.finishReason})`);
   }
-  return completion;
+  return finished;
 }

@@ -105,7 +105,16 @@ export default defineConfig(({ mode }) => {
               }
 
               if (!stream) {
-                const data = await apiResponse.json();
+                // State the shape we rely on at the point of parsing; reading
+                // properties off an untyped response is how silent contract
+                // drift gets in.
+                const data = await apiResponse.json() as {
+                  candidates?: Array<{
+                    content?: { parts?: Array<{ text?: string }> };
+                    finishReason?: string;
+                  }>;
+                  usageMetadata?: Record<string, unknown>;
+                };
                 const candidate = data.candidates?.[0];
                 const explanation = candidate?.content?.parts
                   ?.map((part: { text?: string }) => part.text || '')

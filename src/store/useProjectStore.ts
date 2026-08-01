@@ -1,7 +1,6 @@
 import { create } from 'zustand';
 import { Project, ProjectFile } from '@/types/project';
-import { SkillLevel, SKILL_LEVELS, TabMode, TAB_MODES } from '@/constants/appConstants';
-import { ChatMessage } from '@/types/chat';
+import { TabMode, TAB_MODES } from '@/constants/appConstants';
 import { scanRepository, RepositoryScanResult } from '@/lib/repositoryScanner';
 import { analyzeCodeFile, computeWorkspaceReferences, FileAnalysisResult } from '@/lib/staticAnalysis';
 import { buildSearchIndex, SearchIndex } from '@/lib/semanticSearch';
@@ -33,10 +32,6 @@ interface ProjectState {
     setSelectedLines: (lines: Set<number>) => void;
 
     // AI / Explanation
-    skillLevel: SkillLevel;
-    setSkillLevel: (level: SkillLevel) => void;
-    chatMessages: ChatMessage[];
-    setChatMessages: (messages: ChatMessage[]) => void;
     isExplaining: boolean;
     setIsExplaining: (isExplaining: boolean) => void;
 
@@ -167,10 +162,6 @@ export const useProjectStore = create<ProjectState>((set) => ({
     // Default to ADVANCED: the artefact targets practising developers performing onboarding
     // and maintenance tasks, and the evaluation study recruits that population. A beginner
     // default answers in analogies, which would confound task time and perceived usefulness.
-    skillLevel: SKILL_LEVELS.ADVANCED,
-    setSkillLevel: (skillLevel) => set({ skillLevel }),
-    chatMessages: [],
-    setChatMessages: (chatMessages) => set({ chatMessages }),
     isExplaining: false,
     setIsExplaining: (isExplaining) => set({ isExplaining }),
 
@@ -186,7 +177,6 @@ export const useProjectStore = create<ProjectState>((set) => ({
 }));
 
 export const selectSelectedFile = (state: ProjectState) => state.selectedFile;
-export const selectChatMessages = (state: ProjectState) => state.chatMessages;
 export const selectProject = (state: ProjectState) => state.project;
 export const selectIsLoading = (state: ProjectState) => state.isLoading;
 

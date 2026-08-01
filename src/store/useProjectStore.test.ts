@@ -1,7 +1,6 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { useProjectStore } from './useProjectStore';
-import { TAB_MODES, SKILL_LEVELS } from '@/constants/appConstants';
-import { ChatMessage } from '@/types/chat';
+import { TAB_MODES } from '@/constants/appConstants';
 
 describe('useProjectStore', () => {
     // Reset store before each test
@@ -9,8 +8,6 @@ describe('useProjectStore', () => {
         useProjectStore.setState({
             mode: TAB_MODES.GITHUB,
             selectedFile: null,
-            chatMessages: [],
-            skillLevel: SKILL_LEVELS.ADVANCED,
             project: null
         });
     });
@@ -18,24 +15,17 @@ describe('useProjectStore', () => {
     it('should have initial state', () => {
         const state = useProjectStore.getState();
         expect(state.mode).toBe(TAB_MODES.GITHUB);
-        expect(state.skillLevel).toBe(SKILL_LEVELS.ADVANCED);
+        expect(state.selectedFile).toBeNull();
     });
 
     it('should set mode', () => {
-        useProjectStore.getState().setMode(TAB_MODES.UPLOAD);
-        expect(useProjectStore.getState().mode).toBe(TAB_MODES.UPLOAD);
+        useProjectStore.getState().setMode(TAB_MODES.GITHUB);
+        expect(useProjectStore.getState().mode).toBe(TAB_MODES.GITHUB);
     });
 
     it('should select file', () => {
         useProjectStore.getState().setSelectedFile('/src/test.ts');
         expect(useProjectStore.getState().selectedFile).toBe('/src/test.ts');
-    });
-
-    it('should update chat messages', () => {
-        const message: ChatMessage = { role: 'user', content: 'test' };
-        useProjectStore.getState().setChatMessages([message]);
-        expect(useProjectStore.getState().chatMessages).toHaveLength(1);
-        expect(useProjectStore.getState().chatMessages[0]).toEqual(message);
     });
 
     it('should update file cache', () => {

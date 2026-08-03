@@ -1,121 +1,14 @@
-import DOMPurify from 'dompurify';
-
 /**
- * Security utilities for input sanitization and XSS protection
+ * Client-side request throttling.
+ *
+ * The sanitisation helpers that used to sit here (sanitizeHtml, sanitizeInput,
+ * sanitizeMarkdown, sanitizeUrl, escapeRegex) and the validators (isValidEmail,
+ * isValidGitHubUrl) had no callers in the application — only their own tests. They were
+ * not protecting anything: no component renders with dangerouslySetInnerHTML, so React
+ * escapes model output by construction, and github.ts does its own URL parsing and path
+ * validation. Keeping them inflated the test count with coverage of code the application
+ * never runs.
  */
-
-/**
- * Sanitizes HTML content to prevent XSS attacks
- * @param dirty - Potentially unsafe HTML string
- * @returns Sanitized HTML string safe for rendering
- */
-export const sanitizeHtml = (dirty: string): string => {
-    return DOMPurify.sanitize(dirty, {
-        ALLOWED_TAGS: ['b', 'i', 'em', 'strong', 'a', 'p', 'br', 'code', 'pre', 'ul', 'ol', 'li', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6'],
-        ALLOWED_ATTR: ['href', 'title', 'target', 'rel'],
-        ALLOW_DATA_ATTR: false,
-    });
-};
-
-/**
- * Sanitizes user input for safe storage and display
- * @param input - User input string
- * @returns Sanitized string
- */
-export const sanitizeInput = (input: string): string => {
-    return DOMPurify.sanitize(input, {
-        ALLOWED_TAGS: [],
-        ALLOWED_ATTR: [],
-    });
-};
-
-/**
- * Sanitizes markdown content while preserving formatting
- * @param markdown - Markdown string
- * @returns Sanitized markdown
- */
-export const sanitizeMarkdown = (markdown: string): string => {
-    return DOMPurify.sanitize(markdown, {
-        ALLOWED_TAGS: [
-            'h1', 'h2', 'h3', 'h4', 'h5', 'h6',
-            'p', 'br', 'hr',
-            'strong', 'em', 'b', 'i', 'u', 's', 'del',
-            'a', 'img',
-            'ul', 'ol', 'li',
-            'blockquote', 'code', 'pre',
-            'table', 'thead', 'tbody', 'tr', 'th', 'td',
-        ],
-        ALLOWED_ATTR: ['href', 'src', 'alt', 'title', 'target', 'rel', 'class'],
-        ALLOW_DATA_ATTR: false,
-    });
-};
-
-/**
- * Validates and sanitizes URL to prevent javascript: and data: URIs
- * @param url - URL string to validate
- * @returns Sanitized URL or empty string if invalid
- */
-export const sanitizeUrl = (url: string): string => {
-    const trimmed = url.trim();
-
-    // Block dangerous protocols
-    if (
-        trimmed.toLowerCase().startsWith('javascript:') ||
-        trimmed.toLowerCase().startsWith('data:') ||
-        trimmed.toLowerCase().startsWith('vbscript:')
-    ) {
-        return '';
-    }
-
-    try {
-        const parsed = new URL(trimmed);
-        // Only allow http, https, and mailto
-        if (['http:', 'https:', 'mailto:'].includes(parsed.protocol)) {
-            return trimmed;
-        }
-    } catch {
-        // Invalid URL
-        return '';
-    }
-
-    return '';
-};
-
-/**
- * Escapes special characters in a string for safe use in regex
- * @param str - String to escape
- * @returns Escaped string
- */
-export const escapeRegex = (str: string): string => {
-    return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-};
-
-/**
- * Validates email format
- * @param email - Email string to validate
- * @returns True if valid email format
- */
-export const isValidEmail = (email: string): boolean => {
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    return emailRegex.test(email);
-};
-
-/**
- * Validates GitHub repository URL
- * @param url - GitHub URL to validate
- * @returns True if valid GitHub repo URL
- */
-export const isValidGitHubUrl = (url: string): boolean => {
-    try {
-        const parsed = new URL(url);
-        return (
-            (parsed.hostname === 'github.com' || parsed.hostname === 'www.github.com') &&
-            parsed.pathname.split('/').filter(Boolean).length >= 2
-        );
-    } catch {
-        return false;
-    }
-};
 
 /**
  * Rate limiter for client-side request throttling

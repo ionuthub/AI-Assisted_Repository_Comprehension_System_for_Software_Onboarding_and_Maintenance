@@ -8,7 +8,6 @@ interface RepositoryOverviewProps {
   overview: ProjectOverview | null;
   staticAnalyses: Record<string, FileAnalysisResult>;
   onFileSelect: (path: string) => void;
-  onOpenGraph: () => void;
 }
 
 /** Conventional entry points, most specific first. */
@@ -25,7 +24,6 @@ export default function RepositoryOverview({
   overview,
   staticAnalyses,
   onFileSelect,
-  onOpenGraph,
 }: RepositoryOverviewProps) {
   const stats = useMemo(() => {
     const indexed = project.files.filter((f) => f.content);
@@ -45,11 +43,6 @@ export default function RepositoryOverview({
       .sort((a, b) => b.count - a.count)
       .slice(0, 5);
 
-    const edgeCount = Object.values(staticAnalyses).reduce(
-      (sum, analysis) => sum + analysis.imports.filter((i) => i.resolvedPath).length,
-      0
-    );
-
     return {
       indexedCount: indexed.length,
       totalLines,
@@ -58,8 +51,6 @@ export default function RepositoryOverview({
       entryPoint,
       mostDependedOn,
       maxDependents: mostDependedOn[0]?.count ?? 1,
-      nodeCount: Object.keys(staticAnalyses).length,
-      edgeCount,
     };
   }, [project, staticAnalyses]);
 
@@ -129,28 +120,6 @@ export default function RepositoryOverview({
       </div>
 
       <aside className="min-w-0 space-y-6">
-        <section className="space-y-3">
-          <div className="flex items-baseline justify-between gap-3">
-            <h2 className="text-section text-foreground">Dependency graph</h2>
-            <button
-              type="button"
-              onClick={onOpenGraph}
-              className="text-ui text-primary underline underline-offset-2 hover:text-primary-glow"
-            >
-              Open full graph
-            </button>
-          </div>
-          <button
-            type="button"
-            onClick={onOpenGraph}
-            className="w-full h-32 rounded-md border border-border bg-card hover:border-primary/60 transition-colors flex items-center justify-center"
-          >
-            <span className="text-meta font-mono text-muted-foreground">
-              {stats.nodeCount} nodes · {stats.edgeCount} edges
-            </span>
-          </button>
-        </section>
-
         <section className="space-y-3">
           <div className="space-y-1">
             <h2 className="text-section text-foreground">Files most depended on</h2>

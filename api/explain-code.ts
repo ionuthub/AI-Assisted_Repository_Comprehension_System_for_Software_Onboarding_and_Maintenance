@@ -6,6 +6,7 @@ import {
   successfulFinishReason,
   type GenerationUsageMetadata,
 } from '../src/lib/generationProtocol';
+import { buildSystemPrompt, clampSystemContext } from '../src/lib/promptBuilder';
 
 // Allowed origins are configured via ALLOWED_ORIGINS (comma-separated); the list below is
 // the fallback for local development plus this project's production Vercel domain.
@@ -72,7 +73,6 @@ interface Message {
 
 interface ExplainCodeRequest {
   messages?: Message[];
-  skillLevel?: 'beginner' | 'intermediate' | 'advanced';
   systemContext?: string;
   stream?: boolean;
 }
@@ -108,7 +108,7 @@ export default async function handler(req: Request): Promise<Response> {
   }
 
   try {
-    const { messages, skillLevel, systemContext, stream = false } = await req.json() as ExplainCodeRequest;
+    const { messages, systemContext, stream = false } = await req.json() as ExplainCodeRequest;
 
     if (!messages || !Array.isArray(messages) || messages.length === 0) {
       return new Response(JSON.stringify({ error: 'messages must be a non-empty array' }), { status: 400, headers: securityHeaders });
@@ -125,34 +125,14 @@ export default async function handler(req: Request): Promise<Response> {
       }
     }
 
-    const normalizedSkillLevel = skillLevel && ['beginner', 'intermediate', 'advanced'].includes(skillLevel)
-      ? skillLevel
-      : 'advanced';
-    const normalizedSystemContext = typeof systemContext === 'string' ? systemContext.slice(0, 12000) : '';
+    const normalizedSystemContext = clampSystemContext(systemContext);
 
     const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
     if (!GEMINI_API_KEY) {
       return new Response(JSON.stringify({ error: 'Key not set' }), { status: 500, headers: securityHeaders });
     }
 
-    // Prompt Engineering Strategy:
-    // Depth and register vary by skill level; the grounding and citation rules do not.
-    // Beginner: Uses analogies (e.g., "Think of a variable like a box"), avoids jargon.
-    // Intermediate: Focuses on best practices, patterns (e.g., DRY, SOLID), and design rationale.
-    // Advanced (default): Discusses performance, trade-offs, and architectural implications.
-    const skillPrompts: Record<string, string> = {
-      beginner: "Explain like a friendly tutor using analogies.",
-      intermediate: "Focus on patterns and design rationale — the 'why' behind the code.",
-      advanced: "Respond as an experienced engineer to an experienced engineer: precise and technical, covering structure, control flow, trade-offs and maintenance impact. Do not use analogies or introductory framing."
-    };
-
-    // The grounding rules are constant across skill levels: the artefact's claim is
-    // retrieval-augmented, file-cited answers, and the study measures whether participants
-    // detect inaccurate ones. Hedging honestly when the evidence is absent is required.
-    const systemPrompt = `You are a repository comprehension assistant. You help developers onboard to and maintain an unfamiliar codebase. Level: ${normalizedSkillLevel}.
-    ${skillPrompts[normalizedSkillLevel]}
-    Ground every claim in the provided repository context and cite the file paths you relied on. If the context does not contain the answer, say so plainly rather than guessing, and never invent file paths, functions or behaviour.
-    ${normalizedSystemContext ? `Project Context:\n${normalizedSystemContext}` : ''}`;
+    const systemPrompt = buildSystemPrompt(normalizedSystemContext);
 
     const endpoint = stream ? 'streamGenerateContent' : 'generateContent';
     const url = `https://generativelanguage.googleapis.com/v1beta/models/${getGeminiModel()}:${endpoint}?key=${GEMINI_API_KEY}`;

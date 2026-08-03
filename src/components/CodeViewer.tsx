@@ -1,10 +1,6 @@
 import { Skeleton } from "@/components/ui/skeleton";
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Code2 } from "lucide-react";
-import { detectLineComplexity, getComplexityBadge } from "@/lib/complexityDetector";
-import { detectCodeBlock } from "@/lib/blockDetector";
-import { useMemo, useState, memo } from "react";
-import type { LineComplexity } from "@/lib/complexityDetector";
+import { useMemo, useRef, useState, memo } from "react";
 
 interface CodeViewerProps {
   isLoading: boolean;
@@ -18,61 +14,48 @@ interface CodeViewerProps {
 interface CodeLineProps {
   line: string;
   lineNumber: number;
-  complexity: LineComplexity;
-  isInDetectedBlock: boolean | null;
   isSelected: boolean;
+  isTabStop: boolean;
   onLineClick: (lineNumber: number, event: React.MouseEvent) => void;
-  onMouseEnter: (lineNumber: number) => void;
-  onMouseLeave: () => void;
-  detectedBlockDescription?: string;
+  onLineKeyDown: (lineNumber: number, event: React.KeyboardEvent<HTMLDivElement>) => void;
 }
 
-const CodeLine = memo(({
-  line,
-  lineNumber,
-  complexity,
-  isInDetectedBlock,
-  isSelected,
-  onLineClick,
-  onMouseEnter,
-  onMouseLeave,
-  detectedBlockDescription
-}: CodeLineProps) => {
-  return (
-    <Tooltip delayDuration={300}>
-      <TooltipTrigger asChild>
-        <div
-          onClick={(e) => onLineClick(lineNumber, e)}
-          onMouseEnter={() => onMouseEnter(lineNumber)}
-          onMouseLeave={onMouseLeave}
-          className={`flex transition-colors cursor-pointer group border-l-2 ${isSelected
-              ? "bg-primary/15 border-primary"
-              : isInDetectedBlock
-                ? "bg-primary/8 border-primary/45"
-                : "border-transparent hover:bg-primary/5 active:bg-primary/10"
-            }`}
-        >
-          <span className="select-none text-code-number w-8 md:w-12 pr-2 md:pr-4 text-right flex-shrink-0 text-xs md:text-sm">
-            {lineNumber}
-          </span>
-          <code className="flex-1 text-foreground/90 whitespace-pre-wrap break-words">{line}</code>
-        </div>
-      </TooltipTrigger>
-      <TooltipContent side="right" className="max-w-xs">
-        <div className="space-y-1">
-          <div className="font-semibold">{getComplexityBadge(complexity.complexity)}</div>
-          <div className="text-xs">{complexity.reason}</div>
-          {detectedBlockDescription && isInDetectedBlock && (
-            <div className="text-xs mt-2 pt-2 border-t border-muted-foreground/20">
-              <div className="font-semibold text-primary">{detectedBlockDescription}</div>
-              <div className="text-xs opacity-80">Click to explain this block</div>
-            </div>
-          )}
-        </div>
-      </TooltipContent>
-    </Tooltip>
-  );
-});
+// One rendered line. Memoised so that selecting a line re-renders only the
+// lines whose selection state changed, not every line in the file.
+//
+// Keyboard access: each line is a listbox option (role="option",
+// aria-selected), not a link or button, because selection here is a toggle
+// set rather than navigation. A file can run to thousands of lines, so every
+// line carrying its own Tab stop would make the viewer unusable from a
+// keyboard — Tab would have to be pressed once per line to reach the bottom.
+// Roving tabindex avoids that: only the current line is tabbable
+// (isTabStop), and CodeViewer's arrow-key handling moves that one stop up
+// and down the list, matching the pattern screen readers expect from a
+// listbox and the one most editors use for line lists.
+const CodeLine = memo(
+  ({ line, lineNumber, isSelected, isTabStop, onLineClick, onLineKeyDown }: CodeLineProps) => {
+    return (
+      <div
+        role="option"
+        aria-selected={isSelected}
+        tabIndex={isTabStop ? 0 : -1}
+        data-line-number={lineNumber}
+        onClick={(e) => onLineClick(lineNumber, e)}
+        onKeyDown={(e) => onLineKeyDown(lineNumber, e)}
+        className={`flex transition-colors cursor-pointer group border-l-2 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-inset focus-visible:ring-primary ${
+          isSelected
+            ? "bg-primary/15 border-primary"
+            : "border-transparent hover:bg-primary/5 active:bg-primary/10"
+        }`}
+      >
+        <span className="select-none text-code-number w-8 md:w-12 pr-2 md:pr-4 text-right flex-shrink-0 text-xs md:text-sm">
+          {lineNumber}
+        </span>
+        <code className="flex-1 text-foreground/90 whitespace-pre-wrap break-words">{line}</code>
+      </div>
+    );
+  }
+);
 
 CodeLine.displayName = "CodeLine";
 
@@ -81,34 +64,75 @@ const CodeViewer = ({
   fileName,
   fileContent,
   onLineSelect,
-  selectedLine,
   selectedLines,
 }: CodeViewerProps) => {
-  const [hoveredLine, setHoveredLine] = useState<number | null>(null);
-
   const effectiveFileName = fileName ?? "Select a file";
   const contentLines = useMemo(() => fileContent?.split(/\r?\n/) ?? [], [fileContent]);
-
-  // Memoize complexity map to avoid recalculation on hover
-  const complexityMap = useMemo(() => {
-    return contentLines.map((line, idx) => ({ ...detectLineComplexity(line), line: idx + 1 }));
-  }, [contentLines]);
-
-  // Detect block for hovered line
-  const detectedBlock = useMemo(() => {
-    if (!hoveredLine || !fileContent) return null;
-    return detectCodeBlock(fileContent, hoveredLine);
-  }, [hoveredLine, fileContent]);
+  const listRef = useRef<HTMLPreElement>(null);
+  // The line currently holding the roving tab stop. Starts at 1 so Tab from
+  // outside the viewer always lands somewhere, even before any line has been
+  // interacted with.
+  const [tabStopLine, setTabStopLine] = useState(1);
 
   const handleLineClick = (lineNumber: number, event: React.MouseEvent) => {
     const isMultiSelect = event.ctrlKey || event.metaKey || event.shiftKey;
+    setTabStopLine(lineNumber);
+    onLineSelect(lineNumber, isMultiSelect);
+  };
 
-    // If not multi-select, select the entire block
-    if (!isMultiSelect && fileContent) {
-      const block = detectCodeBlock(fileContent, lineNumber);
-      onLineSelect(block.startLine, false);
-    } else {
-      onLineSelect(lineNumber, isMultiSelect);
+  const focusLine = (lineNumber: number) => {
+    const el = listRef.current?.querySelector<HTMLDivElement>(
+      `[data-line-number="${lineNumber}"]`
+    );
+    el?.focus();
+  };
+
+  const handleLineKeyDown = (lineNumber: number, event: React.KeyboardEvent<HTMLDivElement>) => {
+    switch (event.key) {
+      case "ArrowDown": {
+        event.preventDefault();
+        const next = Math.min(lineNumber + 1, contentLines.length);
+        setTabStopLine(next);
+        focusLine(next);
+        break;
+      }
+      case "ArrowUp": {
+        event.preventDefault();
+        const prev = Math.max(lineNumber - 1, 1);
+        setTabStopLine(prev);
+        focusLine(prev);
+        break;
+      }
+      case "Home": {
+        event.preventDefault();
+        setTabStopLine(1);
+        focusLine(1);
+        break;
+      }
+      case "End": {
+        event.preventDefault();
+        setTabStopLine(contentLines.length);
+        focusLine(contentLines.length);
+        break;
+      }
+      case "Enter":
+        // Enter replaces the selection with this line, mirroring a plain
+        // click. Held modifier keys are read the same way a mouse click
+        // reads them, so Ctrl/Cmd/Shift+Enter also builds a multi-selection.
+        event.preventDefault();
+        onLineSelect(lineNumber, event.ctrlKey || event.metaKey || event.shiftKey);
+        break;
+      case " ":
+        // Space always toggles the line into or out of the existing
+        // selection, mirroring a modifier+click. This is the primary
+        // keyboard path for building a multi-line selection, since holding
+        // a modifier through a keyboard "click" is awkward with some
+        // assistive technology.
+        event.preventDefault();
+        onLineSelect(lineNumber, true);
+        break;
+      default:
+        return;
     }
   };
 
@@ -117,20 +141,22 @@ const CodeViewer = ({
       <Code2 className="w-10 h-10 text-muted-foreground/30 mb-1" />
       <div className="space-y-1.5 text-center px-4">
         <p className="font-medium text-foreground/80">Select a file from the explorer to inspect its code.</p>
-        <p className="text-sm">Click any line to analyze the containing code block.</p>
-        <p className="text-sm text-muted-foreground/60">Hover to preview block • Ctrl/Cmd+Click for custom selection</p>
+        <p className="text-sm">
+          Click a line, or Tab in and use Arrow keys to move, Space to add or remove a line, Enter
+          to select just one.
+        </p>
       </div>
     </div>
   );
 
   return (
     <div className="h-full flex flex-col bg-code-bg overflow-hidden">
-      {/* VS Code style editor tab */}
+      {/* Editor tab bar: file name on the left, full path on the right */}
       <div className="bg-secondary/40 border-b border-border/80 h-9 flex items-center justify-between shrink-0 select-none px-1">
         <div className="flex h-full items-center">
           <div className="bg-code-bg text-foreground border-r border-border/80 h-full px-3.5 flex items-center gap-2 text-sm border-t-2 border-t-primary font-mono font-semibold">
             <Code2 className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
-            <span className="truncate max-w-[160px]">{effectiveFileName.split('/').pop()}</span>
+            <span className="truncate max-w-[160px]">{effectiveFileName.split("/").pop()}</span>
           </div>
         </div>
         <div className="px-3 text-xs font-mono text-muted-foreground/50 select-none hidden sm:block truncate max-w-[320px]">
@@ -146,33 +172,28 @@ const CodeViewer = ({
             ))}
           </div>
         ) : fileContent ? (
-          <TooltipProvider>
-            <pre className="text-sm md:text-[13px] font-mono leading-relaxed">
-              {contentLines.map((line, idx) => {
-                const lineNumber = idx + 1;
-                const complexity = complexityMap[idx];
-                const isInDetectedBlock = detectedBlock
-                  ? lineNumber >= detectedBlock.startLine && lineNumber <= detectedBlock.endLine
-                  : false;
-                const isSelected = selectedLines.has(lineNumber);
-
-                return (
-                  <CodeLine
-                    key={idx}
-                    line={line}
-                    lineNumber={lineNumber}
-                    complexity={complexity}
-                    isInDetectedBlock={isInDetectedBlock}
-                    isSelected={isSelected}
-                    onLineClick={handleLineClick}
-                    onMouseEnter={setHoveredLine}
-                    onMouseLeave={() => setHoveredLine(null)}
-                    detectedBlockDescription={detectedBlock?.description}
-                  />
-                );
-              })}
-            </pre>
-          </TooltipProvider>
+          <pre
+            ref={listRef}
+            role="listbox"
+            aria-label={`${effectiveFileName} contents, line selection`}
+            aria-multiselectable="true"
+            className="text-sm md:text-[13px] font-mono leading-relaxed"
+          >
+            {contentLines.map((line, idx) => {
+              const lineNumber = idx + 1;
+              return (
+                <CodeLine
+                  key={idx}
+                  line={line}
+                  lineNumber={lineNumber}
+                  isSelected={selectedLines.has(lineNumber)}
+                  isTabStop={lineNumber === tabStopLine}
+                  onLineClick={handleLineClick}
+                  onLineKeyDown={handleLineKeyDown}
+                />
+              );
+            })}
+          </pre>
         ) : (
           renderPlaceholder()
         )}

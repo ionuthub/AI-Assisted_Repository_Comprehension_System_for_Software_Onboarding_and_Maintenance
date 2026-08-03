@@ -8,6 +8,7 @@ import {
   successfulFinishReason,
   type GenerationUsageMetadata,
 } from "./src/lib/generationProtocol";
+import { buildSystemPrompt, clampSystemContext } from "./src/lib/promptBuilder";
 
 // https://vitejs.dev/config/
 export default defineConfig(({ mode }) => {
@@ -36,7 +37,7 @@ export default defineConfig(({ mode }) => {
               "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; " +
               "font-src 'self' https://fonts.gstatic.com; " +
               "img-src 'self' data: https:; " +
-              "connect-src 'self' https://generativelanguage.googleapis.com https://*.supabase.co wss://*.supabase.co https://api.github.com https://raw.githubusercontent.com; " +
+              "connect-src 'self' https://generativelanguage.googleapis.com https://api.github.com https://raw.githubusercontent.com; " +
               "frame-ancestors 'none';"
             );
             next();
@@ -55,7 +56,7 @@ export default defineConfig(({ mode }) => {
                 buffers.push(chunk);
               }
               const body = JSON.parse(Buffer.concat(buffers).toString());
-              const { messages, skillLevel, systemContext, stream } = body;
+              const { messages, systemContext, stream } = body;
 
               const GEMINI_API_KEY = env.GEMINI_API_KEY || process.env.GEMINI_API_KEY;
 
@@ -65,18 +66,9 @@ export default defineConfig(({ mode }) => {
                 return;
               }
 
-              // Kept in parity with api/explain-code.ts so local development and the
-              // deployed Edge function produce comparable answers.
-              const skillPrompts: Record<string, string> = {
-                beginner: "Explain like a friendly tutor using analogies.",
-                intermediate: "Focus on patterns and design rationale — the 'why' behind the code.",
-                advanced: "Respond as an experienced engineer to an experienced engineer: precise and technical, covering structure, control flow, trade-offs and maintenance impact. Do not use analogies or introductory framing."
-              };
-
-              const systemPrompt = `You are a repository comprehension assistant. You help developers onboard to and maintain an unfamiliar codebase. Level: ${skillLevel || 'advanced'}.
-              ${skillPrompts[skillLevel] || skillPrompts.advanced}
-              Ground every claim in the provided repository context and cite the file paths you relied on. If the context does not contain the answer, say so plainly rather than guessing, and never invent file paths, functions or behaviour.
-              ${systemContext ? `Project Context:\n${systemContext}` : ''}`;
+              // Same builder as the deployed function, so a pilot session run against
+              // this server exercises the prompt a participant meets in production.
+              const systemPrompt = buildSystemPrompt(clampSystemContext(systemContext));
 
               const endpoint = stream ? 'streamGenerateContent' : 'generateContent';
               const GEMINI_MODEL = (env.GEMINI_MODEL || process.env.GEMINI_MODEL || 'gemini-3.5-flash').trim();
@@ -105,7 +97,16 @@ export default defineConfig(({ mode }) => {
               }
 
               if (!stream) {
-                const data = await apiResponse.json();
+                // State the shape we rely on at the point of parsing; reading
+                // properties off an untyped response is how silent contract
+                // drift gets in.
+                const data = await apiResponse.json() as {
+                  candidates?: Array<{
+                    content?: { parts?: Array<{ text?: string }> };
+                    finishReason?: string;
+                  }>;
+                  usageMetadata?: Record<string, unknown>;
+                };
                 const candidate = data.candidates?.[0];
                 const explanation = candidate?.content?.parts
                   ?.map((part: { text?: string }) => part.text || '')

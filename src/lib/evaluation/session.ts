@@ -106,7 +106,7 @@ export const DEMO_ANSWER_KEY: GroundTruthFile = {
   repository: "demo",
   tasks: [
     { id: 1, kind: "locating", name: "Locate the routing structure", description: "Find the file defining the application's navigation paths.", expectedFiles: ["src/App.tsx"], answerKey: "Routing is declared in src/App.tsx." },
-    { id: 2, kind: "locating", name: "Locate authentication handling", description: "Find where session validation or login is handled.", expectedFiles: ["src/hooks/useGitHubAuth.ts"], answerKey: "Authentication is handled in src/hooks/useGitHubAuth.ts." },
+    { id: 2, kind: "locating", name: "Locate ingestion filtering", description: "Find where excluded directories such as node_modules are filtered out.", expectedFiles: ["src/lib/ingestionFilters.ts"], answerKey: "Exclusion rules are applied in src/lib/ingestionFilters.ts." },
     { id: 3, kind: "applied", name: "Plan a change", description: "Where would a new user-profile feature be added, and what else would need to change? Explain your reasoning.", expectedFiles: [], answerKey: "Marked against the rubric: correct insertion point plus at least two affected areas." },
   ],
 };

@@ -4,7 +4,7 @@
 
 This repository contains the software artefact for the Computer Science dissertation. It is designed to assist software developers in onboarding and maintaining unfamiliar repositories.
 
-**Scope.** Ingestion, search and grounded question-answering operate across common source and configuration file types. The dependency graph, import resolution and complexity analysis parse JavaScript and TypeScript syntax only, so those views are empty for other languages. The evaluation study uses JavaScript/TypeScript repositories exclusively; the wider file-type support exists so the tool degrades gracefully rather than rejecting a repository outright.
+**Scope.** Ingestion, search and grounded question-answering operate across common source and configuration file types. Import resolution parses JavaScript and TypeScript syntax only, so the overview's import-based rankings are empty for other languages. The evaluation study uses JavaScript/TypeScript repositories exclusively; the wider file-type support exists so the tool degrades gracefully rather than rejecting a repository outright.
 
 ---
 
@@ -16,7 +16,7 @@ Run locally with `npm install && npm run dev`, or see the deployment link in the
 ## 🚀 Key Capabilities
 
 - **Repository Overview**: Detects technologies and frameworks, displaying critical files, components, and functions count.
-- **Architecture & Dependency Mapping**: Parses folder structure and import/export relationships to render an interactive dependency graph.
+- **Import Analysis**: Parses import/export relationships to rank the files most depended on, so the blast radius of a change is visible from the overview.
 - **Semantic Repository Search**: Fast, client-side TF-IDF vector similarity queries for natural-language search over files and code snippets.
 - **Grounded Repository Q&A**: Natural language Q&A grounded in codebase context (RAG) using the Google Gemini API to explain file roles and design details.
 - **Verifiable answers**: Every answer is accompanied by the evidence it was built from — the retrieved files in rank order, their relevance scores, and the exact excerpt supplied to the model. Paths the answer mentions that were not retrieved are listed separately as unverified, and an answer for which nothing could be retrieved is explicitly marked as ungrounded. Citations are derived from the retrieval layer, never from parsing the model's output.

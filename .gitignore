@@ -37,3 +37,6 @@ dist-ssr
 coverage
 playwright-report
 test-results
+
+# TypeScript incremental build info (produced by `tsc -b`)
+*.tsbuildinfo

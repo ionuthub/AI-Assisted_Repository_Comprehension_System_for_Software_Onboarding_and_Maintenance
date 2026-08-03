@@ -1,25 +1,16 @@
 /**
  * Application Constants
- * Centralized configuration for tab values, skill levels, and other constants
+ * Centralized configuration for tab values and retrieval parameters
  */
 
 // Tab Mode Constants
+// Public GitHub ingestion is the only input path, so this is the only reachable mode.
+// GENERATE and UPLOAD were removed with the generator and the local-upload paths.
 export const TAB_MODES = {
-  GITHUB: "github",
-  GENERATE: "generate",
-  UPLOAD: "upload"
+  GITHUB: "github"
 } as const;
 
 export type TabMode = typeof TAB_MODES[keyof typeof TAB_MODES];
-
-// Skill Level Constants
-export const SKILL_LEVELS = {
-  BEGINNER: "beginner",
-  INTERMEDIATE: "intermediate",
-  ADVANCED: "advanced"
-} as const;
-
-export type SkillLevel = typeof SKILL_LEVELS[keyof typeof SKILL_LEVELS];
 
 /**
  * Retrieval parameters for the grounded question-answering pipeline.
@@ -36,7 +27,9 @@ export type SkillLevel = typeof SKILL_LEVELS[keyof typeof SKILL_LEVELS];
  * SEARCH_RESULT_LIMIT  results shown in the user-facing repository search
  *
  * RAG_TOP_K x RAG_CONTEXT_CHARS bounds the evidence at 7,500 characters, within the
- * 12,000-character ceiling the API applies to the system context.
+ * 12,000-character ceiling the API applies to the system context. That relationship is
+ * asserted by src/lib/promptBuilder.test.ts: tuning these past the ceiling fails the
+ * build rather than silently truncating evidence the evidence panel reports as sent.
  */
 export const RETRIEVAL = {
   RAG_TOP_K: 3,
@@ -44,63 +37,6 @@ export const RETRIEVAL = {
   SEARCH_RESULT_LIMIT: 10,
 } as const;
 
-// Tab Configuration
-export const TAB_CONFIG = {
-  [TAB_MODES.GITHUB]: {
-    label: "GitHub Repo",
-    placeholder: "https://github.com/facebook/react",
-    loadingText: "Loading repository...",
-    buttonText: "Analyze repository"
-  },
-  [TAB_MODES.GENERATE]: {
-    label: "Generate Idea",
-    placeholder: "A flashcard app with spaced repetition",
-    loadingText: "Drafting project...",
-    buttonText: "Generate project"
-  },
-  [TAB_MODES.UPLOAD]: {
-    label: "Upload Folder",
-    placeholder: "Select a local project folder",
-    loadingText: "Processing folder...",
-    buttonText: "Analyze folder"
-  }
-} as const;
 
-// Error Messages
-export const ERROR_MESSAGES = {
-  NO_CONTENT: "No content yet",
-  SELECT_FILE: "Select a file first to load its contents.",
-  GENERATION_ERROR: "Could not generate explanation",
-  AI_UNAVAILABLE: "Using offline explanation",
-  AI_UNAVAILABLE_DESC: "AI service unavailable. Showing pattern-based explanation instead.",
-  REPO_LOAD_ERROR: "Failed to load repository.",
-  FOLDER_UPLOAD_ERROR: "Failed to upload folder."
-} as const;
 
-// Success Messages
-export const SUCCESS_MESSAGES = {
-  REPO_LOADED: "Repository loaded",
-  PROJECT_GENERATED: "Project generated",
-  FOLDER_UPLOADED: "Folder ready"
-} as const;
 
-// Keyboard Shortcuts
-export const KEYBOARD_SHORTCUTS = {
-  SEARCH: {
-    key: "k",
-    ctrl: true,
-    meta: true,
-    description: "Search files"
-  },
-  ESCAPE: {
-    key: "Escape",
-    description: "Close dialogs"
-  }
-} as const;
-
-// UI Constants
-export const UI_CONSTANTS = {
-  MAX_HEIGHT_CODE_VIEWER: "max-h-[600px]",
-  ANIMATION_DURATION: 0.5,
-  DEBOUNCE_DELAY: 300
-} as const;

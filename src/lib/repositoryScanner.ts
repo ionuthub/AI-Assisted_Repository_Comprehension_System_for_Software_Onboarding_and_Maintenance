@@ -354,23 +354,25 @@ export const scanRepository = (files: ProjectFile[]): RepositoryScanResult => {
   const frontendTechs = techStack.filter(t => t.category === "frontend").map(t => t.name).join(", ");
   const backendTechs = techStack.filter(t => t.category === "backend").map(t => t.name).join(", ");
 
+  // The summary states only what detection measured: language, counts, and
+  // which technologies were found. Earlier versions appended quality judgements
+  // ("clean architecture", "designed for scalability") that no analysis had
+  // established — in a tool whose subject is calibrated trust, the overview
+  // must not assert what it has not checked.
   let archSummary = `This workspace features a **${primaryLang}** codebase containing **${fileCount}** files with a total size of **${(totalSize / 1024).toFixed(1)} KB**.`;
-  
+
   if (frontendTechs) {
-    archSummary += ` The client interface is built with **${frontendTechs}**, creating a structured, modular user experience.`;
+    archSummary += ` The client interface uses **${frontendTechs}**.`;
   }
   if (backendTechs) {
-    archSummary += ` It incorporates a server layer running on **${backendTechs}** to handle requests and data management.`;
+    archSummary += ` A server layer runs on **${backendTechs}**.`;
   }
-  
   if (techStack.some(t => t.name === "Tailwind CSS")) {
-    archSummary += ` Component styling is modernly managed through **Tailwind CSS** utility classes.`;
+    archSummary += ` Styling is handled with **Tailwind CSS** utility classes.`;
   }
   if (techStack.some(t => t.name === "TypeScript")) {
-    archSummary += ` Clean architecture and reliable data models are maintained throughout with strict **TypeScript** types.`;
+    archSummary += ` The codebase is written in **TypeScript**.`;
   }
-  
-  archSummary += ` The files are organized in a clean directory structure designed for scalability and straightforward deployment.`;
 
   return {
     fileCount,

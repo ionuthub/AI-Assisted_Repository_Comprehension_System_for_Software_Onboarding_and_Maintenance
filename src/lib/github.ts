@@ -2,18 +2,10 @@ import type { Project, ProjectFile, ProjectSummary, ExcludedFile } from "@/types
 
 const GITHUB_API = "https://api.github.com";
 
-// Build headers with authentication if token is available
-const getGitHubHeaders = (token?: string | null): HeadersInit => {
-  const headers: HeadersInit = {
-    'Accept': 'application/vnd.github.v3+json',
-  };
-
-  if (token) {
-    headers['Authorization'] = `token ${token}`;
-  }
-
-  return headers;
-};
+// The application reads public repositories only, so requests are unauthenticated.
+const getGitHubHeaders = (): HeadersInit => ({
+  'Accept': 'application/vnd.github.v3+json',
+});
 
 // Security limits
 const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
@@ -212,7 +204,6 @@ const hydrateFileContents = async (
   repo: string,
   branch: string,
   files: ProjectFile[],
-  token?: string | null,
   onProgress?: IngestionProgressHandler
 ): Promise<ProjectFile[]> => {
   const hydrated: ProjectFile[] = new Array(files.length);
@@ -224,7 +215,7 @@ const hydrateFileContents = async (
       const index = cursor++;
       const file = files[index];
       try {
-        const fetched = await fetchFileContent(owner, repo, branch, file.path, token);
+        const fetched = await fetchFileContent(owner, repo, branch, file.path);
         hydrated[index] = { ...file, content: fetched.content ?? null, size: fetched.size ?? file.size };
       } catch {
         hydrated[index] = file;
@@ -242,11 +233,10 @@ const hydrateFileContents = async (
 
 export const fetchRepositoryProject = async (
   repoUrl: string,
-  token?: string | null,
   onProgress?: IngestionProgressHandler
 ): Promise<Project> => {
   const { owner, repo } = parseGitHubUrl(repoUrl);
-  const headers = getGitHubHeaders(token);
+  const headers = getGitHubHeaders();
 
   onProgress?.({ phase: "metadata", completed: 0, total: 0 });
   const repoResponse = await fetch(`${GITHUB_API}/repos/${owner}/${repo}`, { headers });
@@ -268,7 +258,6 @@ export const fetchRepositoryProject = async (
     repo,
     repoData.default_branch,
     selected,
-    token,
     onProgress
   );
 
@@ -295,66 +284,42 @@ export const fetchRepositoryProject = async (
   };
 };
 
-export const fetchFileContent = async (owner: string, repo: string, branch: string, path: string, token?: string | null): Promise<ProjectFile> => {
-  // Validate inputs
+export const fetchFileContent = async (owner: string, repo: string, branch: string, path: string): Promise<ProjectFile> => {
   if (!validateFilePath(path)) {
     throw new Error("Invalid file path");
   }
 
-  const rawUrl = `https://raw.githubusercontent.com/${owner}/${repo}/${branch}/${path}`;
+  // Public repositories are served directly from raw.githubusercontent.com. This
+  // endpoint needs no authentication and is not subject to the API's request
+  // budget, which matters when ingestion fetches up to fifty files in a burst.
+  //
+  // Each segment is encoded separately so that "/" keeps separating directories
+  // while "#", "?" and spaces inside a filename stay part of the path. Interpolating
+  // the path raw meant a file such as "docs/C#-notes.md" was requested as "docs/C"
+  // with "-notes.md" treated as a URL fragment, silently fetching the wrong path.
+  const encodedPath = path.split("/").map(encodeURIComponent).join("/");
+  const rawUrl = `https://raw.githubusercontent.com/${owner}/${repo}/${branch}/${encodedPath}`;
 
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), REQUEST_TIMEOUT);
 
   try {
-    let content: string;
-    let size: number;
+    const response = await fetch(rawUrl, { signal: controller.signal });
 
-    // If we have a token, use the API to fetch content (works for private repos)
-    if (token) {
-      const headers = getGitHubHeaders(token);
-      const response = await fetch(`${GITHUB_API}/repos/${owner}/${repo}/contents/${path}?ref=${branch}`, {
-        headers,
-        signal: controller.signal
-      });
-
-      if (!response.ok) {
-        if (response.status === 404) throw new Error(`File not found: ${path}`);
-        throw new Error(`Unable to load ${path}`);
-      }
-
-      const data = await response.json();
-      if (Array.isArray(data)) throw new Error("Path is a directory, not a file");
-
-      if (data.size > MAX_FILE_SIZE) throw new Error("File exceeds maximum size of 5MB");
-
-      // GitHub API returns base64 encoded content
-      // Use a more robust base64 decode that handles unicode
-      try {
-        content = decodeURIComponent(escape(atob(data.content.replace(/\n/g, ""))));
-      } catch (e) {
-        // Fallback for standard ascii
-        content = atob(data.content.replace(/\n/g, ""));
-      }
-      size = data.size;
-    } else {
-      // Fallback to raw URL for public repos (no token needed)
-      const response = await fetch(rawUrl, { signal: controller.signal });
-
-      if (!response.ok) {
-        if (response.status === 404) throw new Error(`File not found: ${path}`);
-        throw new Error(`Unable to load ${path}`);
-      }
-
-      const contentLength = response.headers.get("content-length");
-      if (contentLength && parseInt(contentLength) > MAX_FILE_SIZE) {
-        throw new Error(`File exceeds maximum size of 5MB`);
-      }
-
-      content = await response.text();
-      size = content.length;
+    if (!response.ok) {
+      if (response.status === 404) throw new Error(`File not found: ${path}`);
+      throw new Error(`Unable to load ${path}`);
     }
 
+    // Two size guards on purpose: the header check refuses oversized files
+    // before downloading them, and the post-read check catches responses that
+    // did not declare a length.
+    const contentLength = response.headers.get("content-length");
+    if (contentLength && parseInt(contentLength) > MAX_FILE_SIZE) {
+      throw new Error(`File exceeds maximum size of 5MB`);
+    }
+
+    const content = await response.text();
     if (content.length > MAX_FILE_SIZE) {
       throw new Error(`File content exceeds maximum size`);
     }
@@ -362,8 +327,8 @@ export const fetchFileContent = async (owner: string, repo: string, branch: stri
     return {
       path,
       language: inferLanguageFromFilename(path),
-      rawUrl: token ? null : rawUrl, // Don't expose raw URL for private repos
-      size,
+      rawUrl,
+      size: content.length,
       content
     };
   } catch (error) {

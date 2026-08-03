@@ -15,7 +15,11 @@ jobs:
     
     - uses: actions/setup-node@v4
       with:
-        node-version: 18
+        # Vitest 4 requires Node 20+. On Node 18 `npx vitest run` printed its banner
+        # and then produced nothing until the job hit timeout-minutes: 60 — every run
+        # on this branch and on main since 29 July was cancelled that way, so the
+        # suite has never actually reported on a runner.
+        node-version: 20
         cache: 'npm'
         
     - name: Install dependencies

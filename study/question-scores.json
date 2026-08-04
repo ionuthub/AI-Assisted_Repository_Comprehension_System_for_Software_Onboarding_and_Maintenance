@@ -1,0 +1,1122 @@
+{
+  "artefactVersion": "1b9b0e0",
+  "scriptVersion": "1b9b0e0",
+  "capturedAt": "2026-08-04T08:05:42.357Z",
+  "workingTreeDirty": false,
+  "repositoriesMeasured": [
+    "ionuthub/warehouse-dispatch",
+    "ionuthub/clinic-triage"
+  ],
+  "admissibilityCriteria": {
+    "minResultsPerRepo": 3,
+    "minWeakerTopScore": 0.2,
+    "maxTopScoreRatio": 1.6
+  },
+  "gateStemDistribution": {
+    "n": 24,
+    "median": 0.248,
+    "p90": 0.551,
+    "max": 0.662,
+    "min": 0.042,
+    "percentileMethod": "linear interpolation between closest ranks (numpy default)"
+  },
+  "suggestedQuestionAdmissibility": [
+    {
+      "question": "What is the top-level structure of the React app?",
+      "perRepository": [
+        {
+          "repository": "ionuthub/warehouse-dispatch",
+          "topScore": 0.393,
+          "topFile": "src/main.tsx",
+          "resultCount": 10
+        },
+        {
+          "repository": "ionuthub/clinic-triage",
+          "topScore": 0.394,
+          "topFile": "src/main.tsx",
+          "resultCount": 10
+        }
+      ],
+      "checks": {
+        "retrieves": {
+          "pass": true,
+          "detail": "min results 10 (need >= 3)"
+        },
+        "retrievesWell": {
+          "pass": true,
+          "detail": "weaker top score 0.393 (need >= 0.2)"
+        },
+        "retrievesSymmetrically": {
+          "pass": true,
+          "detail": "ratio 1 (need <= 1.6); top file agrees (src/main.tsx)"
+        }
+      },
+      "admissible": true
+    },
+    {
+      "question": "How does a page get the data it displays?",
+      "perRepository": [
+        {
+          "repository": "ionuthub/warehouse-dispatch",
+          "topScore": 0.344,
+          "topFile": "src/App.tsx",
+          "resultCount": 10
+        },
+        {
+          "repository": "ionuthub/clinic-triage",
+          "topScore": 0.273,
+          "topFile": "src/App.tsx",
+          "resultCount": 10
+        }
+      ],
+      "checks": {
+        "retrieves": {
+          "pass": true,
+          "detail": "min results 10 (need >= 3)"
+        },
+        "retrievesWell": {
+          "pass": true,
+          "detail": "weaker top score 0.273 (need >= 0.2)"
+        },
+        "retrievesSymmetrically": {
+          "pass": true,
+          "detail": "ratio 1.26 (need <= 1.6); top file agrees (src/App.tsx)"
+        }
+      },
+      "admissible": true
+    },
+    {
+      "question": "How is the app styled?",
+      "perRepository": [
+        {
+          "repository": "ionuthub/warehouse-dispatch",
+          "topScore": 0.308,
+          "topFile": "src/main.tsx",
+          "resultCount": 6
+        },
+        {
+          "repository": "ionuthub/clinic-triage",
+          "topScore": 0.295,
+          "topFile": "src/main.tsx",
+          "resultCount": 6
+        }
+      ],
+      "checks": {
+        "retrieves": {
+          "pass": true,
+          "detail": "min results 6 (need >= 3)"
+        },
+        "retrievesWell": {
+          "pass": true,
+          "detail": "weaker top score 0.295 (need >= 0.2)"
+        },
+        "retrievesSymmetrically": {
+          "pass": true,
+          "detail": "ratio 1.04 (need <= 1.6); top file agrees (src/main.tsx)"
+        }
+      },
+      "admissible": true
+    }
+  ],
+  "repositories": [
+    {
+      "repository": "ionuthub/warehouse-dispatch",
+      "indexedFiles": 50,
+      "totalRepositoryFiles": 54,
+      "suggested": [
+        {
+          "question": "What is the top-level structure of the React app?",
+          "resultCount": 10,
+          "topScore": 0.393,
+          "topFile": "src/main.tsx",
+          "results": [
+            {
+              "rank": 1,
+              "path": "src/main.tsx",
+              "score": 0.393
+            },
+            {
+              "rank": 2,
+              "path": "package.json",
+              "score": 0.122
+            },
+            {
+              "rank": 3,
+              "path": "src/components/Toasts.tsx",
+              "score": 0.107
+            },
+            {
+              "rank": 4,
+              "path": "src/notifications/listener.ts",
+              "score": 0.106
+            },
+            {
+              "rank": 5,
+              "path": "tsconfig.app.json",
+              "score": 0.102
+            }
+          ]
+        },
+        {
+          "question": "How does a page get the data it displays?",
+          "resultCount": 10,
+          "topScore": 0.344,
+          "topFile": "src/App.tsx",
+          "results": [
+            {
+              "rank": 1,
+              "path": "src/App.tsx",
+              "score": 0.344
+            },
+            {
+              "rank": 2,
+              "path": "src/dispatch/orderService.ts",
+              "score": 0.141
+            },
+            {
+              "rank": 3,
+              "path": "src/pages/ZoneOverviewPage.tsx",
+              "score": 0.121
+            },
+            {
+              "rank": 4,
+              "path": "src/api/mock-server.ts",
+              "score": 0.115
+            },
+            {
+              "rank": 5,
+              "path": "src/pages/DispatchLogPage.tsx",
+              "score": 0.096
+            }
+          ]
+        },
+        {
+          "question": "How is the app styled?",
+          "resultCount": 6,
+          "topScore": 0.308,
+          "topFile": "src/main.tsx",
+          "results": [
+            {
+              "rank": 1,
+              "path": "src/main.tsx",
+              "score": 0.308
+            },
+            {
+              "rank": 2,
+              "path": "tsconfig.app.json",
+              "score": 0.161
+            },
+            {
+              "rank": 3,
+              "path": "src/App.tsx",
+              "score": 0.135
+            },
+            {
+              "rank": 4,
+              "path": "tsconfig.json",
+              "score": 0.133
+            },
+            {
+              "rank": 5,
+              "path": "src/components/Layout.tsx",
+              "score": 0.026
+            }
+          ]
+        }
+      ],
+      "gateStems": [
+        {
+          "question": "Where does execution start in this project?",
+          "resultCount": 4,
+          "topScore": 0.042,
+          "topFile": "src/jobs/revalidation.ts",
+          "results": [
+            {
+              "rank": 1,
+              "path": "src/jobs/revalidation.ts",
+              "score": 0.042
+            },
+            {
+              "rank": 2,
+              "path": "src/store/useWarehouseStore.ts",
+              "score": 0.024
+            },
+            {
+              "rank": 3,
+              "path": "src/data/seedData.ts",
+              "score": 0.015
+            },
+            {
+              "rank": 4,
+              "path": "src/styles.css",
+              "score": 0.003
+            }
+          ]
+        },
+        {
+          "question": "How is an order assigned to a warehouse zone?",
+          "resultCount": 10,
+          "topScore": 0.268,
+          "topFile": "src/config/zoneRules.ts",
+          "results": [
+            {
+              "rank": 1,
+              "path": "src/config/zoneRules.ts",
+              "score": 0.268
+            },
+            {
+              "rank": 2,
+              "path": "src/pages/ZoneOverviewPage.tsx",
+              "score": 0.201
+            },
+            {
+              "rank": 3,
+              "path": "src/dispatch/allocator.ts",
+              "score": 0.178
+            },
+            {
+              "rank": 4,
+              "path": "src/dispatch/handlers/standardHandler.ts",
+              "score": 0.172
+            },
+            {
+              "rank": 5,
+              "path": "src/pages/OrderDetailPage.tsx",
+              "score": 0.17
+            }
+          ]
+        },
+        {
+          "question": "Which code decides how a given order type is processed?",
+          "resultCount": 10,
+          "topScore": 0.203,
+          "topFile": "src/components/OrderCard.tsx",
+          "results": [
+            {
+              "rank": 1,
+              "path": "src/components/OrderCard.tsx",
+              "score": 0.203
+            },
+            {
+              "rank": 2,
+              "path": "src/dispatch/orderService.ts",
+              "score": 0.201
+            },
+            {
+              "rank": 3,
+              "path": "src/config/zoneRules.ts",
+              "score": 0.176
+            },
+            {
+              "rank": 4,
+              "path": "src/store/useWarehouseStore.ts",
+              "score": 0.174
+            },
+            {
+              "rank": 5,
+              "path": "src/tests/validation.test.ts",
+              "score": 0.168
+            }
+          ]
+        },
+        {
+          "question": "Everywhere stock is reserved — list every place it happens.",
+          "resultCount": 10,
+          "topScore": 0.15,
+          "topFile": "src/stock/stockService.ts",
+          "results": [
+            {
+              "rank": 1,
+              "path": "src/stock/stockService.ts",
+              "score": 0.15
+            },
+            {
+              "rank": 2,
+              "path": "src/tests/reservation.test.ts",
+              "score": 0.122
+            },
+            {
+              "rank": 3,
+              "path": "src/components/ZoneCard.tsx",
+              "score": 0.096
+            },
+            {
+              "rank": 4,
+              "path": "src/stock/reservation.ts",
+              "score": 0.095
+            },
+            {
+              "rank": 5,
+              "path": "src/pages/ZoneOverviewPage.tsx",
+              "score": 0.083
+            }
+          ]
+        },
+        {
+          "question": "What happens to an outgoing API request before it is sent?",
+          "resultCount": 10,
+          "topScore": 0.639,
+          "topFile": "src/api/interceptors/types.ts",
+          "results": [
+            {
+              "rank": 1,
+              "path": "src/api/interceptors/types.ts",
+              "score": 0.639
+            },
+            {
+              "rank": 2,
+              "path": "src/api/interceptors/hazardous-interceptor.ts",
+              "score": 0.392
+            },
+            {
+              "rank": 3,
+              "path": "src/api/interceptors/audit-interceptor.ts",
+              "score": 0.35
+            },
+            {
+              "rank": 4,
+              "path": "src/api/api-client.ts",
+              "score": 0.348
+            },
+            {
+              "rank": 5,
+              "path": "src/api/interceptors/auth-interceptor.ts",
+              "score": 0.332
+            }
+          ]
+        },
+        {
+          "question": "Does `validateShipment` change any state, or does it only check?",
+          "resultCount": 10,
+          "topScore": 0.186,
+          "topFile": "src/tests/validation.test.ts",
+          "results": [
+            {
+              "rank": 1,
+              "path": "src/tests/validation.test.ts",
+              "score": 0.186
+            },
+            {
+              "rank": 2,
+              "path": "src/dispatch/releaseService.ts",
+              "score": 0.171
+            },
+            {
+              "rank": 3,
+              "path": "src/dispatch/validation.ts",
+              "score": 0.15
+            },
+            {
+              "rank": 4,
+              "path": "src/store/useWarehouseStore.ts",
+              "score": 0.142
+            },
+            {
+              "rank": 5,
+              "path": "src/pages/OrderListPage.tsx",
+              "score": 0.105
+            }
+          ]
+        },
+        {
+          "question": "Which pricing implementation runs for a bulk order, and why that one?",
+          "resultCount": 10,
+          "topScore": 0.409,
+          "topFile": "src/tests/pricing.test.ts",
+          "results": [
+            {
+              "rank": 1,
+              "path": "src/tests/pricing.test.ts",
+              "score": 0.409
+            },
+            {
+              "rank": 2,
+              "path": "src/pricing/pricing.ts",
+              "score": 0.292
+            },
+            {
+              "rank": 3,
+              "path": "src/config/zoneRules.ts",
+              "score": 0.267
+            },
+            {
+              "rank": 4,
+              "path": "src/pricing/legacyPricing.ts",
+              "score": 0.204
+            },
+            {
+              "rank": 5,
+              "path": "src/dispatch/handlers/bulkHandler.ts",
+              "score": 0.2
+            }
+          ]
+        },
+        {
+          "question": "What reacts when a dispatch event is emitted?",
+          "resultCount": 10,
+          "topScore": 0.231,
+          "topFile": "src/events/bus.ts",
+          "results": [
+            {
+              "rank": 1,
+              "path": "src/events/bus.ts",
+              "score": 0.231
+            },
+            {
+              "rank": 2,
+              "path": "src/notifications/listener.ts",
+              "score": 0.102
+            },
+            {
+              "rank": 3,
+              "path": "src/pages/DispatchLogPage.tsx",
+              "score": 0.078
+            },
+            {
+              "rank": 4,
+              "path": "src/dispatch/allocator.ts",
+              "score": 0.073
+            },
+            {
+              "rank": 5,
+              "path": "src/dispatch/handlers/registry.ts",
+              "score": 0.068
+            }
+          ]
+        },
+        {
+          "question": "Where would a new order type be added, and what else would need changing?",
+          "resultCount": 10,
+          "topScore": 0.381,
+          "topFile": "src/tests/allocation.test.ts",
+          "results": [
+            {
+              "rank": 1,
+              "path": "src/tests/allocation.test.ts",
+              "score": 0.381
+            },
+            {
+              "rank": 2,
+              "path": "src/tests/pricing.test.ts",
+              "score": 0.273
+            },
+            {
+              "rank": 3,
+              "path": "src/tests/validation.test.ts",
+              "score": 0.251
+            },
+            {
+              "rank": 4,
+              "path": "src/dispatch/validation.ts",
+              "score": 0.196
+            },
+            {
+              "rank": 5,
+              "path": "src/components/OrderCard.tsx",
+              "score": 0.184
+            }
+          ]
+        },
+        {
+          "question": "If the zone rules changed, what else would be affected?",
+          "resultCount": 10,
+          "topScore": 0.211,
+          "topFile": "src/config/zoneRules.ts",
+          "results": [
+            {
+              "rank": 1,
+              "path": "src/config/zoneRules.ts",
+              "score": 0.211
+            },
+            {
+              "rank": 2,
+              "path": "src/jobs/revalidation.ts",
+              "score": 0.168
+            },
+            {
+              "rank": 3,
+              "path": "src/tests/allocation.test.ts",
+              "score": 0.161
+            },
+            {
+              "rank": 4,
+              "path": "src/tests/pricing.test.ts",
+              "score": 0.124
+            },
+            {
+              "rank": 5,
+              "path": "src/pages/ZoneOverviewPage.tsx",
+              "score": 0.115
+            }
+          ]
+        },
+        {
+          "question": "Are hazardous orders treated differently anywhere? Where?",
+          "resultCount": 10,
+          "topScore": 0.172,
+          "topFile": "src/api/interceptors/hazardous-interceptor.ts",
+          "results": [
+            {
+              "rank": 1,
+              "path": "src/api/interceptors/hazardous-interceptor.ts",
+              "score": 0.172
+            },
+            {
+              "rank": 2,
+              "path": "src/dispatch/handlers/hazardousHandler.ts",
+              "score": 0.153
+            },
+            {
+              "rank": 3,
+              "path": "src/dispatch/orderService.ts",
+              "score": 0.107
+            },
+            {
+              "rank": 4,
+              "path": "src/jobs/revalidation.ts",
+              "score": 0.091
+            },
+            {
+              "rank": 5,
+              "path": "src/tests/allocation.test.ts",
+              "score": 0.084
+            }
+          ]
+        },
+        {
+          "question": "Where is a dock assigned to a shipment?",
+          "resultCount": 10,
+          "topScore": 0.319,
+          "topFile": "src/dispatch/releaseService.ts",
+          "results": [
+            {
+              "rank": 1,
+              "path": "src/dispatch/releaseService.ts",
+              "score": 0.319
+            },
+            {
+              "rank": 2,
+              "path": "src/tests/validation.test.ts",
+              "score": 0.277
+            },
+            {
+              "rank": 3,
+              "path": "src/dispatch/validation.ts",
+              "score": 0.268
+            },
+            {
+              "rank": 4,
+              "path": "src/notifications/listener.ts",
+              "score": 0.203
+            },
+            {
+              "rank": 5,
+              "path": "src/dispatch/handlers/standardHandler.ts",
+              "score": 0.091
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "repository": "ionuthub/clinic-triage",
+      "indexedFiles": 50,
+      "totalRepositoryFiles": 55,
+      "suggested": [
+        {
+          "question": "What is the top-level structure of the React app?",
+          "resultCount": 10,
+          "topScore": 0.394,
+          "topFile": "src/main.tsx",
+          "results": [
+            {
+              "rank": 1,
+              "path": "src/main.tsx",
+              "score": 0.394
+            },
+            {
+              "rank": 2,
+              "path": "package.json",
+              "score": 0.176
+            },
+            {
+              "rank": 3,
+              "path": "tsconfig.app.json",
+              "score": 0.118
+            },
+            {
+              "rank": 4,
+              "path": "src/App.tsx",
+              "score": 0.09
+            },
+            {
+              "rank": 5,
+              "path": "tsconfig.json",
+              "score": 0.067
+            }
+          ]
+        },
+        {
+          "question": "How does a page get the data it displays?",
+          "resultCount": 10,
+          "topScore": 0.273,
+          "topFile": "src/App.tsx",
+          "results": [
+            {
+              "rank": 1,
+              "path": "src/App.tsx",
+              "score": 0.273
+            },
+            {
+              "rank": 2,
+              "path": "src/tests/eligibility.test.ts",
+              "score": 0.125
+            },
+            {
+              "rank": 3,
+              "path": "src/store/useClinicStore.ts",
+              "score": 0.092
+            },
+            {
+              "rank": 4,
+              "path": "src/pages/AuditLogPage.tsx",
+              "score": 0.079
+            },
+            {
+              "rank": 5,
+              "path": "src/triage/validation.ts",
+              "score": 0.076
+            }
+          ]
+        },
+        {
+          "question": "How is the app styled?",
+          "resultCount": 6,
+          "topScore": 0.295,
+          "topFile": "src/main.tsx",
+          "results": [
+            {
+              "rank": 1,
+              "path": "src/main.tsx",
+              "score": 0.295
+            },
+            {
+              "rank": 2,
+              "path": "tsconfig.app.json",
+              "score": 0.17
+            },
+            {
+              "rank": 3,
+              "path": "src/App.tsx",
+              "score": 0.141
+            },
+            {
+              "rank": 4,
+              "path": "tsconfig.json",
+              "score": 0.128
+            },
+            {
+              "rank": 5,
+              "path": "src/components/Layout.tsx",
+              "score": 0.032
+            }
+          ]
+        }
+      ],
+      "gateStems": [
+        {
+          "question": "Where does execution start in this project?",
+          "resultCount": 4,
+          "topScore": 0.086,
+          "topFile": "src/triage/validation.ts",
+          "results": [
+            {
+              "rank": 1,
+              "path": "src/triage/validation.ts",
+              "score": 0.086
+            },
+            {
+              "rank": 2,
+              "path": "src/data/seed.ts",
+              "score": 0.043
+            },
+            {
+              "rank": 3,
+              "path": "src/tests/eligibility.test.ts",
+              "score": 0.035
+            },
+            {
+              "rank": 4,
+              "path": "src/styles.css",
+              "score": 0.012
+            }
+          ]
+        },
+        {
+          "question": "How is a referral given its priority band?",
+          "resultCount": 10,
+          "topScore": 0.573,
+          "topFile": "src/components/PriorityPanel.tsx",
+          "results": [
+            {
+              "rank": 1,
+              "path": "src/components/PriorityPanel.tsx",
+              "score": 0.573
+            },
+            {
+              "rank": 2,
+              "path": "src/triage/banding.ts",
+              "score": 0.49
+            },
+            {
+              "rank": 3,
+              "path": "src/hooks/useReferralFilters.ts",
+              "score": 0.394
+            },
+            {
+              "rank": 4,
+              "path": "src/events/types.ts",
+              "score": 0.367
+            },
+            {
+              "rank": 5,
+              "path": "src/config/priorityRules.ts",
+              "score": 0.353
+            }
+          ]
+        },
+        {
+          "question": "Which code decides how a given referral type is processed?",
+          "resultCount": 10,
+          "topScore": 0.359,
+          "topFile": "src/hooks/useReferralFilters.ts",
+          "results": [
+            {
+              "rank": 1,
+              "path": "src/hooks/useReferralFilters.ts",
+              "score": 0.359
+            },
+            {
+              "rank": 2,
+              "path": "src/triage/routes/registry.ts",
+              "score": 0.35
+            },
+            {
+              "rank": 3,
+              "path": "src/api/referrals-api.ts",
+              "score": 0.315
+            },
+            {
+              "rank": 4,
+              "path": "src/scheduling/service.ts",
+              "score": 0.271
+            },
+            {
+              "rank": 5,
+              "path": "src/triage/banding.ts",
+              "score": 0.26
+            }
+          ]
+        },
+        {
+          "question": "Everywhere eligibility is checked — list every place it happens.",
+          "resultCount": 10,
+          "topScore": 0.125,
+          "topFile": "src/jobs/nightlyReverification.ts",
+          "results": [
+            {
+              "rank": 1,
+              "path": "src/jobs/nightlyReverification.ts",
+              "score": 0.125
+            },
+            {
+              "rank": 2,
+              "path": "src/triage/validation.ts",
+              "score": 0.111
+            },
+            {
+              "rank": 3,
+              "path": "src/triage/eligibility.ts",
+              "score": 0.109
+            },
+            {
+              "rank": 4,
+              "path": "src/App.tsx",
+              "score": 0.049
+            },
+            {
+              "rank": 5,
+              "path": "src/store/useClinicStore.ts",
+              "score": 0.045
+            }
+          ]
+        },
+        {
+          "question": "What happens to an outgoing API request before it is sent?",
+          "resultCount": 10,
+          "topScore": 0.662,
+          "topFile": "src/api/pipeline/types.ts",
+          "results": [
+            {
+              "rank": 1,
+              "path": "src/api/pipeline/types.ts",
+              "score": 0.662
+            },
+            {
+              "rank": 2,
+              "path": "src/api/api-client.ts",
+              "score": 0.555
+            },
+            {
+              "rank": 3,
+              "path": "src/api/referrals-api.ts",
+              "score": 0.514
+            },
+            {
+              "rank": 4,
+              "path": "src/api/pipeline/auth-stage.ts",
+              "score": 0.406
+            },
+            {
+              "rank": 5,
+              "path": "src/api/pipeline/trace-stage.ts",
+              "score": 0.321
+            }
+          ]
+        },
+        {
+          "question": "Does `checkAppointment` change any state, or does it only check?",
+          "resultCount": 10,
+          "topScore": 0.21,
+          "topFile": "src/triage/validation.ts",
+          "results": [
+            {
+              "rank": 1,
+              "path": "src/triage/validation.ts",
+              "score": 0.21
+            },
+            {
+              "rank": 2,
+              "path": "src/store/useClinicStore.ts",
+              "score": 0.126
+            },
+            {
+              "rank": 3,
+              "path": "src/tests/scheduling.test.ts",
+              "score": 0.098
+            },
+            {
+              "rank": 4,
+              "path": "src/audit/logger.ts",
+              "score": 0.097
+            },
+            {
+              "rank": 5,
+              "path": "src/tests/eligibility.test.ts",
+              "score": 0.093
+            }
+          ]
+        },
+        {
+          "question": "Which slot-finding implementation runs for a follow-up referral, and why that one?",
+          "resultCount": 10,
+          "topScore": 0.466,
+          "topFile": "src/triage/routes/followUp.ts",
+          "results": [
+            {
+              "rank": 1,
+              "path": "src/triage/routes/followUp.ts",
+              "score": 0.466
+            },
+            {
+              "rank": 2,
+              "path": "src/scheduling/service.ts",
+              "score": 0.35
+            },
+            {
+              "rank": 3,
+              "path": "src/scheduling/types.ts",
+              "score": 0.316
+            },
+            {
+              "rank": 4,
+              "path": "src/scheduling/slotFinder.ts",
+              "score": 0.298
+            },
+            {
+              "rank": 5,
+              "path": "src/triage/validation.ts",
+              "score": 0.275
+            }
+          ]
+        },
+        {
+          "question": "What reacts when a scheduling event is emitted?",
+          "resultCount": 10,
+          "topScore": 0.185,
+          "topFile": "src/scheduling/eventListener.ts",
+          "results": [
+            {
+              "rank": 1,
+              "path": "src/scheduling/eventListener.ts",
+              "score": 0.185
+            },
+            {
+              "rank": 2,
+              "path": "src/audit/logger.ts",
+              "score": 0.176
+            },
+            {
+              "rank": 3,
+              "path": "src/events/channel.ts",
+              "score": 0.144
+            },
+            {
+              "rank": 4,
+              "path": "src/scheduling/types.ts",
+              "score": 0.124
+            },
+            {
+              "rank": 5,
+              "path": "src/scheduling/slotFinder.ts",
+              "score": 0.068
+            }
+          ]
+        },
+        {
+          "question": "Where would a new referral type be added, and what else would need changing?",
+          "resultCount": 10,
+          "topScore": 0.288,
+          "topFile": "src/tests/registry.test.ts",
+          "results": [
+            {
+              "rank": 1,
+              "path": "src/tests/registry.test.ts",
+              "score": 0.288
+            },
+            {
+              "rank": 2,
+              "path": "src/tests/banding.test.ts",
+              "score": 0.261
+            },
+            {
+              "rank": 3,
+              "path": "src/hooks/useReferralFilters.ts",
+              "score": 0.185
+            },
+            {
+              "rank": 4,
+              "path": "src/tests/scheduling.test.ts",
+              "score": 0.183
+            },
+            {
+              "rank": 5,
+              "path": "src/triage/routes/registry.ts",
+              "score": 0.18
+            }
+          ]
+        },
+        {
+          "question": "If the priority rules changed, what else would be affected?",
+          "resultCount": 10,
+          "topScore": 0.209,
+          "topFile": "src/triage/banding.ts",
+          "results": [
+            {
+              "rank": 1,
+              "path": "src/triage/banding.ts",
+              "score": 0.209
+            },
+            {
+              "rank": 2,
+              "path": "src/tests/banding.test.ts",
+              "score": 0.167
+            },
+            {
+              "rank": 3,
+              "path": "src/components/PriorityPanel.tsx",
+              "score": 0.148
+            },
+            {
+              "rank": 4,
+              "path": "src/tests/registry.test.ts",
+              "score": 0.107
+            },
+            {
+              "rank": 5,
+              "path": "src/config/priorityRules.ts",
+              "score": 0.095
+            }
+          ]
+        },
+        {
+          "question": "Are safeguarding referrals treated differently anywhere? Where?",
+          "resultCount": 10,
+          "topScore": 0.265,
+          "topFile": "src/triage/routes/safeguarding.ts",
+          "results": [
+            {
+              "rank": 1,
+              "path": "src/triage/routes/safeguarding.ts",
+              "score": 0.265
+            },
+            {
+              "rank": 2,
+              "path": "src/tests/eligibility.test.ts",
+              "score": 0.195
+            },
+            {
+              "rank": 3,
+              "path": "src/tests/banding.test.ts",
+              "score": 0.13
+            },
+            {
+              "rank": 4,
+              "path": "src/api/referrals-api.ts",
+              "score": 0.095
+            },
+            {
+              "rank": 5,
+              "path": "src/tests/registry.test.ts",
+              "score": 0.083
+            }
+          ]
+        },
+        {
+          "question": "Where is a slot actually booked?",
+          "resultCount": 10,
+          "topScore": 0.501,
+          "topFile": "src/scheduling/service.ts",
+          "results": [
+            {
+              "rank": 1,
+              "path": "src/scheduling/service.ts",
+              "score": 0.501
+            },
+            {
+              "rank": 2,
+              "path": "src/scheduling/eventListener.ts",
+              "score": 0.449
+            },
+            {
+              "rank": 3,
+              "path": "src/scheduling/slotFinder.ts",
+              "score": 0.441
+            },
+            {
+              "rank": 4,
+              "path": "src/scheduling/types.ts",
+              "score": 0.406
+            },
+            {
+              "rank": 5,
+              "path": "src/triage/validation.ts",
+              "score": 0.399
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "note": "Sole source for the retrieval figures in the write-up: the suggested-question scores, the gate stem distribution, and the derivation of the evidence-bar constant. Earlier figures (27-28 July) came from uncommitted tooling and are superseded."
+}

@@ -80,16 +80,19 @@ describe('relevance bar scale', () => {
 
   it('draws a typical good match as a substantial bar', () => {
     // Cosine similarity over sparse TF-IDF vectors is small in absolute terms: across the 24
-    // accuracy-gate stems the median top-ranked score was 0.27. Drawn at score * 100% that
-    // read as 27% — a nearly empty bar above a correct result, which invites a reader to
-    // discount an answer they should accept.
-    expect(widthOf(0.27)).toBeGreaterThan(40);
+    // accuracy-gate stems the median top-ranked score is 0.248 (study/question-scores.json,
+    // committed in 1996285, measured against artefact 1b9b0e0). Drawn at score * 100% that
+    // would read as 25% — a nearly empty bar above a correct result, which invites a reader
+    // to discount an answer they should accept.
+    expect(widthOf(0.248)).toBeGreaterThan(40);
   });
 
   it('still draws a failed retrieval as a nearly empty bar', () => {
-    // The orientation stem scored 0.04 in both study repositories and retrieved the wrong
-    // files. Rescaling must not flatter that case, or the bar stops carrying information.
-    expect(widthOf(0.04)).toBeLessThan(12);
+    // The weakest stem in the same measurement scored 0.042 and retrieved the wrong files.
+    // Rescaling must not flatter that case, or the bar stops carrying information: the two
+    // assertions together pin both ends of the scale, so raising SCORE_BAR_FULL_SCALE to
+    // make good matches look better cannot silently make failures look acceptable too.
+    expect(widthOf(0.042)).toBeLessThan(12);
   });
 
   it('is monotonic and bounded', () => {

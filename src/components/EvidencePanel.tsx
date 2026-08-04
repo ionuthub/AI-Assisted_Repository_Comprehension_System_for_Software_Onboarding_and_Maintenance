@@ -33,13 +33,28 @@ export interface UnverifiedMention {
  * discounts a result they should have accepted, and under-trust is as much a calibration
  * failure as over-trust.
  *
- * The value is the 90th percentile of top-ranked scores measured over the 24 accuracy-gate
- * question stems across both study repositories (p50 = 0.27, p90 = 0.59, max = 0.67). It is
- * fixed and recorded here rather than tuned per query, so a given score always draws the same
- * bar and two answers can be compared by eye. Changing it changes what participants see and
- * must not be done once data collection has begun.
+ * DERIVATION
+ *
+ * The value is the 90th percentile of top-ranked scores over the 24 accuracy-gate question
+ * stems, each scored against the repository it was written for:
+ *
+ *   n = 24, min 0.042, median 0.248, p90 0.551, max 0.662
+ *   percentiles by linear interpolation between closest ranks (the numpy default)
+ *
+ * Source: study/question-scores.json, committed in 1996285, measured against artefact
+ * 1b9b0e0 with a clean working tree. Regenerate with `npm run measure:questions`.
+ *
+ * The earlier value of 0.60 came from a 27 July measurement produced by tooling that was
+ * never committed, and a second ad-hoc computation on 30 July of the same distribution
+ * disagreed with it (p90 0.59 then 0.57). Neither could be reproduced from the repository.
+ * This derivation can be.
+ *
+ * It is fixed and recorded here rather than tuned per query, so a given score always draws
+ * the same bar and two answers can be compared by eye. Changing it changes what participants
+ * see, so it is frozen from here on: a display constant that moved between participants
+ * would be a condition change rather than a correction, whatever a later measurement says.
  */
-const SCORE_BAR_FULL_SCALE = 0.6;
+const SCORE_BAR_FULL_SCALE = 0.55;
 
 interface EvidencePanelProps {
   evidence: RetrievedEvidence[];

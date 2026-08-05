@@ -80,7 +80,7 @@ const Index = () => {
   const {
     mode, setMode,
     project, setProject,
-    fileCache, setFileCache,
+    fileCache,
     selectedFile, setSelectedFile,
     selectedLine, setSelectedLine,
     selectedLines, setSelectedLines,

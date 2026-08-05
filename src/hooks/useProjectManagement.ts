@@ -12,7 +12,6 @@ export const useProjectManagement = () => {
     const {
         mode,
         setProject,
-        setFileCache,
         setSelectedFile,
         setIsLoading,
         setIsFileLoading,

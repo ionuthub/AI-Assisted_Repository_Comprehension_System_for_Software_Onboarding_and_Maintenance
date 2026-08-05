@@ -71,6 +71,20 @@ export const useProjectStore = create<ProjectState>((set) => ({
 
         set({
             project,
+            // The file cache is keyed by path alone, so it MUST be discarded whenever the
+            // project changes. The two study repositories are a matched pair and therefore
+            // share paths deliberately — src/types/domain.ts exists in both. Carrying the
+            // cache across a switch served the previous repository's contents under the new
+            // repository's file name: clinic-triage's ReferralType displayed as though it
+            // were part of warehouse-dispatch.
+            //
+            // In a study measuring whether participants detect incorrect output, that
+            // manufactures the very failure being observed, so it is a validity defect
+            // rather than a display glitch. Reloading the page cleared it only because the
+            // cache is in-memory with no persistence, which is a workaround a participant
+            // has no reason to know about.
+            fileCache: {},
+            fileCacheOrder: [],
             scanResult: project ? scanRepository(project.files) : null,
             staticAnalyses: analyses,
             searchIndex: index

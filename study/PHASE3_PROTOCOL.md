@@ -39,6 +39,12 @@ legitimate source for `seededAnswerShown` values in the study answer keys. If th
 shows very low accuracy, stop and discuss with the supervisor before proceeding: that is
 the gate doing its job.
 
+**Result (4 August 2026):** Gate run against frozen build `fd5f5ab`. Overall accuracy 6/24
+(25%) — clinic-triage 2/12 (17%), warehouse-dispatch 4/12 (33%). `seeded_candidates.json`
+generated, 18 candidates. Per the rule above, this result was discussed with the supervisor on 5 August 2026;
+the outcome was to proceed as planned. The number of seeded items per repository, drawn
+only from these 18 candidates, is fixed at [n] following that discussion.
+
 ## Step 3 — Build the study materials
 
 - Answer keys: `study/answer-key.repoA.json`, `repoB.json` from the template — locating
@@ -98,20 +104,20 @@ hand-checkable cases. n = 12–20 → report as exploratory (Wohlin et al., 2012
 
 ## Traceability matrix (proposal → implementation)
 
-| Proposal commitment (AE1) | Where it is satisfied |
-|---|---|
-| Two task kinds: locating vs applied | Task model `kind` field; Evaluation page badges |
-| No-tool retention question | Dedicated retention phase, tool-hidden instruction |
-| Pre-study accuracy gate | `accuracy_gate.py` + gate templates + Step 2 |
-| Seeded known-inaccurate cases (Buçinca) | `seededInaccurate`/`seededAnswerShown`/`errorDetected`; sourced only from gate output |
-| Time, accuracy, NASA-TLX, SUS, comments | Timers, scoring buttons, TLX + SUS phases, observer notes |
-| Per-answer confidence / confidence-accuracy gap | 1–5 slider per task; gap computed in analysis |
-| Wilcoxon + effect sizes, p < 0.05, exploratory framing | `analyze_sessions.py` (validated) |
-| Within-subjects, counterbalanced, two matched repos | Setup condition/order fields; `repo_stats.py` matching evidence |
-| 12–20 participants, experience recorded | Run-sheet Steps 1 & 4 |
-| JISC only; consent; withdrawal; debrief incl. seeded items | Step 3 & 4; ethics gate above |
-| Pilot before main study | Step 4 pilot note |
-| Observer-timed, answer key + rubric, blind second-marking | Run-sheet + rubric template |
+| Proposal commitment (AE1)                                  | Where it is satisfied                                                                 |
+| ---------------------------------------------------------- | ------------------------------------------------------------------------------------- |
+| Two task kinds: locating vs applied                        | Task model `kind` field; Evaluation page badges                                       |
+| No-tool retention question                                 | Dedicated retention phase, tool-hidden instruction                                    |
+| Pre-study accuracy gate                                    | `accuracy_gate.py` + gate templates + Step 2                                          |
+| Seeded known-inaccurate cases (Buçinca)                    | `seededInaccurate`/`seededAnswerShown`/`errorDetected`; sourced only from gate output |
+| Time, accuracy, NASA-TLX, SUS, comments                    | Timers, scoring buttons, TLX + SUS phases, observer notes                             |
+| Per-answer confidence / confidence-accuracy gap            | 1–5 slider per task; gap computed in analysis                                         |
+| Wilcoxon + effect sizes, p < 0.05, exploratory framing     | `analyze_sessions.py` (validated)                                                     |
+| Within-subjects, counterbalanced, two matched repos        | Setup condition/order fields; `repo_stats.py` matching evidence                       |
+| 12–20 participants, experience recorded                    | Run-sheet Steps 1 & 4                                                                 |
+| JISC only; consent; withdrawal; debrief incl. seeded items | Step 3 & 4; ethics gate above                                                         |
+| Pilot before main study                                    | Step 4 pilot note                                                                     |
+| Observer-timed, answer key + rubric, blind second-marking  | Run-sheet + rubric template                                                           |
 
 ## What remains the researcher's responsibility
 

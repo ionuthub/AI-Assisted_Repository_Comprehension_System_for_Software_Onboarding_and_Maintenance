@@ -34,16 +34,31 @@ artefact instead uses disclosed machine-assisted answers stamped VERIFIED BY TOO
 requires the explicit `--accept-tool-verified` flag and records that weaker provenance. Capture
 the tool's verbatim answers, mark true/false, and have a human second marker spot-check a
 pre-declared sample. Score both repositories together with `npm run gate:score`.
-Outputs: the gate accuracy figure for AE2, and `seeded_candidates.json` — the ONLY
+Outputs: the gate accuracy figure for AE2, and `study/seeded_candidates.json` — the ONLY
 legitimate source for `seededAnswerShown` values in the study answer keys. If the gate
 shows very low accuracy, stop and discuss with the supervisor before proceeding: that is
 the gate doing its job.
 
-**Result (4 August 2026):** Gate run against frozen build `fd5f5ab`. Overall accuracy 6/24
-(25%) — clinic-triage 2/12 (17%), warehouse-dispatch 4/12 (33%). `seeded_candidates.json`
-generated, 18 candidates. Per the rule above, this result was discussed with the supervisor on 5 August 2026;
-the outcome was to proceed as planned. The number of seeded items per repository, drawn
-only from these 18 candidates, is fixed at [n] following that discussion.
+**Result (5 August 2026):** Overall accuracy 6/24 (25%) — clinic-triage 2/12 (17%),
+warehouse-dispatch 4/12 (33%). `study/seeded_candidates.json` generated, 18 candidates. Per the
+rule above, this result was discussed with the supervisor on 5 August 2026; the outcome was to
+proceed as planned. The number of seeded items per repository, drawn only from these 18
+candidates, is fixed at [n] following that discussion.
+
+The marked capture is `study/accuracy-gate.{clinic-triage,warehouse-dispatch}.json`, taken at
+16:00:55Z and 16:02:32Z on 5 August from `https://repo-comprehension-system.vercel.app/`, and
+recording `toolVersion` `429f830`. An earlier run of the same 24 stems on 4 August, archived as
+`gate-runs/clinic-triage-run9.json` and `gate-runs/warehouse-dispatch-run8.json`, recorded
+`fd5f5ab` and produced the same 6/24; the figure is therefore stable across the two captures.
+
+**Limitation on `toolVersion`.** `capture_gate.mjs` defaults `toolVersion` to the *local* git
+`HEAD` at the moment the capture runs, not to the commit the deployed site was serving. It is a
+record of the researcher's checkout, and it is only a record of the deployed build if the
+deployment is confirmed separately. Two facts make that worth stating rather than assuming here:
+`429f830` was committed at 15:26Z, 34 minutes before the capture, and the immediately preceding
+runs at 15:55Z and 15:57Z still recorded `fd5f5ab` — a change of checkout, not evidence of a
+deploy. Confirm the deployed commit in the Vercel dashboard and record it alongside the figure,
+or re-run with an explicit `--tool-version`.
 
 ## Step 3 — Build the study materials
 

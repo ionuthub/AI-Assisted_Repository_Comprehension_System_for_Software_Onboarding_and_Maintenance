@@ -27,7 +27,7 @@ fluent answer that omits the decisive fact is the case this whole study exists t
 
 When every verdict is filled in:
 
-    python3 analysis/marking_sheet.py collect study/accuracy-gate.warehouse-dispatch.json marking.warehouse-dispatch.md
+    python3 analysis/marking_sheet.py collect study/accuracy-gate.warehouse-dispatch.json study/marking.warehouse-dispatch.md
 
 ---
 

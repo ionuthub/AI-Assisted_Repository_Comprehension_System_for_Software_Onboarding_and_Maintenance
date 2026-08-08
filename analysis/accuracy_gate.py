@@ -13,7 +13,12 @@ from typing import Any
 
 
 EXPECTED_REPOSITORIES = {"clinic-triage", "warehouse-dispatch"}
-OUTPUT = Path("seeded_candidates.json")
+
+# Study material belongs in study/. analysis/README.md states the freeze boundary as src/, api/,
+# package.json and the lockfile frozen, with analysis/ and study/ free to change afterwards; an
+# output written to the repository root sits outside that statement and makes the boundary a
+# thing to be remembered rather than read.
+OUTPUT = Path("study") / "seeded_candidates.json"
 
 
 def load_and_validate(paths: list[str]) -> tuple[list[dict[str, Any]], list[str]]:

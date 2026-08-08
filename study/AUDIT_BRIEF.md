@@ -168,7 +168,7 @@ of *reporting success when it has measured nothing*.
    attribute one question's verdict to another, and that `collect` refuses an incomplete sheet.
 
 4. **`accuracy_gate.py`.** Verify it cannot score an unmarked item, and that
-   `seeded_candidates.json` contains only genuinely incorrect items.
+   `study/seeded_candidates.json` contains only genuinely incorrect items.
 
 5. **Run the self-tests.** Every script has one. Check they test the behaviour that matters
    rather than restating the implementation — at least two were written after the defect they

@@ -13,7 +13,8 @@ the completed sheet back into the gate file's `correct` field.
 Usage:
     python3 marking_sheet.py build   study/accuracy-gate.clinic-triage.json \\
                                      study/ground-truth.clinic-triage.md
-    python3 marking_sheet.py collect study/accuracy-gate.clinic-triage.json marking.clinic-triage.md
+    python3 marking_sheet.py collect study/accuracy-gate.clinic-triage.json \\
+                                     study/marking.clinic-triage.md
     python3 marking_sheet.py --self-test
 """
 import json
@@ -188,7 +189,11 @@ def build(gate_path: Path, truth_path: Path) -> Path:
         print("No marking sheet was written.")
         raise SystemExit(1)
 
-    sheet = Path(f"marking.{repo}.md")
+    # Beside the gate it was built from, not in the current working directory. The sheet is only
+    # meaningful next to that capture — it is bound to it by hash — and writing it wherever the
+    # command happened to be run from put study material in the repository root, outside the
+    # freeze boundary analysis/README.md defines.
+    sheet = gate_path.parent / f"marking.{repo}.md"
     blocks = []
     for item in gate["items"]:
         t = truth.get(item["id"], {})

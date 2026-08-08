@@ -83,6 +83,9 @@ Then build the two marking sheets:
 
     npm run gate:mark
 
+Each sheet is written beside the gate it was built from, so both land in `study/`:
+`study/marking.clinic-triage.md` and `study/marking.warehouse-dispatch.md`.
+
 Write `correct` or `incorrect` on every verdict line and collect each sheet with the command
 printed in its header. The sheet is bound to the exact repository, provenance, questions, and
 captured answers; collecting a sheet from a different or earlier run fails. Partial credit is
@@ -97,8 +100,8 @@ If the tool is re-captured, old verdicts do not transfer: rebuild and re-mark th
 
 The scorer fails unless both repositories are present and every question has non-empty frozen
 and tool answers plus an explicit boolean verdict. Only then does it print the accuracy figure
-for AE2 and write `seeded_candidates.json` — the only legitimate source of seeded items for the
-over-trust probes.
+for AE2 and write `study/seeded_candidates.json` — the only legitimate source of seeded items for
+the over-trust probes.
 
 ## If the figure comes out low
 

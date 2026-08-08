@@ -25,6 +25,13 @@ Two conditions make that safe rather than merely convenient:
 
    Any output from that command is a violation. It currently returns nothing.
 
+Study material an instrument produces is written under `study/`, never to the repository root.
+That is not a third condition — it is what keeps the two above readable. The marking sheets and
+`seeded_candidates.json` were originally written to the working directory, so they landed at the
+root, outside the two directories this section names; the boundary then had to be remembered
+instead of read. `marking_sheet.py` now writes each sheet beside the gate it was built from and
+`accuracy_gate.py` writes to `study/seeded_candidates.json`.
+
 ## score_questions.mjs — retrieval figures
 
 ```

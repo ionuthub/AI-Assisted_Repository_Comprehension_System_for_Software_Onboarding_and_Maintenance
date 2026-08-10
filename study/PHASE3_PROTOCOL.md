@@ -86,7 +86,15 @@ or re-run with an explicit `--tool-version`.
    captures the 1–5 confidence after each task, scores against the key.
    Seeded tasks (tool condition): show the tool's answer, record whether the participant
    flags it. Think-aloud comments go in observer notes.
-5. Retention phase: tool closed/hidden; from-memory answer + confidence.
+5. **The retention question is the last task in the answer key, carrying `kind: "retention"`.**
+   There is no separate retention phase — it was removed because, once the answer keys carried
+   retention as a task, the phase re-asked the applied task's question instead of the retention
+   one. **The observer must close or hide the tool before starting that task, and note in the
+   observer notes that this was done.** The page no longer prompts for either: it presents a
+   retention task identically to any other, and the export no longer carries a field asserting
+   that the tool was hidden. Until that is restored in the interface, the no-tool condition rests
+   on the observer following this step, so it must be confirmed in the notes for every session or
+   the retention measure is unverifiable.
 6. NASA-TLX, then SUS, on the page.
 7. Export JSON (and CSV); file naming session_Pxx_condition.json; store on university
    OneDrive only, pseudonymised. Debrief, including seeded items.
@@ -122,7 +130,7 @@ hand-checkable cases. n = 12–20 → report as exploratory (Wohlin et al., 2012
 | Proposal commitment (AE1)                                  | Where it is satisfied                                                                 |
 | ---------------------------------------------------------- | ------------------------------------------------------------------------------------- |
 | Two task kinds: locating vs applied                        | Task model `kind` field; Evaluation page badges                                       |
-| No-tool retention question                                 | Dedicated retention phase, tool-hidden instruction                                    |
+| No-tool retention question                                 | Answer-key task with `kind: "retention"`, carried through both exports; no-tool condition administered by the observer per run-sheet step 5, **not enforced or recorded by the interface** |
 | Pre-study accuracy gate                                    | `accuracy_gate.py` + gate templates + Step 2                                          |
 | Seeded known-inaccurate cases (Buçinca)                    | `seededInaccurate`/`seededAnswerShown`/`errorDetected`; sourced only from gate output |
 | Time, accuracy, NASA-TLX, SUS, comments                    | Timers, scoring buttons, TLX + SUS phases, observer notes                             |

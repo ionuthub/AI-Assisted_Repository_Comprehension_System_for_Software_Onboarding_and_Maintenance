@@ -32,7 +32,23 @@ const SUS_QUESTIONS = [
   "I needed to learn a lot of things before I could get going with this system.",
 ];
 
-type Phase = "setup" | "tasks" | "retention" | "tlx" | "sus" | "export";
+/**
+ * The retention question is a task, not a phase.
+ *
+ * There was a dedicated "retention" phase here. Once the answer keys began carrying retention as
+ * a task with `kind: "retention"`, the phase asked a question the participant had already
+ * answered — and asked it wrongly, since it displayed `appliedTask.description` rather than the
+ * retention task's own. A participant met the applied task's prompt twice and the retention
+ * prompt never, so the retention measure recorded a second attempt at a question they had just
+ * completed with the tool in front of them.
+ *
+ * Retention now flows through the ordinary task list, which already carries `kind` through both
+ * the JSON and CSV exports.
+ */
+type Phase = "setup" | "tasks" | "tlx" | "sus" | "export";
+
+/** Phases the UI can render. A persisted session naming anything else resumes at setup. */
+const PHASES: readonly Phase[] = ["setup", "tasks", "tlx", "sus", "export"];
 
 export default function EvaluationPage() {
   const { toast } = useToast();
@@ -49,12 +65,6 @@ export default function EvaluationPage() {
   // --- runtime ---
   const [activeTaskId, setActiveTaskId] = useState<number | null>(null);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
-  const [retentionAnswer, setRetentionAnswer] = useState("");
-  const [retentionConfidence, setRetentionConfidence] = useState(3);
-  // Confirmed by the observer rather than asserted by the export. The protocol requires the
-  // tool to be hidden for this phase; recording it as true regardless would mean the export
-  // claimed a condition nobody verified.
-  const [retentionToolHidden, setRetentionToolHidden] = useState(false);
   const [tlx, setTlx] = useState<TlxRatings>({ mental: 50, physical: 50, temporal: 50, performance: 50, effort: 50, frustration: 50 });
   const [sus, setSus] = useState<Record<number, number>>(Object.fromEntries(Array.from({ length: 10 }, (_, i) => [i, 3])));
   const [notes, setNotes] = useState("");
@@ -98,13 +108,15 @@ export default function EvaluationPage() {
   useEffect(() => {
     saveSession({
       phase, participantId, condition, order, repository, tasks, activeTaskId,
-      retentionAnswer, retentionConfidence, tlx, sus, notes,
+      tlx, sus, notes,
     });
   }, [phase, participantId, condition, order, repository, tasks, activeTaskId,
-      retentionAnswer, retentionConfidence, tlx, sus, notes]);
+      tlx, sus, notes]);
 
   const restoreSession = (stored: PersistedSession) => {
-    setPhase(stored.phase as Phase);
+    // A session saved during the removed retention phase would otherwise restore to a phase
+    // nothing renders, leaving the observer on a blank page mid-session.
+    setPhase(PHASES.includes(stored.phase as Phase) ? (stored.phase as Phase) : "setup");
     setParticipantId(stored.participantId);
     setCondition(stored.condition);
     setOrder(stored.order);
@@ -113,8 +125,6 @@ export default function EvaluationPage() {
     // The timer is not resumed: elapsed time is derived from the recorded timestamps, and
     // restarting it would attribute the interruption to the participant.
     setActiveTaskId(null);
-    setRetentionAnswer(stored.retentionAnswer);
-    setRetentionConfidence(stored.retentionConfidence);
     setTlx(stored.tlx);
     setSus(stored.sus);
     setNotes(stored.notes);
@@ -149,7 +159,6 @@ export default function EvaluationPage() {
     setTasks((prev) => prev.map((t) => (t.id === id ? { ...t, [key]: value } : t)));
 
   const allTasksDone = tasks.every((t) => t.status === "completed");
-  const appliedTask = tasks.find((t) => t.kind === "applied");
 
   const buildSession = (): StudySession => ({
     participantId: participantId || "unassigned",
@@ -160,16 +169,12 @@ export default function EvaluationPage() {
 
   const exportJson = () => {
     const session = buildSession();
+    // No `retention` block: the retention answer is the `kind: "retention"` task inside
+    // `session.tasks`, with its own prompt, timing, answer and confidence. A separate block
+    // would restate one task's fields at the top level and invite an analysis that counted the
+    // retention answer twice, or read the block and ignored the task.
     const payload = {
       session,
-      retention: {
-        // The prompt the participant was actually given, not the internal task label.
-        question: appliedTask?.description ?? "",
-        taskName: appliedTask?.name ?? "",
-        answer: retentionAnswer,
-        confidence: retentionConfidence,
-        administeredWithoutTool: retentionToolHidden,
-      },
       scores: { sus: susScore(sus), tlxRaw: tlxScore(tlx) },
       pilotMetrics: readMetrics(),
       exportedAt: new Date().toISOString(),
@@ -321,42 +326,10 @@ export default function EvaluationPage() {
               )}
             </CardContent></Card>
           ))}
-          <Button className="w-full" disabled={!allTasksDone} onClick={() => setPhase("retention")}>
-            Continue to retention check
-          </Button>
-        </>
-      )}
-
-      {phase === "retention" && (
-        <Card><CardContent className="pt-6 space-y-4">
-          <h3 className="font-semibold">Retention check (answered without the tool)</h3>
-          <p className="text-sm text-muted-foreground">
-            Close or hide the tool now. The participant answers from memory, based on the applied task:
-            <span className="font-medium"> {appliedTask?.description}</span>
-          </p>
-          <Textarea value={retentionAnswer} onChange={(e) => setRetentionAnswer(e.target.value)} placeholder="Participant's from-memory answer…" />
-          <div className="flex items-center gap-3">
-            <Label className="text-sm">Confidence (1–5)</Label>
-            <Slider className="w-40" min={1} max={5} step={1} value={[retentionConfidence]} onValueChange={([v]) => setRetentionConfidence(v)} />
-            <Badge variant="outline">{retentionConfidence}</Badge>
-          </div>
-          <label className="flex items-center gap-2 text-sm">
-            <input
-              type="checkbox"
-              checked={retentionToolHidden}
-              onChange={(e) => setRetentionToolHidden(e.target.checked)}
-              className="h-4 w-4"
-            />
-            I confirm the tool was closed or hidden for this answer
-          </label>
-          <Button
-            className="w-full"
-            disabled={!retentionAnswer || !retentionToolHidden}
-            onClick={() => setPhase("tlx")}
-          >
+          <Button className="w-full" disabled={!allTasksDone} onClick={() => setPhase("tlx")}>
             Continue to NASA-TLX
           </Button>
-        </CardContent></Card>
+        </>
       )}
 
       {phase === "tlx" && (
@@ -418,7 +391,8 @@ export default function EvaluationPage() {
             </Button>
           </div>
           <p className="text-xs text-muted-foreground">
-            The JSON export includes the retention answer, SUS and TLX scores, and the pilot metrics
+            The JSON export includes every task with its own timing, answer and confidence — the
+            retention task among them — plus the SUS and TLX scores and the pilot metrics
             (indexing durations and QA response times) recorded on this device.
           </p>
         </CardContent></Card>

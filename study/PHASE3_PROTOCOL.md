@@ -60,6 +60,40 @@ runs at 15:55Z and 15:57Z still recorded `fd5f5ab` — a change of checkout, not
 deploy. Confirm the deployed commit in the Vercel dashboard and record it alongside the figure,
 or re-run with an explicit `--tool-version`.
 
+**Deployed build: `c5fb72a`.** Confirmed in the Vercel dashboard on 10 August — deployment
+`repo-comprehension-system-hr9g9drqr-ionuthubs-projects.vercel.app`, serving the
+`repo-comprehension-system.vercel.app` domain, status Ready, built from `main` at `c5fb72a`. This
+is the build pilots and participants meet, and the SHA to record against each session.
+
+**Why the 6/24 figure is not re-captured against it.** The gate figure was captured against
+`429f830`, and every file the gate exercises is byte-identical between `429f830` and `c5fb72a`:
+
+    git diff --stat 429f830..c5fb72a -- \
+      src/lib/github.ts src/lib/semanticSearch.ts src/lib/promptBuilder.ts \
+      src/lib/generationProtocol.ts src/lib/ingestionFilters.ts src/lib/staticAnalysis.ts \
+      src/lib/repositoryScanner.ts src/components/WorkspaceQAView.tsx \
+      src/components/EvidencePanel.tsx src/components/SuggestedQuestions.tsx \
+      src/components/CodeViewer.tsx src/pages/Index.tsx src/store/useProjectStore.ts \
+      src/constants/appConstants.ts api/
+
+That command returns nothing. The only changes in the range are to the study session runner
+(`src/pages/Evaluation.tsx`, `src/lib/evaluation/sessionStorage.ts`) and its tests, none of which
+sit on the capture path — the gate drives the question-answering flow, not the evaluation page. So
+the recorded figure measures the code now deployed.
+
+Re-capturing an unchanged pipeline could only confirm the figure or move it by model
+nondeterminism, and the second is a live risk rather than a theoretical one: two captures of the
+same build five minutes apart on 5 August produced **zero of twelve** identical answers. A verdict
+that flipped on a re-run would move the headline AE2 figure for a reason unconnected to the
+artefact. The figure therefore stands as captured, with its build stated, and a re-capture is
+required only if a change lands on one of the paths listed above.
+
+**What this does not establish.** The dashboard confirms `c5fb72a` is deployed now; it says nothing
+about which commit was being served at 16:00Z on 5 August, when the marked capture ran. That
+deployments are built from `main` on push makes it likely `429f830` — pushed 34 minutes earlier —
+was live, but likely is not confirmed, and the `toolVersion` limitation above still applies to that
+capture.
+
 ## Step 3 — Build the study materials
 
 - Answer keys: `study/answer-key.repoA.json`, `repoB.json` from the template — locating
@@ -115,6 +149,11 @@ instrument a participant meets. They now share src/lib/promptBuilder.ts, which r
 the cause; running everything against the deployed build removes the class. Record the
 commit SHA of the deployed build alongside each session, as the accuracy gate already
 does in its `toolVersion` field.
+
+At the time of writing that build is **`c5fb72a`** (see Step 2). Read the SHA from the Vercel
+dashboard at the start of each session rather than from a local `git log`: the two are the same
+only when nothing has been pushed since the last deploy, and `toolVersion` reads the local
+checkout, which is how the ambiguity in the 5 August capture arose.
 
 ## Step 5 — Analysis (already implemented, validated)
 

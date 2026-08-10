@@ -18,8 +18,10 @@ export interface PersistedSession {
   repository: string;
   tasks: StudyTask[];
   activeTaskId: number | null;
-  retentionAnswer: string;
-  retentionConfidence: number;
+  // No retention fields: retention is a task with `kind: "retention"`, so its answer, timing and
+  // confidence persist inside `tasks` like any other task's. Sessions written before the
+  // retention phase was removed carry two extra keys here; they are ignored rather than migrated,
+  // and Evaluation.tsx resumes an unrecognised `phase` at setup.
   tlx: TlxRatings;
   sus: Record<number, number>;
   notes: string;

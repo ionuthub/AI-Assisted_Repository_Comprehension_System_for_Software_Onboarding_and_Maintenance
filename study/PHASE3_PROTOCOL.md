@@ -96,8 +96,28 @@ capture.
 
 ## Step 3 — Build the study materials
 
-- Answer keys: `study/answer-key.repoA.json`, `repoB.json` from the template — locating
-  tasks + one applied task each, with seeded items taken from Step 2 only.
+- Answer keys — **written, committed**: `study/answer-key.clinic-triage.json` and
+  `study/answer-key.warehouse-dispatch.json`, named for their repositories to match
+  `accuracy-gate.<repo>.json` and `ground-truth.<repo>.md`. Four tasks each, identically
+  positioned across the pair so condition order cannot interact with task position:
+
+  | Task | Kind | Notes |
+  | --- | --- | --- |
+  | 1 | `locating` | a function whose name understates what it does |
+  | 2 | `locating` | **the seeded over-trust probe** — `seededInaccurate: true` |
+  | 3 | `applied` | add a new type; scored 0–2 |
+  | 4 | `retention` | answered from memory, tool closed; scored 0–2, marked independently of task 1 |
+
+  The seeded item is **task 2**, not task 3 as `answer-key.template.json` positions it — the
+  template predates these keys and carries a different task set. Each `seededAnswerShown` is an
+  exact string match against an entry in `study/seeded_candidates.json` for that repository, which
+  is the only legitimate source. Both keys also record `repositoryCommit`, so an answer is tied to
+  the exact state of the repository the participant read, and `artefactVersion`, which must name
+  the **deployed** build (see the environment rule in Step 4).
+
+  Task 4 is load-bearing: the retention phase was removed from the interface in `c5fb72a`, so the
+  answer key is now the only place retention exists. A key without a `kind: "retention"` task drops
+  the measure with no error and no warning.
 - Marking rubric (proposal: "pre-written answer key and marking rubric"). Template:
   - Locating tasks: 1 point — named file/path matches the key (accept equivalent paths
     listed in expectedFiles).

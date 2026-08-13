@@ -13,7 +13,7 @@ repository's file inventory and a structural reading order at the top. `collect`
 completed worksheets back and writes the answers into the gate files, leaving `toolAnswer` and
 `correct` untouched for the later stages.
 
-The worksheet deliberately contains no per-question hints — no candidate files, no starting
+The worksheet deliberately contains no per-question hints, no candidate files, no starting
 points. A pointer towards the answer would make the ground truth partly a record of where
 something suggested looking, and the whole value of the gate is that the two readings are
 independent.
@@ -34,22 +34,22 @@ SOURCE_EXT = {".ts", ".tsx", ".js", ".jsx"}
 # these two in particular. Tests come late on purpose: they state intended behaviour plainly
 # and will shortcut a reading that ought to be your own.
 READING_ORDER = """\
-1. `package.json` and `README.md` — what the project claims to be.
-2. `src/main.tsx`, `src/App.tsx` — the entry point and how the application is composed.
-3. `src/types/` — the vocabulary everything else is written in. Read this properly; it is the
+1. `package.json` and `README.md`, what the project claims to be.
+2. `src/main.tsx`, `src/App.tsx`, the entry point and how the application is composed.
+3. `src/types/`, the vocabulary everything else is written in. Read this properly; it is the
    cheapest file to read and the most repaid.
-4. `src/config/` — behaviour that is declared rather than coded.
-5. `src/store/` — where state lives and what may change it.
-6. The domain directories — the bulk of the logic.
-7. `src/api/` — how the outside world is reached.
-8. `src/pages/` and `src/components/` — the interface. Skim; little ground truth lives here.
-9. `src/tests/` — read these last. They tell you what the author intended, which is exactly
+4. `src/config/`, behaviour that is declared rather than coded.
+5. `src/store/`, where state lives and what may change it.
+6. The domain directories, the bulk of the logic.
+7. `src/api/`, how the outside world is reached.
+8. `src/pages/` and `src/components/`, the interface. Skim; little ground truth lives here.
+9. `src/tests/`, read these last. They tell you what the author intended, which is exactly
    what you are trying to work out for yourself.
-10. `src/data/` — seed data. Skim only; it is bulk, not behaviour.
+10. `src/data/`, seed data. Skim only; it is bulk, not behaviour.
 """
 
 HEADER = """\
-# Ground-truth worksheet — {repo}
+# Ground-truth worksheet, {repo}
 
 Write your own answers here, from reading the code, **before the tool is asked anything**.
 When this is complete, run:
@@ -59,7 +59,7 @@ When this is complete, run:
 ## How to answer
 
 Name the file and line range that settles the question, then say in one or two sentences what
-happens. Where more than one place is involved, list all of them — several questions have more
+happens. Where more than one place is involved, list all of them, several questions have more
 than one right location, and an answer that names only the first is the kind of partial
 correctness the marking has to be able to distinguish.
 
@@ -84,7 +84,7 @@ Do not open the tool until every block below is filled in.
 {blocks}"""
 
 BLOCK = """\
-## Q{id} — {pattern}
+## Q{id}, {pattern}
 
 > {question}
 
@@ -94,7 +94,7 @@ BLOCK = """\
 
 **Files and lines**
 
-<!-- e.g. src/example.ts:12-40 — one per line -->
+<!-- e.g. src/example.ts:12-40, one per line -->
 
 **Notes**
 
@@ -207,14 +207,14 @@ def collect(gate_path: Path, worksheet_path: Path) -> bool:
 
     gate_path.write_text(json.dumps(gate, indent=1, ensure_ascii=False) + "\n")
     print(f"Wrote {len(gate['items'])} ground-truth answers into {gate_path.name}.")
-    print("toolAnswer and correct are untouched — those come after the tool is asked.")
+    print("toolAnswer and correct are untouched, those come after the tool is asked.")
     return True
 
 
 def self_test() -> None:
     """Checks the parser against a filled block and a blank one, not against study data."""
     sample = """\
-## Q1 — orientation
+## Q1, orientation
 
 > Where does execution start?
 
@@ -233,7 +233,7 @@ None.
 
 ---
 
-## Q2 — handler registry
+## Q2, handler registry
 
 > Which code decides?
 

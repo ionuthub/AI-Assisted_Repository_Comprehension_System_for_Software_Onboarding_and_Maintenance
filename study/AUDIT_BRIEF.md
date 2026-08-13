@@ -1,4 +1,4 @@
-# Independent audit brief — QHO656 dissertation artefact and study apparatus
+# Independent audit brief, QHO656 dissertation artefact and study apparatus
 
 Paste this whole document into a coding agent with access to all three repositories.
 
@@ -11,10 +11,10 @@ improves how well developers calibrate their trust in the tool's answers.
 
 Three repositories:
 
-- `ionuthub/AI-Assisted_Repository_Comprehension_System_for_Software_Onboarding_and_Maintenance` —
+- `ionuthub/AI-Assisted_Repository_Comprehension_System_for_Software_Onboarding_and_Maintenance`,
   the artefact, plus all study apparatus under `analysis/` and `study/`
-- `ionuthub/clinic-triage` at `67d7a5a` — study stimulus, purpose-built
-- `ionuthub/warehouse-dispatch` at `937be9d` — study stimulus, purpose-built
+- `ionuthub/clinic-triage` at `67d7a5a`, study stimulus, purpose-built
+- `ionuthub/warehouse-dispatch` at `937be9d`, study stimulus, purpose-built
 
 **Do not modify `clinic-triage` or `warehouse-dispatch`.** They are frozen experimental
 material. Read them freely; change nothing.
@@ -38,8 +38,8 @@ Every defect listed here was found by someone else, not by the assistant that wr
    unmarked question and silently adopted the next one's mark. Both looked like success.
 3. **Corrections that strengthened claims.** Several defects were introduced *while fixing
    something else*, each an absolute added in the course of sounding more rigorous.
-4. **Undeclared standards.** Two markers marked the same items against different material — one
-   saw a question's Answer, the other saw Answer plus Notes — and the difference lived in a
+4. **Undeclared standards.** Two markers marked the same items against different material, one
+   saw a question's Answer, the other saw Answer plus Notes, and the difference lived in a
    sheet-building script neither had read.
 5. **Screenshots that stopped mid-answer.** Twice, with a plausible-looking image each time.
 
@@ -51,14 +51,14 @@ was never independently checked.*
 For each section below, report per item: what you checked, what you found, and whether it holds.
 
 **Say plainly when you find nothing.** A section with no findings is a useful result. Do not
-manufacture findings to justify the pass — several earlier reviews correctly reported "nothing
+manufacture findings to justify the pass, several earlier reviews correctly reported "nothing
 new" and that was the most informative thing they said. Distinguish clearly between a defect
 that changes a conclusion, a defect that does not, and a stylistic preference (report the last
 category only if you must, and label it).
 
 ---
 
-## Section 1 — The artefact's retrieval and evidence layer
+## Section 1, The artefact's retrieval and evidence layer
 
 Files: `src/lib/semanticSearch.ts`, `src/lib/github.ts`, `src/lib/ingestionFilters.ts`,
 `src/components/EvidencePanel.tsx`, `src/components/SuggestedQuestions.tsx`, `api/explain-code.ts`
@@ -70,7 +70,7 @@ Files: `src/lib/semanticSearch.ts`, `src/lib/github.ts`, `src/lib/ingestionFilte
    claimed, and that the stopword list does not remove terms the tool exists to search for.
 
 2. **Ingestion.** A 50-file cap, vendored directories excluded, lockfiles excluded. Verify
-   directory matching is segment-anchored, not substring — `dist` must not exclude
+   directory matching is segment-anchored, not substring, `dist` must not exclude
    `src/utils/distance.ts`. Verify every excluded file is attributed to a rule and surfaced to
    the user. Confirm the coverage figure shown on screen uses a denominator the interface
    explains.
@@ -79,7 +79,7 @@ Files: `src/lib/semanticSearch.ts`, `src/lib/github.ts`, `src/lib/ingestionFilte
    justified as the 90th percentile of top-ranked scores across 24 gate questions. **Reproduce
    that measurement.** Index both study repositories through the real code, run the 24 questions
    from `study/accuracy-gate.*.json`, and check the percentile. If 0.6 is not defensible from the
-   data, say so — the constant changes what every participant sees.
+   data, say so, the constant changes what every participant sees.
 
 4. **The evidence headings.** Verify no heading asserts anything about the *answer* that the
    panel cannot establish. A previous version said "Grounded" above outright refusals.
@@ -89,10 +89,10 @@ Files: `src/lib/semanticSearch.ts`, `src/lib/github.ts`, `src/lib/ingestionFilte
    the same file first in both. **Reproduce all three claims.** The previous set was replaced
    because one question returned five files in one repository and nothing at all in the other.
 
-6. **The proxy.** `api/explain-code.ts` — check the origin allowlist cannot be bypassed by
+6. **The proxy.** `api/explain-code.ts`, check the origin allowlist cannot be bypassed by
    omitting the `Origin` header, and that no secret is reachable from the client bundle.
 
-## Section 2 — The study repositories as a matched pair
+## Section 2, The study repositories as a matched pair
 
 Files: `analysis/verify_study_repos.py`, `analysis/repo_stats.py`, both stimulus repositories
 
@@ -100,7 +100,7 @@ The pair is claimed to be matched on: 45 source files each, 2,900 vs 2,439 lines
 seven runtime dependencies each, four test files each, roughly 96% predicted index coverage each,
 and all seven planted architectural patterns present in both.
 
-1. **Re-derive every one of those numbers independently**, not by running the script — by your
+1. **Re-derive every one of those numbers independently**, not by running the script, by your
    own count. The script and the claim were written by the same author.
 
 2. **Check the script's logic mirrors the artefact's actual ingestion.** It reimplements the
@@ -119,9 +119,9 @@ and all seven planted architectural patterns present in both.
    Challenge that.
 
 5. **Contamination.** Confirm neither stimulus repository contains anything that reveals the
-   answers — no ground truth, no task list, no README describing the planted patterns.
+   answers, no ground truth, no task list, no README describing the planted patterns.
 
-## Section 3 — The ground truth
+## Section 3, The ground truth
 
 Files: `study/ground-truth.clinic-triage.md`, `study/ground-truth.warehouse-dispatch.md`
 
@@ -133,7 +133,7 @@ read the source. These have already survived roughly nine review passes.
    that something *happens* resolve to a real caller.
 
 2. **Attack the quantifiers specifically.** Every defect found so far has been one. Where an
-   answer counts or excludes something, count it yourself — and note that a plain grep is not
+   answer counts or excludes something, count it yourself, and note that a plain grep is not
    enough, because a member access split across lines is invisible to it and a local variable can
    share a name with a store action.
 
@@ -146,7 +146,7 @@ read the source. These have already survived roughly nine review passes.
    rejected legitimate multi-declaration ranges, ran past one-line declarations, read `if (` as a
    declaration, and mishandled concise arrow bodies.
 
-## Section 4 — The gate machinery
+## Section 4, The gate machinery
 
 Files: `analysis/capture_gate.mjs`, `analysis/compare_runs.py`, `analysis/marking_sheet.py`,
 `analysis/accuracy_gate.py`, `analysis/gate_worksheet.py`
@@ -157,11 +157,11 @@ of *reporting success when it has measured nothing*.
 1. **`capture_gate.mjs`.** Check every selector against the deployed DOM. Check the interlock
    cannot be satisfied by a ground-truth file that is not actually settled. Check the archive
    logic cannot overwrite a previous run. Check the screenshot completeness assertion actually
-   fires when content is hidden — construct a case and prove it.
+   fires when content is hidden, construct a case and prove it.
 
 2. **`compare_runs.py`.** It reports wording similarity and overlap in files named, and exits
    non-zero only on retrieval drift. Verify `paths_named` extracts what it claims. Verify the
-   claim that retrieval was identical across three runs — that is a strong claim about
+   claim that retrieval was identical across three runs, that is a strong claim about
    determinism and it underwrites a sentence in the dissertation.
 
 3. **`marking_sheet.py`.** Recently changed to show Notes. Verify `read_verdicts` cannot
@@ -171,10 +171,10 @@ of *reporting success when it has measured nothing*.
    `study/seeded_candidates.json` contains only genuinely incorrect items.
 
 5. **Run the self-tests.** Every script has one. Check they test the behaviour that matters
-   rather than restating the implementation — at least two were written after the defect they
+   rather than restating the implementation, at least two were written after the defect they
    describe, so check they would still fail if the fix were reverted.
 
-## Section 5 — The figure and the marking
+## Section 5, The figure and the marking
 
 Files: `study/second-marking.md`, both `study/accuracy-gate.*.json`, `study/gate-runs/`
 
@@ -187,7 +187,7 @@ after it emerged the two markers had seen different material.
 
 2. **Assess whether the declared standard is defensible**: the Answer is normative, the Notes are
    context. It was declared *after* marking had begun, which is a real methodological weakness.
-   Say whether you think the choice was made honestly or to produce a better number — the
+   Say whether you think the choice was made honestly or to produce a better number, the
    reasoning is recorded in `second-marking.md` and in the commit history, so you can check
    whether the rule was fixed before or after the figures were computed.
 
@@ -197,7 +197,7 @@ after it emerged the two markers had seen different material.
    27–36%, while overlap in files named averages 86–96%. The argument is that substance is stable even though
    prose is not, and this is what makes marking a single run defensible. Test that argument.
 
-## Section 6 — The claims made in writing
+## Section 6, The claims made in writing
 
 Files: `study/AI-DISCLOSURE.md`, `study/RUNNING_THE_GATE.md`, `study/PHASE3_PROTOCOL.md`,
 `study/suggested-questions-measurement.md`, both ground-truth headers, `AUDIT_REPORT.md` if present

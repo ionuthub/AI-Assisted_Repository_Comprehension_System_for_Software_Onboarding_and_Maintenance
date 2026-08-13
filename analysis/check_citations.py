@@ -9,7 +9,7 @@ function it claims to is a fact about the file, and checking it by eye across 24
 roughly 120 references is exactly the sort of task a person does badly and a script does
 perfectly.
 
-Every defect found in the draft answers so far has been a citation defect — ranges that stopped
+Every defect found in the draft answers so far has been a citation defect, ranges that stopped
 one line before the closing brace, and one range that ran two unrelated exports together. All
 of them are caught here.
 
@@ -35,8 +35,8 @@ sys.path.insert(0, str(Path(__file__).parent))
 from gate_worksheet import parse  # noqa: E402  (same directory, shared parser)
 
 CITATION_RE = re.compile(r"^([\w./-]+\.\w+)\s*:\s*(\d+)(?:\s*-\s*(\d+))?\s*$")
-# A line that opens a named declaration. The second alternative covers object members —
-# `acceptReferral: (id, override) => {` and `emit<K>(event, payload): void {` — which is how
+# A line that opens a named declaration. The second alternative covers object members,
+# `acceptReferral: (id, override) => {` and `emit<K>(event, payload): void {`, which is how
 # most of a Zustand store and every class method is written, and which the answers cite
 # constantly.
 #
@@ -64,7 +64,7 @@ def strip_noise(line: str) -> str:
 def construct_end(lines: list[str], start: int) -> int | None:
     """
     Last line of the declaration beginning at `start` (1-indexed), or None if the first line
-    opens nothing — a one-line `export const x = 1;` is complete in itself.
+    opens nothing, a one-line `export const x = 1;` is complete in itself.
     """
     depth = 0
     opened = False
@@ -84,7 +84,7 @@ def construct_end(lines: list[str], start: int) -> int | None:
             if strip_noise(lines[n]).rstrip().endswith((";", "}", ",")):
                 return n + 1
             continue
-        # A declaration that opens nothing on its own first line is complete on that line —
+        # A declaration that opens nothing on its own first line is complete on that line,
         # `export type ReferralType = "routine" | "urgent";` is the whole thing. Without this,
         # the scan ran on into the *next* declaration and reported the citation as too short.
         if n == start - 1 and not opened:
@@ -114,20 +114,20 @@ def check_reference(ref: str, root: Path) -> tuple[str, str]:
 
     first = lines[start - 1]
     if not DECLARATION_RE.match(first):
-        return "NOTE", f"{rel}:{start} starts mid-construct — {first.strip()[:60]!r}"
+        return "NOTE", f"{rel}:{start} starts mid-construct, {first.strip()[:60]!r}"
 
     actual_end = construct_end(lines, start)
     if actual_end is None or actual_end == end:
         return "PASS", f"{rel}:{start}-{end}"
     if end < actual_end:
         return "FAIL", (
-            f"{rel}:{start}-{end} stops short — the declaration on line {start} "
+            f"{rel}:{start}-{end} stops short, the declaration on line {start} "
             f"closes on line {actual_end}"
         )
 
     # The range runs past its first declaration. That is only a defect if it also stops
     # part-way through a later one. Citing a whole file, or a group of related exports, is
-    # legitimate and common — `registry.ts:8-18` covering the handler map and both functions
+    # legitimate and common, `registry.ts:8-18` covering the handler map and both functions
     # that use it says something a single declaration cannot. So walk forward through the
     # declarations the range contains and accept it if the last one closes exactly on `end`.
     spanned, cursor = 1, actual_end + 1
@@ -171,7 +171,7 @@ def run(worksheet: Path, root: Path) -> bool:
 
     print(f"\n{failures} citation problem{'' if failures == 1 else 's'}.")
     if failures:
-        print("Prose is not checked here — only whether each reference points where it claims.")
+        print("Prose is not checked here, only whether each reference points where it claims.")
     return failures == 0
 
 

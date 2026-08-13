@@ -6,7 +6,7 @@ differently between the two study repositories they introduce a difference betwe
 that has nothing to do with the intervention.
 
 The original three were written for readability. They were then measured against the real
-retrieval code, indexing both study repositories exactly as the application does — same
+retrieval code, indexing both study repositories exactly as the application does, same
 directory exclusions, same generated-file exclusions, same fifty-file cap.
 
 ## What the original wording did
@@ -16,7 +16,7 @@ retrieved at all:
 
 | Question | warehouse-dispatch | clinic-triage |
 | --- | --- | --- |
-| Where does execution start in this project? | 0.043 — `src/main.tsx` not retrieved | 0.086 — `src/main.tsx` not retrieved |
+| Where does execution start in this project? | 0.043, `src/main.tsx` not retrieved | 0.086, `src/main.tsx` not retrieved |
 | How is the code organised, and what depends on what? | 0.094 | **no results at all** |
 | Where would I add a new feature? | 0.059 → `utils/formatters.ts` | 0.120 → `data/seed.ts` |
 
@@ -68,8 +68,8 @@ All three sit at or above the gate median, agree between repositories to within 
 
 ## Why they point at scaffolding
 
-Every admissible candidate retrieved framework files — the entry point, the application root,
-the stylesheet — rather than anything in the problem domain. That is a consequence of criterion
+Every admissible candidate retrieved framework files, the entry point, the application root,
+the stylesheet, rather than anything in the problem domain. That is a consequence of criterion
 4 rather than a weakness in the search. In a domain-specific repository the only files a
 domain-neutral question can reach are the scaffolding ones; anything reaching further would
 have to use domain vocabulary, and in these two repositories the domain vocabulary is exactly

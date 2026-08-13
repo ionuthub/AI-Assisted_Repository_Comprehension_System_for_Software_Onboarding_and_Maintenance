@@ -2,7 +2,7 @@
  * Asks the deployed tool every accuracy-gate question and records what it said.
  *
  * This is step 2 of the gate. Step 1 is writing the ground truth, step 3 is marking. Only
- * step 2 involves no judgement — it is transcription, and transcription done by hand across
+ * step 2 involves no judgement, it is transcription, and transcription done by hand across
  * 24 questions is an hour of clicking during which answers get truncated, evidence panels go
  * unrecorded, and the file the tool actually cited is remembered rather than captured.
  *
@@ -15,7 +15,7 @@
  * comparison meaningless, and the interlock exists because the temptation to look first is
  * strongest exactly when the work is nearly done.
  *
- * "Settled" means CONFIRMED — the researcher read the code — or, with
+ * "Settled" means CONFIRMED, the researcher read the code, or, with
  * --accept-tool-verified, VERIFIED BY TOOL. The second is weaker and legitimate, provided it
  * is chosen rather than defaulted into: the flag records the provenance in the gate file so it
  * reaches the write-up instead of being reconstructed by a marker.
@@ -48,7 +48,10 @@ function parseTruthQuestions(markdown) {
   for (let index = 0; index < headers.length; index += 1) {
     const match = headers[index];
     const block = markdown.slice(match.index, headers[index + 1]?.index ?? markdown.length);
-    const status = block.match(/^\*\*Status:\s*([A-Z][A-Z -]*[A-Z])(?:\s+—|\.\*\*|\*\*)/m)?.[1]?.trim();
+    // The em dash is required: the ground-truth files write "VERIFIED BY TOOL — <date>" and
+    // are deliberately excluded from prose sweeps, being string-matched against the gate.
+    // The comma alternative is accepted so a future re-written ground truth also parses.
+    const status = block.match(/^\*\*Status:\s*([A-Z][A-Z -]*[A-Z])(?:\s*[—,]|\.\*\*|\*\*)/m)?.[1]?.trim();
     const question = block.match(/^>\s*(.+?)\s*$/m)?.[1]?.trim();
     const id = Number(match[1]);
     if (questions.has(id)) throw new Error(`Duplicate ground-truth question Q${id}`);
@@ -69,11 +72,11 @@ function nextArchiveRun(entries, repository) {
 
 function selfTest() {
   const truth = parseTruthQuestions(`
-## Q1 — first
-**Status: VERIFIED BY TOOL — today.**
+## Q1, first
+**Status: VERIFIED BY TOOL, today.**
 > First question?
-## Q2 — second
-**Status: CONFIRMED — today.**
+## Q2, second
+**Status: CONFIRMED, today.**
 > Second question?
 `);
   if (truth.size !== 2 || truth.get(1)?.question !== "First question?") {
@@ -127,7 +130,7 @@ if (new Set(gateIds).size !== gateIds.length) {
 // The negotiable one is who settled it. CONFIRMED means the researcher read the code.
 // VERIFIED BY TOOL means machine review with caller counts and re-counted quantifiers, which
 // is weaker but not nothing. Running on tool-verified ground truth is a defensible choice
-// provided it is a choice — declared in advance, recorded in the output, and disclosed in the
+// provided it is a choice, declared in advance, recorded in the output, and disclosed in the
 // write-up rather than discovered by a marker. That is what --accept-tool-verified does.
 if (!flag("force")) {
   if (!TRUTH) {
@@ -170,7 +173,7 @@ if (!flag("force")) {
         `Statuses present: ${stamps}\n\n` +
         (flag("accept-tool-verified")
           ? "Running with --accept-tool-verified, so VERIFIED BY TOOL counts as settled. The\n" +
-            "answers above are neither that nor CONFIRMED — they are still mid-correction, and\n" +
+            "answers above are neither that nor CONFIRMED, they are still mid-correction, and\n" +
             "a gate run against them measures nothing.\n"
           : "The gate compares the tool's answers against ground truth settled beforehand.\n\n" +
             "If the researcher has read and signed off each answer, mark them CONFIRMED.\n" +
@@ -189,7 +192,7 @@ mkdirSync(SHOTS, { recursive: true });
 
 // A previous capture is archived rather than overwritten. Two reasons. The model is not
 // deterministic, so a second run answers the same question differently, and silently replacing
-// the first run would destroy the only evidence of by how much — which is a reproducibility
+// the first run would destroy the only evidence of by how much, which is a reproducibility
 // limitation worth reporting rather than losing. And a re-run prompted by a defect in this
 // script needs the earlier data kept, or the claim that the defect changed nothing cannot be
 // checked.
@@ -220,7 +223,7 @@ page.setDefaultTimeout(60_000);
 console.log(`Opening ${APP}`);
 await page.goto(APP, { waitUntil: "domcontentloaded" });
 
-console.log(`Ingesting ${REPO} — this takes a minute or two`);
+console.log(`Ingesting ${REPO}, this takes a minute or two`);
 await page.fill("#github-url", REPO);
 await page.getByRole("button", { name: "Analyse repository" }).click();
 // Ingestion fetches up to fifty files, so the workspace can be slow to appear.
@@ -242,13 +245,13 @@ async function readEvidence() {
   const retrieved = [];
   for (const row of rows) {
     const text = (await row.innerText()).replace(/\s+/g, " ").trim();
-    // "1 src/path/file.ts 0.27" — rank, path, then the score as rendered.
+    // "1 src/path/file.ts 0.27", rank, path, then the score as rendered.
     const m = text.match(/^(\d+)\s+(\S+)\s+([\d.]+)$/);
     retrieved.push(m ? { rank: +m[1], path: m[2], score: +m[3] } : { raw: text });
   }
   // The heading sits inside a <header>, so the list is a sibling of that header and not of
   // the <h3>. A `h3 ~ ul` selector therefore never matches and silently reports zero unverified
-  // mentions on every question — which is indistinguishable in the output from the panel not
+  // mentions on every question, which is indistinguishable in the output from the panel not
   // having appeared. Anchor on the containing block instead.
   const unverified = await panel
     .locator('div:has(> header h3:text-matches("Unverified mentions")) ul li')
@@ -464,4 +467,4 @@ gate.groundTruthProvenance = flag("force")
 writeFileSync(GATE, JSON.stringify(gate, null, 1) + "\n");
 console.log(`\nWrote ${results.length} answers into ${GATE}.`);
 console.log(`Screenshots in ${SHOTS}/.`);
-console.log("`correct` is null on every item — the fresh answers must be marked by the researcher.");
+console.log("`correct` is null on every item, the fresh answers must be marked by the researcher.");

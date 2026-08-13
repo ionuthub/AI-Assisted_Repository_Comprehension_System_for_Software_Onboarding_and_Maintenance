@@ -1,5 +1,5 @@
 /**
- * score_questions.mjs — retrieval measurement against a known build.
+ * score_questions.mjs, retrieval measurement against a known build.
  *
  * Regenerates every retrieval number the write-up reports: the per-question top-ranked
  * scores and retrieved files for the frozen suggested questions, the score distribution
@@ -18,7 +18,7 @@
  *
  * HOW IT READS THE ARTEFACT
  *
- * It imports the committed ingestion and search modules and runs them — it does not
+ * It imports the committed ingestion and search modules and runs them, it does not
  * reimplement scoring. Retrieval is deterministic client-side computation over ingested
  * files with no model in the loop, so running the modules measures exactly what the
  * deployed build computes, without a deployment and without spending Gemini quota.
@@ -35,7 +35,7 @@
  * FREEZE BOUNDARY
  *
  * This script reads the artefact and writes only under study/. It must never write to src/
- * or api/ — the freeze covers what a participant can experience, and measurement
+ * or api/, the freeze covers what a participant can experience, and measurement
  * instruments that read the artefact are not the artefact.
  *
  * USAGE
@@ -90,7 +90,7 @@ const workingTreeDirty = () => {
 
 /**
  * The commit of the artefact being measured, and the commit of this script. They are the
- * same value in the normal case — one repository, one HEAD — but are recorded separately
+ * same value in the normal case, one repository, one HEAD, but are recorded separately
  * because the freeze pins the artefact while allowing measurement tooling to move.
  * --artefact-version overrides the former when measuring a build other than the checkout.
  */
@@ -314,7 +314,7 @@ const main = async () => {
       }
     }
     if (report.workingTreeDirty) {
-      console.error(`\nWARNING: working tree is dirty — ${ARTEFACT_VERSION} does not fully describe what was measured.`);
+      console.error(`\nWARNING: working tree is dirty, ${ARTEFACT_VERSION} does not fully describe what was measured.`);
     }
     console.error(`\nWritten to ${OUT}`);
 

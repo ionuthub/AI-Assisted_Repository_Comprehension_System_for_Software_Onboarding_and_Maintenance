@@ -7,11 +7,11 @@ The audit is upheld in substance. Three findings overturn things previously repo
 
 ---
 
-## 1. The "systematic `.tsx` hallucination" was our own defect — withdrawn
+## 1. The "systematic `.tsx` hallucination" was our own defect, withdrawn
 
 Previously reported as the strongest evidence the verification layer works: the model, it was
 said, systematically dropped the `x` when naming React components, and the panel caught it.
-`PriorityPanel.ts`, `ZoneCard.ts`, `DispatchLogPage.ts`, `OrderListPage.ts` — none of those files
+`PriorityPanel.ts`, `ZoneCard.ts`, `DispatchLogPage.ts`, `OrderListPage.ts`, none of those files
 exist, and all were flagged as unverified mentions.
 
 The model never wrote them. `WorkspaceQAView.tsx` extracted paths with
@@ -19,7 +19,7 @@ The model never wrote them. `WorkspaceQAView.tsx` extracted paths with
     /(?:[\w-]+\/)+[\w.-]+\.(?:ts|tsx|js|jsx|…)/g
 
 and regex alternation takes the first branch that matches. `ts` is listed before `tsx`, so every
-`.tsx` path was truncated to `.ts`, and the truncated path was then — correctly — reported as
+`.tsx` path was truncated to `.ts`, and the truncated path was then, correctly, reported as
 not retrieved. Demonstrated directly:
 
     input  : src/components/PriorityPanel.tsx
@@ -36,10 +36,10 @@ it intends.
 
 **Fixed**: extensions ordered longest-first with a word boundary, and a regression test that
 fails if the ordering is reverted. **The earlier claim is withdrawn in full.** Five of the
-sixteen flagged paths were this bug. The remaining eleven — real files the model named without
-retrieving, warehouse Q9 being the clearest — stand, and the panel is doing its job on those.
+sixteen flagged paths were this bug. The remaining eleven, real files the model named without
+retrieving, warehouse Q9 being the clearest, stand, and the panel is doing its job on those.
 
-## 2. Two answers in the run of record are truncated — the figure rests on incomplete data
+## 2. Two answers in the run of record are truncated, the figure rests on incomplete data
 
 Warehouse Q9 ends mid-sentence: *"…if the new order type requires specialized inventory matching
 rules. For"*. Warehouse Q10 ends on an unmatched backtick after `-100`.
@@ -61,7 +61,7 @@ exists only in prose.
 
 Two things follow. The verdicts must be collected into the gate files through
 `marking_sheet.py collect` before any figure is quoted. And `accuracy_gate.py` must fail rather
-than succeed on entirely unmarked input — a scorer that exits zero having scored nothing is the
+than succeed on entirely unmarked input, a scorer that exits zero having scored nothing is the
 same silent-success shape as the selector that reported zero unverified mentions.
 
 ## 4. A claim in a commit message of ours is false
@@ -72,7 +72,7 @@ was declared afterwards, and 6/24 followed from it.
 
 What is true is narrower: the standard was chosen by asking which material had actually been
 shown to the markers, not by which rule produced a better number, and the reasoning is on the
-record. The auditor examined the chronology and reached the same conclusion — an honest
+record. The auditor examined the chronology and reached the same conclusion, an honest
 procedural repair, described with a claim about its own timing that does not hold.
 
 The commit stands; this correction is the record. Rewriting history to hide an overstatement
@@ -81,13 +81,13 @@ about honesty would be worse than the overstatement.
 ## 5. Findings accepted without dispute
 
 **Retrieval and evidence.** The long-line excerpt defect survives at `semanticSearch.ts:288` for
-a first line over budget — the full line is scored, then sliced, so a match beyond 2,500
+a first line over budget, the full line is scored, then sliced, so a match beyond 2,500
 characters can select a region the excerpt omits, with `omittedLines` still reading zero.
 Unreadable files are labelled excluded but remain in `project.files` and are indexed, so a
 filename match can retrieve a file whose contents were never read. The stopword list removes
 `default`, `export`, `interface`, `class`, `function` and `static`, which are precisely the terms
 a code search needs; and the unit test that appears to cover result limits queries `export`, so
-zero results satisfy it — another test that passes by measuring nothing.
+zero results satisfy it, another test that passes by measuring nothing.
 
 **Wording.** "Nothing in this repository supports the answer below" overstates what zero lexical
 hits over a partial index can establish. The coverage footer says "50 of 55 indexed files" and
@@ -102,7 +102,7 @@ contrary to a claim in the brief.
 
 **Numbers of ours that were wrong.** Pairwise means are 27–36% wording and 86–96% file overlap,
 not the 27–31% and 86–92% reported. `verify_study_repos.py` printed "2600-3200" while accepting
-2000–3200 — now derived from the constants so the two cannot diverge again.
+2000–3200, now derived from the constants so the two cannot diverge again.
 
 **Documents.** `AI-DISCLOSURE.md` claims every citation is mechanically validated; 49 references
 return NOTE and receive no structural check. It also says human second-marking is outstanding

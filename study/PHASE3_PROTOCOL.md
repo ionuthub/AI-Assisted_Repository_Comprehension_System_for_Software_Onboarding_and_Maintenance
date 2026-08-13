@@ -1,4 +1,4 @@
-# Phase 3 Protocol — Running the Study Without Deviating From the Proposal
+# Phase 3 Protocol, Running the Study Without Deviating From the Proposal
 
 Every item below traces to a specific commitment in the AE1 Progress and Review Report.
 Nothing here introduces anything the proposal did not promise; nothing promised is missing.
@@ -11,18 +11,18 @@ Appendix C). Until then the only permitted activities are: the accuracy gate (no
 repository selection, materials preparation, and dry runs on yourself. The Epigeum
 "Working with human participants" module must be completed before data collection.
 
-## Step 1 — Select the two matched repositories
+## Step 1, Select the two matched repositories
 
 Proposal commitment: two matched, public, permissively licensed, small-to-medium
 JavaScript/TypeScript repositories (React/Next.js).
 
 Method: shortlist candidates, run `python3 analysis/repo_stats.py repoA repoB`, and keep a
 pair with the same framework, LOC ratio under ~1.5x, comparable dependency counts and
-language mixes. Record the table in the logbook — it becomes the repository-matching
+language mixes. Record the table in the logbook, it becomes the repository-matching
 evidence in AE2's Methodology and answers the "repository difficulty" validity threat.
 Neither repository may be one the participants (or you) know well; note this in recruitment.
 
-## Step 2 — Run the accuracy gate (before any participants)
+## Step 2, Run the accuracy gate (before any participants)
 
 Proposal commitment: "Before the study, the tool's own answer accuracy is measured across
 several repositories against a ground-truth set. This figure acts as a gate ... and
@@ -34,12 +34,12 @@ artefact instead uses disclosed machine-assisted answers stamped VERIFIED BY TOO
 requires the explicit `--accept-tool-verified` flag and records that weaker provenance. Capture
 the tool's verbatim answers, mark true/false, and have a human second marker spot-check a
 pre-declared sample. Score both repositories together with `npm run gate:score`.
-Outputs: the gate accuracy figure for AE2, and `study/seeded_candidates.json` — the ONLY
+Outputs: the gate accuracy figure for AE2, and `study/seeded_candidates.json`, the ONLY
 legitimate source for `seededAnswerShown` values in the study answer keys. If the gate
 shows very low accuracy, stop and discuss with the supervisor before proceeding: that is
 the gate doing its job.
 
-**Result (5 August 2026):** Overall accuracy 6/24 (25%) — clinic-triage 2/12 (17%),
+**Result (5 August 2026):** Overall accuracy 6/24 (25%), clinic-triage 2/12 (17%),
 warehouse-dispatch 4/12 (33%). `study/seeded_candidates.json` generated, 18 candidates. Per the
 rule above, this result was discussed with the supervisor on 5 August 2026; the outcome was to
 proceed as planned. The number of seeded items per repository, drawn only from these 18
@@ -56,7 +56,7 @@ recording `toolVersion` `429f830`. An earlier run of the same 24 stems on 4 Augu
 record of the researcher's checkout, and it is only a record of the deployed build if the
 deployment is confirmed separately. Two facts make that worth stating rather than assuming here:
 `429f830` was committed at 15:26Z, 34 minutes before the capture, and the immediately preceding
-runs at 15:55Z and 15:57Z still recorded `fd5f5ab` — a change of checkout, not evidence of a
+runs at 15:55Z and 15:57Z still recorded `fd5f5ab`, a change of checkout, not evidence of a
 deploy. Confirm the deployed commit in the Vercel dashboard and record it alongside the figure,
 or re-run with an explicit `--tool-version`.
 
@@ -89,7 +89,7 @@ happened.
 13 August: unrecorded responses are exported as unrecorded rather than as instrument defaults, the
 0–2 rubric for applied and retention tasks is recordable, and the running condition is displayed
 on screen throughout the session. None of them touches ingestion, retrieval or the prompt, so the
-gate figure is not re-captured — the same reasoning as for `c5fb72a`, and the diff below still
+gate figure is not re-captured, the same reasoning as for `c5fb72a`, and the diff below still
 returns nothing against the capture build.
 
 **Why the 6/24 figure is not re-captured against it.** The gate figure was captured against
@@ -105,8 +105,8 @@ freeze point `beae1ae`:
       src/constants/appConstants.ts api/
 
 That command returns nothing. The only source changes in the range are to the study session runner
-and its supporting model — `src/pages/Evaluation.tsx`, `src/lib/evaluation/session.ts`,
-`src/lib/evaluation/sessionStorage.ts`, `src/test/setup.ts` — and their tests. None sits on the
+and its supporting model, `src/pages/Evaluation.tsx`, `src/lib/evaluation/session.ts`,
+`src/lib/evaluation/sessionStorage.ts`, `src/test/setup.ts`, and their tests. None sits on the
 capture path: the gate drives the question-answering flow, not the evaluation page. So the
 recorded figure measures the code now deployed.
 
@@ -119,13 +119,13 @@ required only if a change lands on one of the paths listed above.
 
 **What this does not establish.** The dashboard confirms what is deployed now; it says nothing
 about which commit was being served at 16:00Z on 5 August, when the marked capture ran. That
-deployments are built from `main` on push makes it likely `429f830` — pushed 34 minutes earlier —
+deployments are built from `main` on push makes it likely `429f830`, pushed 34 minutes earlier,
 was live, but likely is not confirmed, and the `toolVersion` limitation above still applies to that
 capture. No later confirmation can close that gap retrospectively.
 
-## Step 3 — Build the study materials
+## Step 3, Build the study materials
 
-- Answer keys — **written, committed**: `study/answer-key.clinic-triage.json` and
+- Answer keys, **written, committed**: `study/answer-key.clinic-triage.json` and
   `study/answer-key.warehouse-dispatch.json`, named for their repositories to match
   `accuracy-gate.<repo>.json` and `ground-truth.<repo>.md`. Four tasks each, identically
   positioned across the pair so condition order cannot interact with task position:
@@ -133,11 +133,11 @@ capture. No later confirmation can close that gap retrospectively.
   | Task | Kind | Notes |
   | --- | --- | --- |
   | 1 | `locating` | a function whose name understates what it does |
-  | 2 | `locating` | **the seeded over-trust probe** — `seededInaccurate: true` |
+  | 2 | `locating` | **the seeded over-trust probe**, `seededInaccurate: true` |
   | 3 | `applied` | add a new type; scored 0–2 |
   | 4 | `retention` | answered from memory, tool closed; scored 0–2, marked independently of task 1 |
 
-  The seeded item is **task 2**, not task 3 as `answer-key.template.json` positions it — the
+  The seeded item is **task 2**, not task 3 as `answer-key.template.json` positions it, the
   template predates these keys and carries a different task set. Each `seededAnswerShown` is an
   exact string match against an entry in `study/seeded_candidates.json` for that repository, which
   is the only legitimate source. Both keys also record `repositoryCommit`, so an answer is tied to
@@ -148,14 +148,14 @@ capture. No later confirmation can close that gap retrospectively.
   answer key is now the only place retention exists. A key without a `kind: "retention"` task drops
   the measure with no error and no warning.
 - Marking rubric (proposal: "pre-written answer key and marking rubric"). **The runner records
-  this rubric directly** — locating tasks offer Correct/Incorrect, applied and retention tasks
+  this rubric directly**, locating tasks offer Correct/Incorrect, applied and retention tasks
   offer 0, 1 or 2, and the export carries `score` and `maxScore` per task so the two are never
   summed as though they were the same unit. Until then it offered Correct/Incorrect for every
   kind, so a half-credit answer had to be forced to one or the other and half the rubric was
   unrecordable.
-  - Locating tasks: 1 point — named file/path matches the key (accept equivalent paths
+  - Locating tasks: 1 point, named file/path matches the key (accept equivalent paths
     listed in expectedFiles).
-  - Applied task: 0–2 points — 1 for the correct insertion point, 1 for identifying at
+  - Applied task: 0–2 points, 1 for the correct insertion point, 1 for identifying at
     least two genuinely affected areas; written justification required.
   - Retention question: same rubric as the applied task, marked independently.
   - Blind second-marking of a sample, disagreements resolved by discussion (proposal §2.1).
@@ -164,24 +164,24 @@ capture. No later confirmation can close that gap retrospectively.
     would weight a locating point equally with a two-point applied task and discard every
     half-credit answer.
 - JISC Online Surveys: build the consent form, demographic form, and (optionally) SUS/TLX
-  mirrors there. JISC only — SurveyMonkey/Google Forms would be an ethics breach.
+  mirrors there. JISC only, SurveyMonkey/Google Forms would be an ethics breach.
 - Consent + debrief scripts: consent states that some tool answers may be inaccurate;
   debrief identifies exactly which items were seeded (AE1 Appendix C commitment).
 
-## Step 4 — Session run-sheet (one participant, one sitting)
+## Step 4, Session run-sheet (one participant, one sitting)
 
 1. Consent (signed, JISC), demographic form, experience level recorded.
 2. Condition per the counterbalancing schedule: half manual-first, half tool-first;
    repository A/B crossed with condition so each participant sees each repo once.
 3. Evaluation page → Setup: participant ID (P01…), condition, order, import the answer key.
-   Once the session begins, a banner names the running condition on every screen — for the manual
-   half it reads **"Condition: Manual — do not use the tool"**. Check it matches the
+   Once the session begins, a banner names the running condition on every screen, for the manual
+   half it reads **"Condition: Manual, do not use the tool"**. Check it matches the
    counterbalancing schedule before starting, and check it again after any break: nothing else in
    the interface distinguished the two halves, and neither a participant drifting into the tool
    during a manual task nor an observer losing track of which half they were in leaves any trace
    in the export, which records whatever condition was set at setup.
 4. Tasks phase: participant works; observer times via the page, records answers,
-   captures the 1–5 confidence after each task, scores against the key — Correct/Incorrect for
+   captures the 1–5 confidence after each task, scores against the key, Correct/Incorrect for
    locating tasks, 0–2 for applied and retention.
    Seeded tasks (tool condition): show the tool's answer, record whether the participant
    flags it. Think-aloud comments go in observer notes.
@@ -190,7 +190,7 @@ capture. No later confirmation can close that gap retrospectively.
    gaps while the participant is still present, because an unmarked task cannot be recovered
    afterwards and is not the same as a task scored zero.
 5. **The retention question is the last task in the answer key, carrying `kind: "retention"`.**
-   There is no separate retention phase — it was removed because, once the answer keys carried
+   There is no separate retention phase, it was removed because, once the answer keys carried
    retention as a task, the phase re-asked the applied task's question instead of the retention
    one. **The observer must close or hide the tool before starting that task, and note in the
    observer notes that this was done.** The page no longer prompts for either: it presents a
@@ -200,27 +200,27 @@ capture. No later confirmation can close that gap retrospectively.
    the retention measure is unverifiable.
 6. NASA-TLX, then SUS, on the page. Both must be completed in full before the page will move on:
    every TLX scale has to be operated even where the participant is content with the midpoint,
-   and all ten SUS items answered. Both instruments previously started at their midpoints — TLX at
-   50 on all six, SUS substituting 3 for any unanswered item — so an unadministered questionnaire
+   and all ten SUS items answered. Both instruments previously started at their midpoints, TLX at
+   50 on all six, SUS substituting 3 for any unanswered item, so an unadministered questionnaire
    exported as a complete response, and ten unanswered SUS items scored exactly 50, which would
    then have been compared against the published benchmark of 68 as though a participant had
    produced it. A partial instrument now scores null rather than an estimate, and
    `analyze_sessions.py` drops those participants from H3/H4 and prints the exclusion.
 7. Export JSON (and CSV); file naming session_Pxx_condition.json; store on university
    OneDrive only, pseudonymised. Debrief, including seeded items.
-8. Repeat for the second condition/repository (same sitting or scheduled second sitting —
+8. Repeat for the second condition/repository (same sitting or scheduled second sitting,
    keep it consistent across participants and record which).
 
 Pilot: one full dry run on yourself now; one pilot participant after ethics approval,
 whose data is used to fix task wording/timing and is excluded from analysis (state this
 in AE2).
 
-**Environment rule — pilots and participants use the same build.** Every session,
+**Environment rule, pilots and participants use the same build.** Every session,
 including the researcher's own dry run, is run against the deployed application
 (https://repo-comprehension-system.vercel.app/), never against a local `npm run dev`
 server. The dev server and the deployed function once built the model prompt from
-separate code and had already drifted — different context caps, different request
-validation, different whitespace — so a pilot run locally was not exercising the
+separate code and had already drifted, different context caps, different request
+validation, different whitespace, so a pilot run locally was not exercising the
 instrument a participant meets. They now share src/lib/promptBuilder.ts, which removes
 the cause; running everything against the deployed build removes the class. Record the
 commit SHA of the deployed build alongside each session, as the accuracy gate already
@@ -231,10 +231,10 @@ Read the SHA from the Vercel dashboard at the start of each session rather than 
 `git log`: the two are the same only when nothing has been pushed since the last deploy, and
 `toolVersion` reads the local checkout, which is how the ambiguity in the 5 August capture arose.
 Record the dashboard SHA against the session, and check it against `artefactSourceCommit` in the
-answer key — if the two disagree the tool itself may have changed mid-study, which is a condition
+answer key, if the two disagree the tool itself may have changed mid-study, which is a condition
 change rather than a bookkeeping detail.
 
-## Step 5 — Analysis (already implemented, validated)
+## Step 5, Analysis (already implemented, validated)
 
 `python3 analysis/analyze_sessions.py <sessions_dir>` computes exactly the proposal's
 plan: H1 time, H2 accuracy, H3 TLX via paired Wilcoxon signed-rank; H4 SUS vs the

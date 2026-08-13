@@ -1,7 +1,7 @@
 {
   "repository": "clinic-triage",
-  "artefactVersion": "b816b64",
-  "artefactSourceCommit": "beae1ae",
+  "artefactVersion": "79dafba",
+  "artefactSourceCommit": "e7d7efe",
   "repositoryCommit": "67d7a5a0c37452946876b0e7626b6c882888d4f0",
   "tasks": [
     {

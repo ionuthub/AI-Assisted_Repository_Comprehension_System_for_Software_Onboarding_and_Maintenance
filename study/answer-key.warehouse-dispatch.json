@@ -16,7 +16,7 @@
     {
       "id": 2,
       "kind": "locating",
-      "name": "Cross-cutting concern: stock reservation (SEEDED over-trust probe)",
+      "name": "Cross-cutting concern: stock reservation",
       "description": "Stock is reserved in more than one place in this codebase. Find every place in the application where it happens. Test files do not count.",
       "expectedFiles": [
         "src/dispatch/allocator.ts",

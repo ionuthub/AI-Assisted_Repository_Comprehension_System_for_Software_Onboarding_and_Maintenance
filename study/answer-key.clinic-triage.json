@@ -16,7 +16,7 @@
     {
       "id": 2,
       "kind": "locating",
-      "name": "Cross-cutting concern: eligibility (SEEDED over-trust probe)",
+      "name": "Cross-cutting concern: eligibility",
       "description": "Eligibility is checked in more than one place in this codebase. Find every place in the application where it happens. Test files do not count.",
       "expectedFiles": [
         "src/store/useClinicStore.ts",

@@ -23,10 +23,18 @@
  * difference from the other side.
  */
 
+/**
+ * Renders as a fragment, adding no element of its own, so the caller's container holds the lines
+ * as direct children exactly as it did when this logic was inline.
+ *
+ * That is not tidiness. `analysis/capture_gate.mjs` locates the answer with
+ * `p:text-is("Your question") + h1 + div:not([aria-busy])` and reads `innerText` from it, and the
+ * evidence panel is read with direct-child selectors. Wrapping the lines in an extra div changed
+ * the DOM the capture measures, which is a change to the instrument rather than to its styling.
+ * Any wrapper belongs to the caller.
+ */
 interface AnswerBodyProps {
   content: string;
-  /** Extra classes for the wrapper. Layout only: never change the per-line classes. */
-  className?: string;
 }
 
 /** Not exported: the component is the only supported entry point, so the two callers cannot
@@ -63,6 +71,6 @@ function renderAnswerLines(content: string) {
   });
 }
 
-export default function AnswerBody({ content, className }: AnswerBodyProps) {
-  return <div className={className}>{renderAnswerLines(content)}</div>;
+export default function AnswerBody({ content }: AnswerBodyProps) {
+  return <>{renderAnswerLines(content)}</>;
 }

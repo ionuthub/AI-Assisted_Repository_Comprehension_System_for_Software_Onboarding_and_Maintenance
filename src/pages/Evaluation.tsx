@@ -346,7 +346,7 @@ export default function EvaluationPage() {
                     it looked odd rather than that they checked it, and the export cannot tell
                     those apart.
                   */}
-                  <AnswerBody content={t.seededAnswerShown ?? ""} className="max-w-[68ch]" />
+                  <div className="max-w-[68ch]"><AnswerBody content={t.seededAnswerShown ?? ""} /></div>
                   <div className="flex gap-2 items-center">
                     <span>Participant flagged this answer as incorrect?</span>
                     <Button size="sm" variant={t.errorDetected ? "default" : "outline"} onClick={() => setTaskField(t.id, "errorDetected", true)}>Yes</Button>

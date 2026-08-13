@@ -340,7 +340,7 @@ describe('The seeded answer is laid out like a live one', () => {
     // The markup the workspace produces for this exact string, captured before the runner is
     // rendered so the two do not share a container.
     const live = render(<AnswerBody content={SEEDED_ANSWER} />);
-    const expectedMarkup = (live.container.firstElementChild as HTMLElement).innerHTML;
+    const expectedMarkup = live.container.innerHTML;
     live.unmount();
     expect(expectedMarkup).toContain('<p class="text-body');
     expect(expectedMarkup).toContain('<li class="ml-5 list-disc');

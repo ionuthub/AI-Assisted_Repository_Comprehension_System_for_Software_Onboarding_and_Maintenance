@@ -60,19 +60,24 @@ runs at 15:55Z and 15:57Z still recorded `fd5f5ab`, a change of checkout, not ev
 deploy. Confirm the deployed commit in the Vercel dashboard and record it alongside the figure,
 or re-run with an explicit `--tool-version`.
 
-**Deployed build: `b816b64`, built from source at `beae1ae`.** Confirmed in the Vercel dashboard
+**Deployed build: `79dafba`, built from source at `e7d7efe`.** Confirmed in the Vercel dashboard
 on 13 August. This is the build pilots and participants meet, and the SHA to record against each
-session. It supersedes `c5fb72a`, confirmed deployed on 10 August.
+session. It supersedes `b816b64`/`beae1ae`, and before that `c5fb72a`.
+
+`e7d7efe` is a real change to the instrument, unlike the study-file commits before it: the
+condition no longer defaults to Tool, the seeded answer is rendered by the same component as a
+live one, and em dashes are gone from the interface prose. Both answer keys are stamped with both
+SHAs accordingly.
 
 Two SHAs are recorded because they answer different questions, and both answer keys carry both:
 
-- `artefactVersion` = **`b816b64`**, the commit the deployment was built from. This is what the
+- `artefactVersion` = **`79dafba`**, the commit the deployment was built from. This is what the
   dashboard reports and what identifies the deployment.
-- `artefactSourceCommit` = **`beae1ae`**, the last commit that changed anything the application is
-  built from. `beae1ae..b816b64` touches only `study/answer-key.*.json`, so the running
+- `artefactSourceCommit` = **`e7d7efe`**, the last commit that changed anything the application is
+  built from. `e7d7efe..79dafba` touches only `study/` prose and `analysis/`, so the running
   application is unchanged across that range:
 
-      git diff --stat beae1ae..b816b64 -- src/ api/ package.json package-lock.json \
+      git diff --stat e7d7efe..79dafba -- src/ api/ package.json package-lock.json \
         vite.config.ts index.html tailwind.config.ts postcss.config.js
 
   That command returns nothing.
@@ -85,18 +90,42 @@ A reader asking "did the tool change between these two participants?" should rea
 `artefactVersion`. Answering the first question with the second would report a change that never
 happened.
 
-**`beae1ae` is the current freeze point for the artefact.** It carries the three changes made on
-13 August: unrecorded responses are exported as unrecorded rather than as instrument defaults, the
-0–2 rubric for applied and retention tasks is recordable, and the running condition is displayed
-on screen throughout the session. None of them touches ingestion, retrieval or the prompt, so the
-gate figure is not re-captured, the same reasoning as for `c5fb72a`, and the diff below still
-returns nothing against the capture build.
+**`e7d7efe` is the current freeze point for the artefact.** The instrument changes it carries, and
+those `beae1ae` carried before it, are all to the study session runner and the interface prose:
+unrecorded responses are exported as unrecorded rather than as instrument defaults, the 0-2 rubric
+for applied and retention tasks is recordable, the running condition is displayed throughout the
+session, the condition no longer defaults, and the seeded answer is rendered by the same component
+as a live one. None touches ingestion, retrieval, excerpt selection or the prompt.
 
 **Why the 6/24 figure is not re-captured against it.** The gate figure was captured against
-`429f830`, and every file the gate exercises is byte-identical between `429f830` and the current
-freeze point `beae1ae`:
+`429f830`. Between `429f830` and `e7d7efe` the files the gate exercises are **no longer
+byte-identical**, and the earlier statement that they were has been corrected rather than left
+standing. Thirteen of them changed. Compiling out comments and blank lines and re-comparing:
 
-    git diff --stat 429f830..beae1ae -- \
+- **Eleven changed in comments only**: `github.ts`, `semanticSearch.ts`, `promptBuilder.ts`,
+  `generationProtocol.ts`, `ingestionFilters.ts`, `repositoryScanner.ts`, `EvidencePanel.tsx`,
+  `SuggestedQuestions.tsx`, `CodeViewer.tsx`, `useProjectStore.ts`, `api/explain-code.ts`. These
+  are the em-dash removal; no statement executed by the tool changed.
+- **`Index.tsx`** changed one screen-reader-only label from `" — complete"` to `", complete"` on
+  the ingestion progress list. Not on the answer path.
+- **`WorkspaceQAView.tsx`** had its answer renderer moved verbatim into
+  `src/components/AnswerBody.tsx` so the study runner could share it. The rules are unchanged and
+  the component renders as a fragment, so the DOM the capture reads is the same: `AnswerBody`
+  adds no element of its own, which `src/components/AnswerBody.test.tsx` asserts. That matters
+  because `capture_gate.mjs` finds the answer with
+  `p:text-is("Your question") + h1 + div:not([aria-busy])` and reads `innerText`, and reads the
+  evidence panel with direct-child selectors; an extra wrapper would have changed what the
+  instrument measures.
+
+Retrieval, ingestion, excerpt selection, the prompt and the deployed function are untouched, so
+the pipeline that produced 6/24 still computes the same answers, and the figure is not re-captured.
+The claim is now "no executed statement changed", which is weaker than "byte-identical" and is
+what the evidence actually supports.
+
+The command below is kept because it is the check to re-run, but it no longer returns nothing;
+read its output against the three categories above.
+
+    git diff --stat 429f830..e7d7efe -- \
       src/lib/github.ts src/lib/semanticSearch.ts src/lib/promptBuilder.ts \
       src/lib/generationProtocol.ts src/lib/ingestionFilters.ts src/lib/staticAnalysis.ts \
       src/lib/repositoryScanner.ts src/components/WorkspaceQAView.tsx \
@@ -104,11 +133,9 @@ freeze point `beae1ae`:
       src/components/CodeViewer.tsx src/pages/Index.tsx src/store/useProjectStore.ts \
       src/constants/appConstants.ts api/
 
-That command returns nothing. The only source changes in the range are to the study session runner
-and its supporting model, `src/pages/Evaluation.tsx`, `src/lib/evaluation/session.ts`,
-`src/lib/evaluation/sessionStorage.ts`, `src/test/setup.ts`, and their tests. None sits on the
-capture path: the gate drives the question-answering flow, not the evaluation page. So the
-recorded figure measures the code now deployed.
+The study session runner itself (`src/pages/Evaluation.tsx`, `src/lib/evaluation/session.ts`,
+`src/lib/evaluation/sessionStorage.ts`, `src/test/setup.ts`) also changed in that range and is not
+on the capture path at all: the gate drives the question-answering flow, not the evaluation page.
 
 Re-capturing an unchanged pipeline could only confirm the figure or move it by model
 nondeterminism, and the second is a live risk rather than a theoretical one: two captures of the
@@ -226,7 +253,7 @@ the cause; running everything against the deployed build removes the class. Reco
 commit SHA of the deployed build alongside each session, as the accuracy gate already
 does in its `toolVersion` field.
 
-At the time of writing that build is **`b816b64`**, from source at **`beae1ae`** (see Step 2).
+At the time of writing that build is **`79dafba`**, from source at **`e7d7efe`** (see Step 2).
 Read the SHA from the Vercel dashboard at the start of each session rather than from a local
 `git log`: the two are the same only when nothing has been pushed since the last deploy, and
 `toolVersion` reads the local checkout, which is how the ambiguity in the 5 August capture arose.

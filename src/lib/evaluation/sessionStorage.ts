@@ -23,7 +23,11 @@ export interface PersistedSession {
   // retention phase was removed carry two extra keys here; they are ignored rather than migrated,
   // and Evaluation.tsx resumes an unrecognised `phase` at setup.
   tlx: TlxRatings;
-  sus: Record<number, number>;
+  // Null entries, and absent entries, both mean "not answered". tsconfig sets
+  // strictNullChecks: false, so this annotation documents the contract rather than enforcing it —
+  // the enforcement is in session.test.ts, which asserts that an incomplete instrument scores null
+  // rather than being completed with a default.
+  sus: Record<number, number | null>;
   notes: string;
 }
 

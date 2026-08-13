@@ -74,12 +74,39 @@ def load_sessions(directory: Path):
     return data
 
 
+def task_max_score(kind: str) -> int:
+    """Points available: locating is binary, applied and retention are scored 0-2."""
+    return 1 if kind == "locating" else 2
+
+
+def task_score(task: dict):
+    """The task's score out of task_max_score(kind), or None while it is unmarked.
+
+    Mirrors taskScore in src/lib/evaluation/session.ts, and reads the `score` field the export
+    now carries when it is present rather than re-deriving it.
+    """
+    if task.get("score") is not None:
+        return task["score"]
+    if task.get("kind") == "locating":
+        correct = task.get("isCorrect")
+        return None if correct is None else (1 if correct else 0)
+    return task.get("points")
+
+
 def per_participant_measures(payload: dict):
     s = payload["session"]
     tasks = s["tasks"]
-    scored = [t for t in tasks if t.get("isCorrect") is not None]
     total_time = sum(t["elapsedSeconds"] for t in tasks)
-    accuracy = (sum(1 for t in scored if t["isCorrect"]) / len(scored)) if scored else None
+
+    # Accuracy is points earned over points available, not the proportion of tasks marked
+    # correct. Applied and retention tasks are scored 0-2 by the rubric, so counting them as
+    # binary would discard every half-credit answer - the exact cases the rubric exists to
+    # record - and would weight a locating point equally with a two-point applied task.
+    scored = [t for t in tasks if task_score(t) is not None]
+    earned = sum(task_score(t) for t in scored)
+    available = sum(task_max_score(t["kind"]) for t in scored)
+    accuracy = (earned / available) if available else None
+
     seeded = [t for t in tasks if t.get("seededInaccurate")]
     # errorDetected is tri-state: True (flagged), False (asked, not flagged), None (the
     # probe was never administered - it is only shown in the tool condition, and an
@@ -87,11 +114,19 @@ def per_participant_measures(payload: dict):
     # detection rate is deflated by items no participant was ever asked about.
     administered = [t for t in seeded if t.get("errorDetected") is not None]
     detected = [t for t in administered if t["errorDetected"] is True]
-    conf_correct = [t["confidence"] for t in scored if t["isCorrect"]]
-    conf_incorrect = [t["confidence"] for t in scored if not t["isCorrect"]]
+    # Confidence is null until the observer records it, so a task with no rating is excluded
+    # rather than counted at a default. "Correct" here means full marks for the task's kind: a
+    # 1 of 2 is neither a correct nor an incorrect answer and belongs in neither group.
+    rated = [t for t in scored if t.get("confidence") is not None]
+    conf_correct = [t["confidence"] for t in rated if task_score(t) == task_max_score(t["kind"])]
+    conf_incorrect = [t["confidence"] for t in rated if task_score(t) == 0]
     return {
         "total_time_s": total_time,
         "accuracy": accuracy,
+        "points_earned": earned,
+        "points_available": available,
+        "unmarked_tasks": len(tasks) - len(scored),
+        "unrated_confidence": len(scored) - len(rated),
         "sus": payload["scores"]["sus"],
         "tlx": payload["scores"]["tlxRaw"],
         "seeded_n": len(seeded),
@@ -128,14 +163,26 @@ def analyze(directory: Path):
     h2 = wilcoxon_paired([a for a, _ in pairs], [b for _, b in pairs]) if len(pairs) >= 2 else "insufficient scored tasks"
     print("H2 accuracy    (manual vs tool):", h2)
 
-    # H3 workload (TLX)
-    h3 = wilcoxon_paired([m[p]["tlx"] for p in order], [t[p]["tlx"] for p in order])
+    # H3 workload (TLX). An instrument that was not completed exports a null score rather than
+    # a figure derived from the answered subscales, so those participants are dropped from the
+    # pair and the exclusion is printed rather than absorbed.
+    tlx_pairs = [(m[p]["tlx"], t[p]["tlx"]) for p in order
+                 if m[p]["tlx"] is not None and t[p]["tlx"] is not None]
+    h3 = (wilcoxon_paired([a for a, _ in tlx_pairs], [b for _, b in tlx_pairs])
+          if len(tlx_pairs) >= 2 else "insufficient complete TLX responses")
     print("H3 NASA-TLX    (manual vs tool):", h3)
+    if len(tlx_pairs) < len(order):
+        print(f"   excluded {len(order) - len(tlx_pairs)} participant(s) with an incomplete TLX")
 
     # H4 usability: tool-condition SUS vs benchmark 68
-    sus_tool = [t[p]["sus"] for p in order]
-    h4 = wilcoxon_one_sample(sus_tool, 68.0)
-    print(f"H4 SUS > 68    (tool condition, mean={sum(sus_tool)/len(sus_tool):.1f}):", h4)
+    sus_tool = [t[p]["sus"] for p in order if t[p]["sus"] is not None]
+    if len(sus_tool) < 2:
+        print("H4 SUS > 68    (tool condition):", "insufficient complete SUS responses")
+    else:
+        h4 = wilcoxon_one_sample(sus_tool, 68.0)
+        print(f"H4 SUS > 68    (tool condition, mean={sum(sus_tool)/len(sus_tool):.1f}):", h4)
+        if len(sus_tool) < len(order):
+            print(f"   excluded {len(order) - len(sus_tool)} participant(s) with an incomplete SUS")
 
     # Over-trust: detection rate on seeded tasks (tool condition)
     seeded_total = sum(t[p]["seeded_n"] for p in order)

@@ -13,7 +13,11 @@ vi.mock('@/lib/evaluation/session', async (importOriginal) => ({
 import EvaluationPage from './Evaluation';
 import { download, type GroundTruthFile } from '@/lib/evaluation/session';
 
-/** An answer key in the shape the study now uses: retention is a task, not a phase. */
+/**
+ * The layout of the committed answer keys: two locating tasks (the second being the seeded
+ * over-trust probe), one applied, one retention. Kept in step with
+ * study/answer-key.clinic-triage.json so these tests exercise the shape a session actually runs.
+ */
 const ANSWER_KEY: GroundTruthFile = {
   repository: 'clinic-triage',
   tasks: [
@@ -27,6 +31,16 @@ const ANSWER_KEY: GroundTruthFile = {
     },
     {
       id: 2,
+      kind: 'locating',
+      name: 'Everywhere eligibility is checked (SEEDED)',
+      description: 'Find every place eligibility is checked. Test files do not count.',
+      expectedFiles: ['src/triage/eligibility.ts'],
+      answerKey: 'Three production sites.',
+      seededInaccurate: true,
+      seededAnswerShown: 'There are exactly two places…',
+    },
+    {
+      id: 3,
       kind: 'applied',
       name: 'Plan a new referral type',
       description: 'Where would a new referral type be added, and what else would change?',
@@ -34,7 +48,7 @@ const ANSWER_KEY: GroundTruthFile = {
       answerKey: 'Route registry plus the policy and threshold config.',
     },
     {
-      id: 3,
+      id: 4,
       kind: 'retention',
       name: 'Retention — from memory, tool closed',
       description: 'Without reopening the tool, how is a referral routed to a handler?',
@@ -49,9 +63,19 @@ const keyFile = () =>
     type: 'application/json',
   });
 
+type ExportedTask = {
+  id: number;
+  kind: string;
+  answer: string;
+  confidence: number | null;
+  isCorrect: boolean | null;
+  points: number | null;
+};
+
 type ExportedPayload = {
-  session: { tasks: { id: number; kind: string; answer: string }[] };
-  scores: { sus: number; tlxRaw: number };
+  session: { tasks: ExportedTask[]; tlx: Record<string, number | null> };
+  scores: { sus: number | null; tlxRaw: number | null };
+  instrumentsComplete: { sus: boolean; tlx: boolean };
 };
 
 /** Fills in the setup phase and hands over to the task list. */
@@ -93,20 +117,52 @@ const completeAllTasks = async (
   }
 };
 
+/**
+ * Answers both questionnaires.
+ *
+ * TLX is driven by keyboard rather than by pointer: a Radix slider thumb responds to arrow keys
+ * in jsdom, and the point of the change under test is that a slider sitting at its default
+ * records nothing until it is actually operated.
+ */
+const completeInstruments = async (user: ReturnType<typeof userEvent.setup>) => {
+  await user.click(screen.getByRole('button', { name: /Continue to NASA-TLX/ }));
+  for (const thumb of screen.getAllByRole('slider')) {
+    thumb.focus();
+    await user.keyboard('{ArrowRight}');
+  }
+  await user.click(screen.getByRole('button', { name: /Continue to SUS/ }));
+  // One "3" button per SUS item; only the SUS phase is rendered, so there are exactly ten.
+  for (const button of screen.getAllByRole('button', { name: '3' })) {
+    await user.click(button);
+  }
+  await user.click(screen.getByRole('button', { name: /Review and export/ }));
+};
+
 /** Runs a whole session and returns the parsed JSON payload handed to `download`. */
-const runSessionToExport = async (): Promise<ExportedPayload> => {
+const runSessionToExport = async (
+  opts: { markTasks?: boolean } = {}
+): Promise<ExportedPayload> => {
   const user = userEvent.setup();
   await beginSession(user);
   await completeAllTasks(user);
-
-  await user.click(screen.getByRole('button', { name: 'Continue to NASA-TLX' }));
-  await user.click(screen.getByRole('button', { name: 'Continue to SUS' }));
-  await user.click(screen.getByRole('button', { name: 'Review and export' }));
+  if (opts.markTasks) await markAllTasks(user);
+  await completeInstruments(user);
   await user.click(screen.getByRole('button', { name: 'Export JSON' }));
 
   const call = vi.mocked(download).mock.calls.at(-1);
   if (!call) throw new Error('download was never called, so nothing was exported');
   return JSON.parse(call[1]) as ExportedPayload;
+};
+
+/** Marks every completed task: Correct for locating, 2 points for applied and retention. */
+const markAllTasks = async (user: ReturnType<typeof userEvent.setup>) => {
+  for (const button of screen.getAllByRole('button', { name: 'Correct' })) {
+    await user.click(button);
+  }
+  // The rubric buttons are labelled 0, 1 and 2; one set per applied or retention task.
+  for (const button of screen.getAllByRole('button', { name: '2' })) {
+    await user.click(button);
+  }
 };
 
 describe('Evaluation session after the retention phase was removed', () => {
@@ -130,7 +186,7 @@ describe('Evaluation session after the retention phase was removed', () => {
 
     const retention = payload.session.tasks.filter((t) => t.kind === 'retention');
     expect(retention).toHaveLength(1);
-    expect(retention[0].id).toBe(3);
+    expect(retention[0].id).toBe(4);
     // Its own answer, not the applied task's. The defect being fixed was that the phase rendered
     // appliedTask.description, so the participant answered the applied question twice and the
     // retention question never.
@@ -143,7 +199,147 @@ describe('Evaluation session after the retention phase was removed', () => {
     await completeAllTasks(user, { withAnswers: false });
 
     expect(screen.queryByText(/Retention check/i)).toBeNull();
-    await user.click(screen.getByRole('button', { name: 'Continue to NASA-TLX' }));
+    await user.click(screen.getByRole('button', { name: /Continue to NASA-TLX/ }));
     expect(screen.getByText(/NASA-TLX workload/)).toBeInTheDocument();
+  });
+});
+
+describe('Unrecorded responses are exported as unrecorded, not as defaults', () => {
+  beforeEach(() => {
+    localStorage.clear();
+    vi.mocked(download).mockClear();
+  });
+
+  it('will not leave the TLX phase until every subscale has been operated', async () => {
+    const user = userEvent.setup();
+    await beginSession(user);
+    await completeAllTasks(user);
+    await user.click(screen.getByRole('button', { name: /Continue to NASA-TLX/ }));
+
+    // Every subscale started at 50, so an untouched instrument used to export as a complete
+    // response reading exactly 50 six times over.
+    expect(screen.getAllByText('not recorded')).toHaveLength(6);
+    const advance = screen.getByRole('button', { name: /Continue to SUS/ });
+    expect(advance).toBeDisabled();
+    expect(advance).toHaveTextContent('6 scale(s) not recorded');
+
+    const thumbs = screen.getAllByRole('slider');
+    for (const thumb of thumbs.slice(0, 5)) {
+      thumb.focus();
+      await user.keyboard('{ArrowRight}');
+    }
+    // Five of six is still not a TLX score.
+    expect(screen.getByRole('button', { name: /Continue to SUS/ })).toBeDisabled();
+
+    thumbs[5].focus();
+    await user.keyboard('{ArrowRight}');
+    expect(screen.getByRole('button', { name: 'Continue to SUS' })).toBeEnabled();
+  });
+
+  it('will not leave the SUS phase until all ten items are answered', async () => {
+    const user = userEvent.setup();
+    await beginSession(user);
+    await completeAllTasks(user);
+    await user.click(screen.getByRole('button', { name: /Continue to NASA-TLX/ }));
+    for (const thumb of screen.getAllByRole('slider')) {
+      thumb.focus();
+      await user.keyboard('{ArrowRight}');
+    }
+    await user.click(screen.getByRole('button', { name: /Continue to SUS/ }));
+
+    const advance = screen.getByRole('button', { name: /Review and export/ });
+    expect(advance).toBeDisabled();
+    expect(advance).toHaveTextContent('10 item(s) unanswered');
+
+    const threes = screen.getAllByRole('button', { name: '3' });
+    for (const button of threes.slice(0, 9)) await user.click(button);
+    // Nine of ten scored 50 under the old `?? 3` substitution. It must not score at all.
+    expect(screen.getByRole('button', { name: /Review and export/ })).toBeDisabled();
+
+    await user.click(threes[9]);
+    expect(screen.getByRole('button', { name: 'Review and export' })).toBeEnabled();
+  });
+
+  it('exports null confidence and null marks for a task the observer never scored', async () => {
+    const payload = await runSessionToExport();
+
+    for (const task of payload.session.tasks) {
+      expect(task.confidence).toBeNull();
+      expect(task.isCorrect).toBeNull();
+      expect(task.points).toBeNull();
+    }
+    // The instruments were completed, so their scores are real.
+    expect(payload.instrumentsComplete).toEqual({ sus: true, tlx: true });
+    expect(payload.scores.sus).not.toBeNull();
+    expect(payload.scores.tlxRaw).not.toBeNull();
+  });
+});
+
+describe('Rubric scoring: binary for locating, 0-2 for applied and retention', () => {
+  beforeEach(() => {
+    localStorage.clear();
+    vi.mocked(download).mockClear();
+  });
+
+  it('offers Correct/Incorrect for locating tasks and a 0-2 rubric for the others', async () => {
+    const user = userEvent.setup();
+    await beginSession(user);
+    await completeAllTasks(user);
+
+    // Two locating tasks in the key, and one applied plus one retention.
+    expect(screen.getAllByRole('button', { name: 'Correct' })).toHaveLength(2);
+    expect(screen.getAllByRole('button', { name: 'Incorrect' })).toHaveLength(2);
+    expect(screen.getAllByRole('button', { name: '0' })).toHaveLength(2);
+    expect(screen.getAllByRole('button', { name: '2' })).toHaveLength(2);
+  });
+
+  it('records points on applied and retention tasks and isCorrect on locating ones', async () => {
+    const payload = await runSessionToExport({ markTasks: true });
+    const byId = Object.fromEntries(payload.session.tasks.map((t) => [t.id, t]));
+
+    expect(byId[1].isCorrect).toBe(true);
+    expect(byId[1].points).toBeNull();
+    expect(byId[2].isCorrect).toBe(true);
+
+    // A half-credit answer had to be forced to Correct or Incorrect before this existed.
+    expect(byId[3].kind).toBe('applied');
+    expect(byId[3].points).toBe(2);
+    expect(byId[4].kind).toBe('retention');
+    expect(byId[4].points).toBe(2);
+  });
+});
+
+describe('The running condition is on screen', () => {
+  beforeEach(() => {
+    localStorage.clear();
+    vi.mocked(download).mockClear();
+  });
+
+  it('shows nothing during setup, then an instruction once the session starts', async () => {
+    const user = userEvent.setup();
+    render(<EvaluationPage />);
+    expect(screen.queryByRole('status')).toBeNull();
+
+    await user.type(screen.getByLabelText('Participant ID'), 'P01');
+    // Manual is the half where behaviour has to change, so its wording is an instruction.
+    await user.click(screen.getByRole('button', { name: 'Manual' }));
+    const fileInput = document.querySelector('input[type="file"]') as HTMLInputElement;
+    await user.upload(fileInput, keyFile());
+    const begin = screen.getByRole('button', { name: 'Begin tasks' });
+    await waitFor(() => expect(begin).toBeEnabled());
+    await user.click(begin);
+
+    expect(screen.getByRole('status')).toHaveTextContent('Condition: Manual — do not use the tool');
+  });
+
+  it('names the tool condition without a prohibition, and stays up through the questionnaires', async () => {
+    const user = userEvent.setup();
+    await beginSession(user);
+    expect(screen.getByRole('status')).toHaveTextContent('Condition: Tool');
+    expect(screen.getByRole('status')).not.toHaveTextContent('do not use the tool');
+
+    await completeAllTasks(user);
+    await user.click(screen.getByRole('button', { name: /Continue to NASA-TLX/ }));
+    expect(screen.getByRole('status')).toHaveTextContent('Condition: Tool');
   });
 });

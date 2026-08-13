@@ -27,7 +27,7 @@ interface CodeLineProps {
 // aria-selected), not a link or button, because selection here is a toggle
 // set rather than navigation. A file can run to thousands of lines, so every
 // line carrying its own Tab stop would make the viewer unusable from a
-// keyboard — Tab would have to be pressed once per line to reach the bottom.
+// keyboard, Tab would have to be pressed once per line to reach the bottom.
 // Roving tabindex avoids that: only the current line is tabbable
 // (isTabStop), and CodeViewer's arrow-key handling moves that one stop up
 // and down the list, matching the pattern screen readers expect from a

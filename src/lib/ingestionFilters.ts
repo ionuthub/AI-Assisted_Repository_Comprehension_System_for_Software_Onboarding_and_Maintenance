@@ -3,7 +3,7 @@
  * dependencies, build output, caches and version-control internals.
  *
  * This matters more than it looks. The file list is capped, and a repository that commits
- * its dependencies presents thousands of vendored files in tree order — so without this
+ * its dependencies presents thousands of vendored files in tree order, so without this
  * filter the entire budget is spent on `node_modules` and the tool never sees the project's
  * own source. Observed on a real repository: 50 of 50 indexed files were dependencies, and
  * the model correctly reported that the entry point was not present.

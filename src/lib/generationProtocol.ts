@@ -135,7 +135,7 @@ export async function consumeGenerationStream(
   consumeLine(buffer);
 
   // `completion` is assigned inside the consumeLine closure, which TypeScript's
-  // control-flow analysis cannot see — after the loop it still narrows the
+  // control-flow analysis cannot see, after the loop it still narrows the
   // variable to null, then to never. Reading it into a freshly typed local
   // restores the correct type without changing runtime behaviour.
   const finished = completion as GenerationCompleteEvent | null;

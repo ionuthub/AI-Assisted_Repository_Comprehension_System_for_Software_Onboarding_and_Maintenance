@@ -66,7 +66,7 @@ describe('CodeViewer line selection', () => {
 });
 
 // Keyboard access: line selection was mouse-only until this pass. Each line was
-// a div with an onClick and no tabIndex, role, or key handler — reachable by
+// a div with an onClick and no tabIndex, role, or key handler, reachable by
 // click, invisible to Tab. A keyboard-only user could not select a line, so
 // could not use per-line questioning at all. Found by static accessibility
 // review, not by any prior test, which is itself worth recording: none of
@@ -77,7 +77,7 @@ describe('CodeViewer keyboard access', () => {
     const options = screen.getAllByRole('option');
     const tabbable = options.filter((el) => el.getAttribute('tabindex') === '0');
     // Not zero tab stops (unreachable) and not one per line (unusable on a long
-    // file) — exactly one, moved by arrow keys once focus is inside.
+    // file), exactly one, moved by arrow keys once focus is inside.
     expect(tabbable).toHaveLength(1);
   });
 

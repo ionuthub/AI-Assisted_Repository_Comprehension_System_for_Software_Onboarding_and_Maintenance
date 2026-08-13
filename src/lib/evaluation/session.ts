@@ -36,7 +36,7 @@ export interface StudyTask {
    * It previously defaulted to 3, so a session where confidence was never asked exported a full
    * set of mid-scale ratings indistinguishable from a participant who genuinely felt neutral
    * about every answer. Confidence feeds the confidence-accuracy gap, so an invented 3 does not
-   * merely add noise — it pulls the gap toward zero, which is the direction that would understate
+   * merely add noise, it pulls the gap toward zero, which is the direction that would understate
    * over-trust.
    */
   confidence: number | null;
@@ -49,7 +49,7 @@ export interface StudyTask {
   /**
    * Applied and retention tasks only: 0, 1 or 2 against the rubric. Null until marked.
    *
-   * The protocol, the answer keys and the marking rubric all commit to 0-2 for these two kinds —
+   * The protocol, the answer keys and the marking rubric all commit to 0-2 for these two kinds,
    * 1 for the correct insertion point, 1 for at least two further affected areas, with written
    * justification. The runner previously offered only Correct/Incorrect, so an answer worth 1 of 2
    * had to be recorded as one or the other, and half the rubric was unrecordable.
@@ -82,7 +82,7 @@ export function taskScore(task: Pick<StudyTask, "kind" | "isCorrect" | "points">
  *
  * Every subscale used to start at 50. A slider already sitting at the midpoint records a rating
  * whether or not anyone touched it, so an unadministered TLX exported as a complete instrument
- * reading exactly 50 on all six — a plausible-looking response with no participant behind it.
+ * reading exactly 50 on all six, a plausible-looking response with no participant behind it.
  */
 export interface TlxRatings {
   mental: number | null;
@@ -150,7 +150,7 @@ export function tlxScore(t: TlxRatings): number | null {
  *
  * Returns null unless all ten items are answered. The previous implementation substituted 3 for a
  * missing item, which is not neutral: on an odd item 3 contributes 2 and on an even item it also
- * contributes 2, so ten unanswered items scored exactly 50 — a mid-scale usability result
+ * contributes 2, so ten unanswered items scored exactly 50, a mid-scale usability result
  * manufactured entirely from absent data, and one that would have been compared against the
  * published benchmark of 68 as though a participant had produced it.
  */
@@ -206,15 +206,30 @@ export function isDemoTaskSet(tasks: readonly { name: string; answerKey: string 
 /**
  * Whether the setup phase may hand over to the task phase.
  *
- * Requires both an identifier to file the export under and a real answer key in place of
- * the demo set: a session begun on the demo tasks yields an export a later analysis cannot
- * distinguish from a genuine run, with every answer scored against a placeholder key.
+ * Requires three things:
+ *
+ *  - an identifier to file the export under;
+ *  - a real answer key in place of the demo set, because a session begun on the demo tasks yields
+ *    an export a later analysis cannot distinguish from a genuine run, with every answer scored
+ *    against a placeholder key;
+ *  - an explicitly chosen condition. The runner used to default to "tool", so a session intended
+ *    as the manual half would run and export as a tool session unless someone noticed and changed
+ *    it, which has already happened twice in pilots. A default that is right half the time is
+ *    worse than no default: the export records the setting rather than what happened, so nothing
+ *    afterwards distinguishes a manual session mislabelled as tool from a genuine tool session.
+ *    Requiring a choice removes the failure rather than making it visible.
  */
 export function canBeginTasks(
   participantId: string,
-  tasks: readonly { name: string; answerKey: string }[]
+  tasks: readonly { name: string; answerKey: string }[],
+  condition: Condition | null
 ): boolean {
-  return participantId.trim().length > 0 && tasks.length > 0 && !isDemoTaskSet(tasks);
+  return (
+    participantId.trim().length > 0 &&
+    tasks.length > 0 &&
+    !isDemoTaskSet(tasks) &&
+    condition !== null
+  );
 }
 
 export function tasksFromGroundTruth(gt: GroundTruthFile): StudyTask[] {
@@ -237,7 +252,7 @@ export function tasksFromGroundTruth(gt: GroundTruthFile): StudyTask[] {
     isCorrect: null,
     points: null,
     // null means "not administered". Defaulting seeded tasks to false would export an
-    // unasked probe as a genuine failure to detect, biasing the over-trust measure —
+    // unasked probe as a genuine failure to detect, biasing the over-trust measure,
     // the probe UI is only shown in the tool condition.
     errorDetected: null,
   }));

@@ -3,7 +3,7 @@ import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 
 // `download` is the only side effect of exporting, so it is the seam the export payload can be
-// read through. Everything else in the module — scoring, CSV, the task model — stays real, so
+// read through. Everything else in the module, scoring, CSV, the task model, stays real, so
 // what fails these tests is a change to the payload shape rather than a change to a stub.
 vi.mock('@/lib/evaluation/session', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@/lib/evaluation/session')>()),
@@ -11,7 +11,23 @@ vi.mock('@/lib/evaluation/session', async (importOriginal) => ({
 }));
 
 import EvaluationPage from './Evaluation';
+import AnswerBody from '@/components/AnswerBody';
 import { download, type GroundTruthFile } from '@/lib/evaluation/session';
+
+/**
+ * A seeded answer with the structure a real one has: headings, bullets, blank lines and inline
+ * markdown the renderer deliberately leaves alone.
+ */
+const SEEDED_ANSWER = [
+  'Based on the provided codebase, eligibility is evaluated by calling `checkEligibility`.',
+  '',
+  '**1. Nightly Batch Reverification**',
+  '',
+  'There are exactly **two** places where this check is executed:',
+  '',
+  '* `src/jobs/nightlyReverification.ts` (lines 17-20)',
+  '* `src/triage/validation.ts` (lines 11-13)',
+].join('\n');
 
 /**
  * The layout of the committed answer keys: two locating tasks (the second being the seeded
@@ -37,7 +53,7 @@ const ANSWER_KEY: GroundTruthFile = {
       expectedFiles: ['src/triage/eligibility.ts'],
       answerKey: 'Three production sites.',
       seededInaccurate: true,
-      seededAnswerShown: 'There are exactly two places…',
+      seededAnswerShown: SEEDED_ANSWER,
     },
     {
       id: 3,
@@ -50,7 +66,7 @@ const ANSWER_KEY: GroundTruthFile = {
     {
       id: 4,
       kind: 'retention',
-      name: 'Retention — from memory, tool closed',
+      name: 'Retention, from memory, tool closed',
       description: 'Without reopening the tool, how is a referral routed to a handler?',
       expectedFiles: [],
       answerKey: 'routeReferral looks the handler up by referral type in the registry.',
@@ -79,16 +95,21 @@ type ExportedPayload = {
 };
 
 /** Fills in the setup phase and hands over to the task list. */
-const beginSession = async (user: ReturnType<typeof userEvent.setup>) => {
+const beginSession = async (
+  user: ReturnType<typeof userEvent.setup>,
+  condition: 'Manual' | 'Tool' = 'Tool'
+) => {
   render(<EvaluationPage />);
   await user.type(screen.getByLabelText('Participant ID'), 'P01');
+  // The condition has no default and must be chosen before the session can start.
+  await user.click(screen.getByRole('button', { name: condition }));
 
   const fileInput = document.querySelector('input[type="file"]') as HTMLInputElement;
   await user.upload(fileInput, keyFile());
 
   // The import is asynchronous (FileReader). Until it lands, the demo set is still loaded and
-  // canBeginTasks keeps the button disabled — which is the condition worth waiting on, because
-  // the demo set also has three tasks, so the "3 tasks loaded" count would not prove anything.
+  // canBeginTasks keeps the button disabled, which is the condition worth waiting on, because
+  // the demo set also has four tasks, so the "4 tasks loaded" count would not prove anything.
   const begin = screen.getByRole('button', { name: 'Begin tasks' });
   await waitFor(() => expect(begin).toBeEnabled());
   await user.click(begin);
@@ -175,7 +196,7 @@ describe('Evaluation session after the retention phase was removed', () => {
     const payload = await runSessionToExport();
 
     // The payload used to carry a top-level `retention` block alongside the tasks. It restated
-    // one task's fields at the top level — and, because it read `appliedTask`, it restated the
+    // one task's fields at the top level, and, because it read `appliedTask`, it restated the
     // wrong task's question. An analysis reading both would count retention twice.
     expect(payload).not.toHaveProperty('retention');
     expect(Object.keys(payload)).not.toContain('retention');
@@ -309,10 +330,71 @@ describe('Rubric scoring: binary for locating, 0-2 for applied and retention', (
   });
 });
 
+describe('The seeded answer is laid out like a live one', () => {
+  beforeEach(() => {
+    localStorage.clear();
+    vi.mocked(download).mockClear();
+  });
+
+  it('renders the seeded answer through the same component as the workspace Answers tab', async () => {
+    // The markup the workspace produces for this exact string, captured before the runner is
+    // rendered so the two do not share a container.
+    const live = render(<AnswerBody content={SEEDED_ANSWER} />);
+    const expectedMarkup = (live.container.firstElementChild as HTMLElement).innerHTML;
+    live.unmount();
+    expect(expectedMarkup).toContain('<p class="text-body');
+    expect(expectedMarkup).toContain('<li class="ml-5 list-disc');
+
+    const user = userEvent.setup();
+    await beginSession(user, 'Tool');
+    // The probe panel appears once its task is under way.
+    await user.click(screen.getAllByRole('button', { name: 'Start' })[0]);
+    await user.click(screen.getByRole('button', { name: 'Complete task' }));
+    await user.click(screen.getAllByRole('button', { name: 'Start' })[0]);
+
+    // Byte-for-byte the same markup. If the two ever diverge, the one known-wrong answer in the
+    // session becomes the one that looks different, and a participant may flag it for how it
+    // looks rather than for what it claims.
+    expect(document.body.innerHTML).toContain(expectedMarkup);
+  });
+
+  it('does not render the answer as a single italic run', async () => {
+    const user = userEvent.setup();
+    await beginSession(user, 'Tool');
+    await user.click(screen.getAllByRole('button', { name: 'Start' })[0]);
+    await user.click(screen.getByRole('button', { name: 'Complete task' }));
+    await user.click(screen.getAllByRole('button', { name: 'Start' })[0]);
+
+    // The old markup was <p class="italic">{seededAnswerShown}</p>: one node, newlines collapsed.
+    expect(document.querySelector('p.italic')).toBeNull();
+    // The seeded answer has multiple lines, so it must produce multiple blocks.
+    expect(document.querySelectorAll('p.text-body').length).toBeGreaterThan(1);
+  });
+});
+
 describe('The running condition is on screen', () => {
   beforeEach(() => {
     localStorage.clear();
     vi.mocked(download).mockClear();
+  });
+
+  it('will not begin until a condition has been chosen', async () => {
+    const user = userEvent.setup();
+    render(<EvaluationPage />);
+
+    await user.type(screen.getByLabelText('Participant ID'), 'P01');
+    const fileInput = document.querySelector('input[type="file"]') as HTMLInputElement;
+    await user.upload(fileInput, keyFile());
+
+    // Everything else is in place, so only the unchosen condition is holding the session back.
+    // It used to default to Tool, which ran a manual half as a tool session and left no trace.
+    const begin = screen.getByRole('button', { name: 'Begin tasks' });
+    await waitFor(() => expect(screen.getByText('not set')).toBeInTheDocument());
+    expect(begin).toBeDisabled();
+
+    await user.click(screen.getByRole('button', { name: 'Manual' }));
+    expect(begin).toBeEnabled();
+    expect(screen.queryByText('not set')).toBeNull();
   });
 
   it('shows nothing during setup, then an instruction once the session starts', async () => {
@@ -329,14 +411,14 @@ describe('The running condition is on screen', () => {
     await waitFor(() => expect(begin).toBeEnabled());
     await user.click(begin);
 
-    expect(screen.getByRole('status')).toHaveTextContent('Condition: Manual — do not use the tool');
+    expect(screen.getByRole('status')).toHaveTextContent('Condition: Manual. Do not use the tool.');
   });
 
   it('names the tool condition without a prohibition, and stays up through the questionnaires', async () => {
     const user = userEvent.setup();
     await beginSession(user);
     expect(screen.getByRole('status')).toHaveTextContent('Condition: Tool');
-    expect(screen.getByRole('status')).not.toHaveTextContent('do not use the tool');
+    expect(screen.getByRole('status')).not.toHaveTextContent('Do not use the tool');
 
     await completeAllTasks(user);
     await user.click(screen.getByRole('button', { name: /Continue to NASA-TLX/ }));

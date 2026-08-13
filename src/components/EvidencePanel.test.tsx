@@ -15,7 +15,7 @@ const evidence = (path: string, score: number): RetrievedEvidence => ({
 
 describe('EvidencePanel headings', () => {
   it('reports what was retrieved rather than judging the answer', () => {
-    // The heading appeared above answers that were refusals — retrieval had returned files,
+    // The heading appeared above answers that were refusals, retrieval had returned files,
     // but the model found nothing usable in them. Wording that reads as a verdict on the
     // answer ("Grounded") is therefore wrong at the moment it matters most, because a reader
     // who trusts the badge stops checking exactly when checking is required.
@@ -82,7 +82,7 @@ describe('relevance bar scale', () => {
     // Cosine similarity over sparse TF-IDF vectors is small in absolute terms: across the 24
     // accuracy-gate stems the median top-ranked score is 0.248 (study/question-scores.json,
     // committed in 1996285, measured against artefact 1b9b0e0). Drawn at score * 100% that
-    // would read as 25% — a nearly empty bar above a correct result, which invites a reader
+    // would read as 25%, a nearly empty bar above a correct result, which invites a reader
     // to discount an answer they should accept.
     expect(widthOf(0.248)).toBeGreaterThan(40);
   });

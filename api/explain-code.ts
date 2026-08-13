@@ -91,7 +91,7 @@ export default async function handler(req: Request): Promise<Response> {
 
   // Browsers always send Origin on a POST, so a request without one is not from the
   // application. Previously the check was skipped when the header was absent, which left
-  // the endpoint — and the API key it holds — reachable by any non-browser client.
+  // the endpoint, and the API key it holds, reachable by any non-browser client.
   if (!isOriginAllowed(normalizeOrigin(origin))) {
     return new Response(JSON.stringify({ error: 'Origin not allowed' }), { status: 403, headers: securityHeaders });
   }

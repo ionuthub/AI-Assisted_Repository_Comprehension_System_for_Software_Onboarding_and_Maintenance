@@ -11,8 +11,8 @@ interface FileInsightsPanelProps {
 /**
  * Describes the selected file from static analysis alone.
  *
- * Everything here is derived from parsing this file and the other indexed files — no model
- * is involved — so the panel is stated as fact while answers elsewhere are marked as
+ * Everything here is derived from parsing this file and the other indexed files, no model
+ * is involved, so the panel is stated as fact while answers elsewhere are marked as
  * grounded or not. Import parsing covers JavaScript and TypeScript, so the relationships
  * are empty for other languages and the panel says so rather than appearing broken.
  */

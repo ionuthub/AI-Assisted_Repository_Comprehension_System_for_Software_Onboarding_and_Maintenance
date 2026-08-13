@@ -1,3 +1,4 @@
+import AnswerBody from "@/components/AnswerBody";
 import EvidencePanel, { type RetrievedEvidence, type UnverifiedMention } from "@/components/EvidencePanel";
 import type { GenerationCompleteEvent } from "@/lib/generationProtocol";
 
@@ -26,7 +27,7 @@ interface WorkspaceQAViewProps {
  * Extensions are ordered longest-first and anchored with a word boundary. Regex alternation
  * takes the first branch that matches, so listing `ts` before `tsx` truncated every React
  * component path: `PriorityPanel.tsx` was extracted as `PriorityPanel.ts`, which of course had
- * not been retrieved, and the panel warned that the model had cited a file it never saw — while
+ * not been retrieved, and the panel warned that the model had cited a file it never saw, while
  * displaying the real `.tsx` file as evidence directly above the warning.
  *
  * That is the worst failure this component can have. The panel exists to tell a reader when an
@@ -61,36 +62,6 @@ export default function WorkspaceQAView({
       reason: excludedPaths?.[path] ?? "Not retrieved",
     }));
 
-  const renderAnswer = (content: string) =>
-    content.split("\n").map((line, i) => {
-      if (line.startsWith("### ")) {
-        return (
-          <h3 key={i} className="text-section text-foreground mt-6 mb-2 first:mt-0">
-            {line.substring(4)}
-          </h3>
-        );
-      }
-      if (line.startsWith("**") && line.endsWith("**") && line.length > 4) {
-        return (
-          <h4 key={i} className="text-ui font-semibold text-foreground mt-5 mb-2 first:mt-0">
-            {line.replace(/\*\*/g, "")}
-          </h4>
-        );
-      }
-      if (line.startsWith("* ") || line.startsWith("- ")) {
-        return (
-          <li key={i} className="ml-5 list-disc text-body text-foreground/90 my-1">
-            {line.substring(2)}
-          </li>
-        );
-      }
-      if (!line.trim()) return null;
-      return (
-        <p key={i} className="text-body text-foreground/90 mb-4">
-          {line}
-        </p>
-      );
-    });
 
   // The Answers tab is reachable from the workspace nav before any question has
   // been asked. Rendering the answer layout in that state asserted a failure that
@@ -160,7 +131,7 @@ export default function WorkspaceQAView({
                 data-total-token-count={completion?.usageMetadata?.totalTokenCount}
                 role={generationStatus === 'error' ? 'alert' : undefined}
               >
-                {renderAnswer(answer)}
+                <AnswerBody content={answer} />
               </div>
             )}
           </div>

@@ -52,7 +52,7 @@ describe('susScore (Brooke 1996)', () => {
   });
 
   // These are the load-bearing ones. tsconfig sets strictNullChecks: false, so nothing in the
-  // compiler prevents an unanswered item from being treated as a number — only this does.
+  // compiler prevents an unanswered item from being treated as a number, only this does.
   it('refuses to score an unanswered questionnaire rather than substituting the midpoint', () => {
     // The previous implementation read `ratings[i] ?? 3`, so ten unanswered items scored exactly
     // 50: a mid-scale usability result manufactured from no data, which would then have been
@@ -104,7 +104,7 @@ describe('tlxScore (Raw TLX, unweighted mean)', () => {
   });
 });
 
-describe('taskScore — binary for locating, 0-2 for applied and retention', () => {
+describe('taskScore, binary for locating, 0-2 for applied and retention', () => {
   it('scores locating tasks out of 1 from isCorrect', () => {
     expect(taskMaxScore('locating')).toBe(1);
     expect(taskScore({ kind: 'locating', isCorrect: true, points: null })).toBe(1);
@@ -145,7 +145,7 @@ describe('tasksFromGroundTruth', () => {
     } as never);
 
     // confidence defaulted to 3. It feeds the confidence-accuracy gap, and an invented 3 pulls
-    // that gap toward zero — the direction that understates over-trust.
+    // that gap toward zero, the direction that understates over-trust.
     expect(task.confidence).toBeNull();
     expect(task.isCorrect).toBeNull();
     expect(task.points).toBeNull();
@@ -176,18 +176,26 @@ describe('canBeginTasks', () => {
   it('blocks the demo task set, whose answer keys are placeholders', () => {
     // The runner loads these by default, so without the guard a session could be run and
     // exported end to end with every answer scored against a demonstration key.
-    expect(canBeginTasks('P01', tasksFromGroundTruth(DEMO_ANSWER_KEY))).toBe(false);
+    expect(canBeginTasks('P01', tasksFromGroundTruth(DEMO_ANSWER_KEY), 'tool')).toBe(false);
   });
 
   it('blocks a session with no participant identifier to file the export under', () => {
-    expect(canBeginTasks('', importedKey)).toBe(false);
-    expect(canBeginTasks('   ', importedKey)).toBe(false);
+    expect(canBeginTasks('', importedKey, 'tool')).toBe(false);
+    expect(canBeginTasks('   ', importedKey, 'tool')).toBe(false);
+  });
+
+  it('blocks a session whose condition nobody chose', () => {
+    // The runner defaulted to "tool", so a session intended as the manual half ran and exported
+    // as a tool session unless someone noticed. It has happened twice in pilots, and it leaves
+    // no trace: the export records the setting, not what the participant actually did.
+    expect(canBeginTasks('P01', importedKey, null)).toBe(false);
+    expect(canBeginTasks('P01', importedKey, 'manual')).toBe(true);
   });
 
   it('allows an identified participant once a real answer key is imported', () => {
-    expect(canBeginTasks('P01', importedKey)).toBe(true);
+    expect(canBeginTasks('P01', importedKey, 'tool')).toBe(true);
     // An empty import is not a substitute for the demo set being replaced.
-    expect(canBeginTasks('P01', [])).toBe(false);
+    expect(canBeginTasks('P01', [], 'tool')).toBe(false);
   });
 });
 

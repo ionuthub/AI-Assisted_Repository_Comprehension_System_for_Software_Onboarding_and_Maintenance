@@ -3,7 +3,7 @@
  *
  * The sanitisation helpers that used to sit here (sanitizeHtml, sanitizeInput,
  * sanitizeMarkdown, sanitizeUrl, escapeRegex) and the validators (isValidEmail,
- * isValidGitHubUrl) had no callers in the application — only their own tests. They were
+ * isValidGitHubUrl) had no callers in the application, only their own tests. They were
  * not protecting anything: no component renders with dangerouslySetInnerHTML, so React
  * escapes model output by construction, and github.ts does its own URL parsing and path
  * validation. Keeping them inflated the test count with coverage of code the application

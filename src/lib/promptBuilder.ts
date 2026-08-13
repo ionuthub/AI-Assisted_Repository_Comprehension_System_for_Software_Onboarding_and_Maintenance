@@ -3,7 +3,7 @@
  *
  * Both entry points import from here: the Vite dev-server proxy in vite.config.ts and the
  * deployed function in api/explain-code.ts. They previously built the prompt independently
- * and had already drifted — the deployed side capped the retrieved context and validated
+ * and had already drifted, the deployed side capped the retrieved context and validated
  * the request, the dev side did neither, and the two template literals sat at different
  * indentation depths, so the bytes sent to the model differed between environments.
  *
@@ -13,7 +13,7 @@
  *
  * This module has no imports, deliberately. api/explain-code.ts is bundled as a deployed
  * function without the "@/" path alias, so anything it shares with the client must resolve
- * on its own — the same constraint generationProtocol.ts is written to.
+ * on its own, the same constraint generationProtocol.ts is written to.
  */
 
 /**

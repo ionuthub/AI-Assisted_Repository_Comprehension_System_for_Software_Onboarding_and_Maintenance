@@ -98,7 +98,7 @@ export const buildSearchIndex = (files: ProjectFile[]): SearchIndex => {
   //
   // Smoothed IDF: log((N + 1) / (df + 1)) + 1. The unsmoothed log(N / df) it replaces
   // assigned zero weight to any term present in every document, and produced an entirely
-  // zero index for a single-document corpus — every query then returned no results with
+  // zero index for a single-document corpus, every query then returned no results with
   // no error. The trailing +1 keeps weights strictly positive so a term common to all
   // documents still contributes to ranking rather than being discarded.
   const idf: Record<string, number> = {};
@@ -231,13 +231,13 @@ export interface ExcerptRegion {
  * Retrieval ranks whole files, but only a bounded excerpt is sent to the model. Taking the
  * head of the file is cheap and was what this previously did, but for any file longer than
  * the budget it usually sends imports and licence headers rather than the code the question
- * is about — and the interface would then cite lines the model never saw.
+ * is about, and the interface would then cite lines the model never saw.
  *
  * A fixed-size window is slid over the file and scored by how many distinct query terms it
  * contains, with total occurrences breaking ties. Distinct-term coverage is preferred over
  * raw frequency so a region mentioning several query terms once beats one repeating a
  * single common term. Ties resolve to the earliest region, which keeps output stable for a
- * given file and query — a requirement for reproducing a study run.
+ * given file and query, a requirement for reproducing a study run.
  */
 export function selectExcerptRegion(
   content: string,

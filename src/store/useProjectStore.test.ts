@@ -47,7 +47,7 @@ describe('useProjectStore', () => {
 });
 
 // Regression: the file cache is keyed by path alone, and setProject did not clear it. The two
-// study repositories are a matched pair, so they deliberately share paths — src/types/domain.ts
+// study repositories are a matched pair, so they deliberately share paths, src/types/domain.ts
 // exists in both. Switching repositories therefore served the previous repository's file
 // contents under the new repository's file name. No prior test drove a second setProject with
 // an overlapping path, which is why 109 passing tests said nothing about it.

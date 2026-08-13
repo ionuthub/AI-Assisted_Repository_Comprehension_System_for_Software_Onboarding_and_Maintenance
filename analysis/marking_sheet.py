@@ -4,7 +4,7 @@ Builds a marking sheet from a captured gate, and reads the verdicts back.
 
 Marking is the one step of the gate that cannot be delegated: it is a judgement about whether
 the tool's answer says the same thing as the ground truth. What can be removed is the clerical
-work around it — scrolling between a JSON file and a markdown file, losing your place, and
+work around it, scrolling between a JSON file and a markdown file, losing your place, and
 marking question 9 while looking at question 8's evidence.
 
 `build` puts each pair side by side in one document with a blank verdict line. `collect` reads
@@ -68,7 +68,7 @@ def read_verdicts(markdown: str) -> dict[int, str]:
     return out
 
 HEADER = """\
-# Marking sheet — {repo}
+# Marking sheet, {repo}
 
 <!-- accuracy-gate-binding: {binding} -->
 
@@ -77,7 +77,7 @@ truth, and write `correct` or `incorrect` on the verdict line.
 
 The rubric is binary, as the proposal commits to. There is no partial credit: an answer that
 names the right file but misses two of the four places something happens is **incorrect**. That
-is deliberate — the questions were written to have complete answers, and a scheme that awarded
+is deliberate, the questions were written to have complete answers, and a scheme that awarded
 half marks would make the resulting figure impossible to interpret.
 
 **What counts as the standard: the Answer, not the Notes.** Each question's Notes are shown
@@ -87,7 +87,7 @@ reachability findings and counter-examples; requiring a tool to reproduce all of
 bar nothing could meet, and it was not the standard declared in advance.
 
 This has to be stated because it was previously left implicit, and two markers then marked the
-same items against different material — one seeing the Answer alone, one seeing the whole
+same items against different material, one seeing the Answer alone, one seeing the whole
 ground-truth document. Some of what looked like disagreement was two people answering different
 questions. Where an omission from a Note seems decisive, mark against the Answer and say so on
 the "Why" line; that keeps the stricter reading available without hiding it inside the figure.
@@ -104,11 +104,11 @@ When every verdict is filled in:
 """
 
 BLOCK = """\
-## Q{id} — {pattern}
+## Q{id}, {pattern}
 
 > {question}
 
-### Ground truth — this is the standard
+### Ground truth, this is the standard
 
 {truth}
 
@@ -190,7 +190,7 @@ def build(gate_path: Path, truth_path: Path) -> Path:
         raise SystemExit(1)
 
     # Beside the gate it was built from, not in the current working directory. The sheet is only
-    # meaningful next to that capture — it is bound to it by hash — and writing it wherever the
+    # meaningful next to that capture, it is bound to it by hash, and writing it wherever the
     # command happened to be run from put study material in the repository root, outside the
     # freeze boundary analysis/README.md defines.
     sheet = gate_path.parent / f"marking.{repo}.md"
@@ -210,7 +210,7 @@ def build(gate_path: Path, truth_path: Path) -> Path:
                 truth=t.get("answer", "(ground truth not found for this question)"),
                 truth_files=", ".join(t.get("files", "").split()) or "—",
                 truth_notes=t.get("notes") or "_none_",
-                heading=item.get("toolEvidenceHeading", "—"),
+                heading=item.get("toolEvidenceHeading", ","),
                 retrieved=retrieved,
                 unverified=("Unverified mentions: " + "; ".join(unver) + "\n") if unver else "",
                 answer=(item.get("toolAnswer") or "(no answer captured)").strip(),
@@ -280,15 +280,15 @@ def collect(gate_path: Path, sheet_path: Path) -> bool:
 def self_test() -> None:
     """Checks that an unmarked sheet is refused rather than silently scored as all-incorrect."""
     sample = """\
-## Q1 — orientation
+## Q1, orientation
 
 **Verdict:** correct
 
-## Q2 — handler registry
+## Q2, handler registry
 
 **Verdict:** <!-- correct | incorrect -->
 
-## Q3 — legacy path
+## Q3, legacy path
 
 **Verdict:** incorrect
 """

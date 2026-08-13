@@ -47,7 +47,7 @@ FILES_MIN, FILES_MAX = 40, 46
 FILE_COUNT_TOLERANCE = 3
 # Absolute size band. Deliberately wide: "small-to-medium" is the proposal's requirement and
 # anything a developer can hold in mind within a timed task satisfies it. The band is a
-# sanity check, not a matching criterion — LOC_RATIO_MAX below is the one that governs
+# sanity check, not a matching criterion, LOC_RATIO_MAX below is the one that governs
 # comparability between the pair, and that threshold is not negotiable after the fact.
 LOC_MIN, LOC_MAX = 2000, 3200
 LOC_RATIO_MAX = 1.2
@@ -160,7 +160,7 @@ def verify(a: dict, b: dict) -> bool:
                     f"{r['loc']} lines")
         ok &= check("artefact indexes nearly all of it", r["predicted_coverage"] >= COVERAGE_MIN,
                     f"{r['indexed_files']}/{r['analysable_files']} files "
-                    f"({r['predicted_coverage']:.0%}) — the cap is {MAX_FILES_TO_ANALYZE}")
+                    f"({r['predicted_coverage']:.0%}), the cap is {MAX_FILES_TO_ANALYZE}")
         ok &= check("all seven patterns present", not r["patterns_missing"],
                     "all present" if not r["patterns_missing"]
                     else f"missing: {', '.join(r['patterns_missing'])}")
@@ -206,7 +206,7 @@ if __name__ == "__main__":
         ra, rb = analyse(Path(sys.argv[1])), analyse(Path(sys.argv[2]))
         print(json.dumps([ra, rb], indent=2))
         passed = verify(ra, rb)
-        print("\n" + ("All checks passed — the pair is usable as a matched stimulus."
+        print("\n" + ("All checks passed, the pair is usable as a matched stimulus."
                       if passed else
                       "Some checks failed. Regenerate the offending repository before "
                       "writing any tasks: the comparison depends on the match."))

@@ -32,13 +32,13 @@ What this file discloses is the AI used **to build and analyse** the artefact.
 
 | Tool | Used for |
 | --- | --- |
-| **Google Antigravity** | The initial artefact codebase — agentic code generation across the React/TypeScript application |
+| **Google Antigravity** | The initial artefact codebase, agentic code generation across the React/TypeScript application |
 | **Claude Code** (Claude Opus) | Auditing, refactoring, defect diagnosis and fixes, test authoring, the `analysis/` measurement scripts, and applying and committing patches |
 | **Claude** (chat) | Design discussion, protocol drafting, reviewing the study design, drafting and revising study documents |
 | **CodeRabbit** | Automated review of pull requests |
 | **ChatGPT** | *[AUTHOR TO CONFIRM the role and scope]* |
-| **Perplexity** | *[AUTHOR TO CONFIRM the role and scope — literature searching is the expected use]* |
-| **NotebookLM** | *[AUTHOR TO CONFIRM the role and scope — source organisation is the expected use]* |
+| **Perplexity** | *[AUTHOR TO CONFIRM the role and scope, literature searching is the expected use]* |
+| **NotebookLM** | *[AUTHOR TO CONFIRM the role and scope, source organisation is the expected use]* |
 
 The three marked entries are the author's to complete. They are named here because they were
 used; the specific role of each is left for the author rather than guessed, since an invented
@@ -64,8 +64,8 @@ lines; there are 12 test files.
 
 ## 2. The design system
 
-The design system in `src/index.css` — the colour tokens, type scale, spacing and the component
-conventions built on them — was produced with AI assistance, iterated against the author's
+The design system in `src/index.css`, the colour tokens, type scale, spacing and the component
+conventions built on them, was produced with AI assistance, iterated against the author's
 direction rather than specified up front.
 
 Several design decisions are recorded as comments in the components that implement them, because
@@ -102,7 +102,7 @@ assistance; some were acted on, some declined.
 
 Automated review is disclosed here for the same reason as everything else, and with the same
 caveat: it did not catch the defects that mattered most in this project. The defect log in the
-write-up records seven classes of defect, each found by a different method — a project-wide
+write-up records seven classes of defect, each found by a different method, a project-wide
 typecheck, human code review, a manual smoke test, asking why a module had no imports, a static
 accessibility review, asking whether CI had ever actually run, and a person switching
 repositories and noticing the wrong file contents. Automated review is one instrument among
@@ -110,7 +110,7 @@ those, not a substitute for them.
 
 ## 5. The analysis and measurement tooling
 
-Everything in `analysis/` — approximately 2,515 lines of Python and JavaScript — was written with
+Everything in `analysis/`, approximately 2,515 lines of Python and JavaScript, was written with
 **Claude Code**. That includes `capture_gate.mjs` (drives the deployed app with Playwright),
 `accuracy_gate.py` (the fail-closed scorer), `marking_sheet.py`, `gate_worksheet.py`,
 `check_citations.py`, `compare_runs.py`, `analyze_sessions.py`, `verify_study_repos.py`,
@@ -123,7 +123,7 @@ reading of every line:
 1. **Each script carries a self-test**, invoked with `--self-test`, and several were written
    after the defect they check for. `marking_sheet.py`'s self-test exists because an earlier
    regex read past an unmarked question and attributed the next question's verdict to it.
-2. **Outputs embed provenance** — the artefact SHA measured and the script's own commit SHA — so
+2. **Outputs embed provenance**, the artefact SHA measured and the script's own commit SHA, so
    a figure's origin does not have to be reconstructed afterwards. `analysis/README.md` states
    this as a condition of allowing `analysis/` and `study/` to change after the artefact freeze.
 3. **No instrument writes into `src/` or `api/`**, which is checkable by a single grep documented
@@ -133,7 +133,7 @@ One measurement defect was found this way and is worth recording, because it cha
 figure: `score_questions.mjs` initially scored every gate stem against **both** study
 repositories, giving n = 46 and a median of 0.201. A stem written for clinic-triage measures
 nothing when asked of warehouse-dispatch. Corrected to score each stem against its own
-repository only, the distribution is n = 24, median 0.248, p90 0.551 — and the p90 is the source
+repository only, the distribution is n = 24, median 0.248, p90 0.551, and the p90 is the source
 of the evidence-bar constant. The earlier figures are superseded and must not be quoted.
 
 `analyze_sessions.py` requires SciPy and has not been run against real session data, because
@@ -170,7 +170,7 @@ the heuristic identified.
 
 The record matters more than the total, because the shape of the defects changed:
 
-- Early passes found errors in the description of the code — a claim that `App` creates the
+- Early passes found errors in the description of the code, a claim that `App` creates the
   router when it is built at module scope, a note asserting that tests call a function they do
   not.
 - Middle passes found a systematic gap: answers described what the code *declares* and
@@ -215,8 +215,8 @@ files that caused question 9 to be marked while looking at question 8's evidence
 capture it was built from, so a sheet cannot be collected against a different or earlier run.
 The current marks give 2/12 for clinic-triage and 4/12 for warehouse-dispatch, 6/24 (25%) overall.
 
-`study/seeded_candidates.json` is generated by `analysis/accuracy_gate.py` from the marked gate —
-18 candidates — and is the only legitimate source of `seededAnswerShown` values for the
+`study/seeded_candidates.json` is generated by `analysis/accuracy_gate.py` from the marked gate,
+18 candidates, and is the only legitimate source of `seededAnswerShown` values for the
 over-trust probes. It is derived output, not authorship.
 
 A note on the marking sheets specifically: the branch `claude/evaluation-answer-key-guard-be5cwu`
@@ -238,14 +238,14 @@ all-machine chain and give this disclosure a materially stronger conclusion.
 ## 9. Reading and writing support
 
 **Claude**, **ChatGPT**, **Perplexity** and **NotebookLM** were used in the reading and writing
-process — literature searching, source organisation, drafting and revision. This is the use the
+process, literature searching, source organisation, drafting and revision. This is the use the
 Solent policy addresses most directly, and the condition it attaches is verification: any claim
 or citation that reached the dissertation was checked against the source itself.
 
 *[AUTHOR TO COMPLETE: which tool did what, and the verification actually performed on citations
 obtained through Perplexity or summarised in NotebookLM. A source suggested by a tool and then
 read by the author in full is a different thing from a source described by a tool and cited on
-that description — the policy makes the second one misconduct, and only the author knows which
+that description, the policy makes the second one misconduct, and only the author knows which
 happened.]*
 
 ## What was the researcher's own work
@@ -270,13 +270,13 @@ spot, the study will not see it.
 Two things bound the ground-truth part of that risk without eliminating it. The information
 conditions differ substantially: the tool answers from three retrieved excerpts of 2,500
 characters, while the verification passes had the entire repository, performed caller counts, and
-traced reachability across modules — analyses the tool cannot perform at all. And the passes were
+traced reachability across modules, analyses the tool cannot perform at all. And the passes were
 independent of one another and adversarial by instruction, which is why later ones found errors
 the earlier ones had introduced.
 
 For the code and the tooling, the bound is different and weaker: gates that a machine can fail.
 A project-wide typecheck, 112 unit tests across 12 files, lint, build, self-tested instruments,
-and a CI workflow that is now actually running. The defect log shows what that does and does not catch —
+and a CI workflow that is now actually running. The defect log shows what that does and does not catch,
 seven defect classes, no two caught by the same method, and one caught only by a person using the
 tool and noticing that the file on screen belonged to the other repository.
 
@@ -315,7 +315,7 @@ reading.
 1. The policy text addresses AI in the *research and writing* process. It does not say explicitly
    whether an agentic coding tool generating the software artefact falls under the same
    permission, a different one, or requires separate approval. This disclosure assumes the
-   broadest reading — disclose everything — but the question should be put directly rather than
+   broadest reading, disclose everything, but the question should be put directly rather than
    assumed.
 2. Whether the outstanding human second-marking commitment must be discharged before the main
    study runs, or can be reported as a limitation.

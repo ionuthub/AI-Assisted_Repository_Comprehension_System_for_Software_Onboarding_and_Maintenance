@@ -3,7 +3,7 @@
 Compares two captures of the same gate, question by question.
 
 The tool wraps a language model, so asking the same question twice does not guarantee the same
-answer. How much it varies is not a detail — it bounds how reproducible the accuracy figure is,
+answer. How much it varies is not a detail, it bounds how reproducible the accuracy figure is,
 and a reader of the dissertation is entitled to know whether a different run would have produced
 a different number.
 
@@ -128,14 +128,14 @@ def compare(a_path: Path, b_path: Path) -> bool:
     print(
         "Retrieval identical on every question."
         if not retrieval_drift
-        else f"Retrieval differed on Q{', Q'.join(str(q) for q in retrieval_drift)} — investigate "
+        else f"Retrieval differed on Q{', Q'.join(str(q) for q in retrieval_drift)}, investigate "
         "before using either run, because retrieval over a fixed index should be deterministic."
     )
     if mean < 1.0:
         print(
             "\nAnswer wording differs between runs. Report the run of record and note that the\n"
             "generation step is not deterministic; the marking applies to the recorded answers.\n"
-            "Wording similarity is the weaker signal — two runs can say the same thing in very\n"
+            "Wording similarity is the weaker signal, two runs can say the same thing in very\n"
             "different words. Overlap in the files named is the one to quote when arguing that a\n"
             "single run's marking would have held."
         )

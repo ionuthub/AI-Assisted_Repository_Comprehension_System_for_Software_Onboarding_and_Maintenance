@@ -13,15 +13,15 @@ There are 57 days to AE2. The study is 70% of the marks and has not started.
 
 ## The decision that governs everything else
 
-The audit's improvement roadmap — symbol-level indexing, hybrid BM25 and embeddings, call-graph
-expansion, rerankers, removing the fifty-file cap — would produce a substantially better tool. It
+The audit's improvement roadmap, symbol-level indexing, hybrid BM25 and embeddings, call-graph
+expansion, rerankers, removing the fifty-file cap, would produce a substantially better tool. It
 would also destroy this dissertation.
 
 Retrieval changes invalidate the captured answers, which invalidates the marking, which
 invalidates the accuracy gate and the seeded over-trust probes drawn from it. The artefact would
 then need re-freezing, the gate re-running and the marking redoing, and none of that is the
-study. The study — timed tasks with human participants, ethics approval, JISC forms, recruitment,
-analysis — has not begun.
+study. The study, timed tasks with human participants, ethics approval, JISC forms, recruitment,
+analysis, has not begun.
 
 **The tool's accuracy is not a problem to solve. It is the measurement.** A tool that answered
 everything correctly would make over-trust unobservable and the study unrunnable; the proposal
@@ -31,7 +31,7 @@ and honest instrument.
 
 So: fix what makes the instrument lie. Change nothing that makes the tool cleverer.
 
-## P0 — required before anything is reported
+## P0, required before anything is reported
 
 A re-capture is already mandatory because two answers in the run of record are truncated. That
 makes the marginal cost of the other retrieval-affecting fixes almost zero: fix them all, then
@@ -39,7 +39,7 @@ re-run **once**.
 
 ### Correctness of the instrument
 
-1. **Path extraction** — done. Extensions ordered longest-first; regression test added. The
+1. **Path extraction**, done. Extensions ordered longest-first; regression test added. The
    unverified-mentions panel was accusing correct answers.
 
 2. **Truncated generation.** `api/explain-code.ts` discards the model's `finishReason` and usage
@@ -57,7 +57,7 @@ re-run **once**.
 
 5. **Stopwords.** `default`, `export`, `interface`, `class`, `function` and `static` are removed
    from queries. Those are the terms a code search exists to match. Remove them from the stopword
-   list — and fix the unit test that queries `export` and passes on zero results, which is a test
+   list, and fix the unit test that queries `export` and passes on zero results, which is a test
    that measures nothing.
 
 ### Honesty of the interface
@@ -75,7 +75,7 @@ re-run **once**.
    partial repository set, and on non-boolean verdicts, and must not emit seeded candidates with
    blank correct answers.
 
-9. **`capture_gate.mjs`** — `--truth` optional and an empty status list passing; archive numbering
+9. **`capture_gate.mjs`**, `--truth` optional and an empty status list passing; archive numbering
    that can overwrite `run3`; a swallowed evidence timeout; a screenshot check that inspects only
    the answer's own ancestors and missed a constructed 360-pixel clip.
 
@@ -84,7 +84,7 @@ re-run **once**.
 11. **Ground truth into the gate files.** `correctAnswer` is empty in both. Collect it through
     `gate_worksheet.py` so the scorer and the seeded candidates have something to work with.
 
-## P1 — re-run and re-mark, once
+## P1, re-run and re-mark, once
 
 12. Re-capture both repositories with the fixes in place. Keep every archived run.
 
@@ -98,9 +98,9 @@ re-run **once**.
     parameters, alongside the model, top-k, excerpt size and file cap. After this point no change
     to the tool, for any reason, until data collection ends.
 
-## P2 — documents that no longer match
+## P2, documents that no longer match
 
-16. `AI-DISCLOSURE.md` — "every citation mechanically validated" is untrue for the 49 references
+16. `AI-DISCLOSURE.md`, "every citation mechanically validated" is untrue for the 49 references
     that return NOTE and receive no structural check. It also leaves the existing second marking's
     provenance unstated; say plainly that it was machine-produced.
 
@@ -113,7 +113,7 @@ re-run **once**.
 19. `second-marking.md` still carries the superseded 5/24 table and its 21% recommendation
     alongside the current position.
 
-## P3 — the study itself, which is the actual remaining work
+## P3, the study itself, which is the actual remaining work
 
 None of the above is the dissertation. This is:
 
@@ -133,7 +133,7 @@ The audit's roadmap belongs in *Recommendations for further work*, and it is unu
 material because it is specific and evidenced rather than aspirational:
 
 - symbol-level or AST-level chunking instead of whole-file indexing
-- hybrid retrieval — lexical for identifiers, embeddings for concepts — with a reranker
+- hybrid retrieval, lexical for identifiers, embeddings for concepts, with a reranker
 - import and call-graph expansion around initial hits, using the dependency graph the project
   already computes and currently uses only for display
 - adaptive evidence size instead of a fixed top three

@@ -10,7 +10,7 @@ machine-assisted process disclosed in `study/AI-DISCLOSURE.md`; do not silently 
 researcher confirmation. For a future gate, the stronger route is to open the cited files, read
 each answer, decide whether it describes what the code does, and stamp it:
 
-    **Status: CONFIRMED — <date>.**
+    **Status: CONFIRMED, <date>.**
 
 The capture accepts either CONFIRMED, or VERIFIED BY TOOL only when
 `--accept-tool-verified` is explicitly supplied. It checks that the ground-truth question IDs
@@ -18,7 +18,7 @@ and text exactly match every gate item; a missing or empty status list fails.
 
 Do not open the tool before this is finished for both files.
 
-## 2. Capture the tool's answers — automatic
+## 2. Capture the tool's answers, automatic
 
 Everything below runs **inside a clone of this repository**, not inside either study repository.
 The study repositories are only ever fetched by the tool over the network; nothing is installed
@@ -94,13 +94,13 @@ happens is incorrect. Have a human second marker check the pre-declared sample i
 
 If the tool is re-captured, old verdicts do not transfer: rebuild and re-mark the sheets.
 
-## 4. Score it — automatic
+## 4. Score it, automatic
 
     npm run gate:score
 
 The scorer fails unless both repositories are present and every question has non-empty frozen
 and tool answers plus an explicit boolean verdict. Only then does it print the accuracy figure
-for AE2 and write `study/seeded_candidates.json` — the only legitimate source of seeded items for
+for AE2 and write `study/seeded_candidates.json`, the only legitimate source of seeded items for
 the over-trust probes.
 
 ## If the figure comes out low

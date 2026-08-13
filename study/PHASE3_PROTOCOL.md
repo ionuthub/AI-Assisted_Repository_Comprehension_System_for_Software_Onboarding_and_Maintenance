@@ -118,13 +118,22 @@ capture.
   Task 4 is load-bearing: the retention phase was removed from the interface in `c5fb72a`, so the
   answer key is now the only place retention exists. A key without a `kind: "retention"` task drops
   the measure with no error and no warning.
-- Marking rubric (proposal: "pre-written answer key and marking rubric"). Template:
+- Marking rubric (proposal: "pre-written answer key and marking rubric"). **The runner records
+  this rubric directly** — locating tasks offer Correct/Incorrect, applied and retention tasks
+  offer 0, 1 or 2, and the export carries `score` and `maxScore` per task so the two are never
+  summed as though they were the same unit. Until then it offered Correct/Incorrect for every
+  kind, so a half-credit answer had to be forced to one or the other and half the rubric was
+  unrecordable.
   - Locating tasks: 1 point — named file/path matches the key (accept equivalent paths
     listed in expectedFiles).
   - Applied task: 0–2 points — 1 for the correct insertion point, 1 for identifying at
     least two genuinely affected areas; written justification required.
   - Retention question: same rubric as the applied task, marked independently.
   - Blind second-marking of a sample, disagreements resolved by discussion (proposal §2.1).
+  - Accuracy is therefore **points earned over points available**, not the proportion of tasks
+    marked correct. `analysis/analyze_sessions.py` computes H2 that way; a task-proportion figure
+    would weight a locating point equally with a two-point applied task and discard every
+    half-credit answer.
 - JISC Online Surveys: build the consent form, demographic form, and (optionally) SUS/TLX
   mirrors there. JISC only — SurveyMonkey/Google Forms would be an ethics breach.
 - Consent + debrief scripts: consent states that some tool answers may be inaccurate;
@@ -136,10 +145,21 @@ capture.
 2. Condition per the counterbalancing schedule: half manual-first, half tool-first;
    repository A/B crossed with condition so each participant sees each repo once.
 3. Evaluation page → Setup: participant ID (P01…), condition, order, import the answer key.
+   Once the session begins, a banner names the running condition on every screen — for the manual
+   half it reads **"Condition: Manual — do not use the tool"**. Check it matches the
+   counterbalancing schedule before starting, and check it again after any break: nothing else in
+   the interface distinguished the two halves, and neither a participant drifting into the tool
+   during a manual task nor an observer losing track of which half they were in leaves any trace
+   in the export, which records whatever condition was set at setup.
 4. Tasks phase: participant works; observer times via the page, records answers,
-   captures the 1–5 confidence after each task, scores against the key.
+   captures the 1–5 confidence after each task, scores against the key — Correct/Incorrect for
+   locating tasks, 0–2 for applied and retention.
    Seeded tasks (tool condition): show the tool's answer, record whether the participant
    flags it. Think-aloud comments go in observer notes.
+   **Nothing is recorded by default.** Confidence and both mark fields start unset and export as
+   null if never touched; the export summary lists any task left unmarked or unrated. Fill the
+   gaps while the participant is still present, because an unmarked task cannot be recovered
+   afterwards and is not the same as a task scored zero.
 5. **The retention question is the last task in the answer key, carrying `kind: "retention"`.**
    There is no separate retention phase — it was removed because, once the answer keys carried
    retention as a task, the phase re-asked the applied task's question instead of the retention
@@ -149,7 +169,14 @@ capture.
    that the tool was hidden. Until that is restored in the interface, the no-tool condition rests
    on the observer following this step, so it must be confirmed in the notes for every session or
    the retention measure is unverifiable.
-6. NASA-TLX, then SUS, on the page.
+6. NASA-TLX, then SUS, on the page. Both must be completed in full before the page will move on:
+   every TLX scale has to be operated even where the participant is content with the midpoint,
+   and all ten SUS items answered. Both instruments previously started at their midpoints — TLX at
+   50 on all six, SUS substituting 3 for any unanswered item — so an unadministered questionnaire
+   exported as a complete response, and ten unanswered SUS items scored exactly 50, which would
+   then have been compared against the published benchmark of 68 as though a participant had
+   produced it. A partial instrument now scores null rather than an estimate, and
+   `analyze_sessions.py` drops those participants from H3/H4 and prints the exclusion.
 7. Export JSON (and CSV); file naming session_Pxx_condition.json; store on university
    OneDrive only, pseudonymised. Debrief, including seeded items.
 8. Repeat for the second condition/repository (same sitting or scheduled second sitting —
@@ -188,14 +215,14 @@ hand-checkable cases. n = 12–20 → report as exploratory (Wohlin et al., 2012
 
 | Proposal commitment (AE1)                                  | Where it is satisfied                                                                 |
 | ---------------------------------------------------------- | ------------------------------------------------------------------------------------- |
-| Two task kinds: locating vs applied                        | Task model `kind` field; Evaluation page badges                                       |
+| Two task kinds: locating vs applied                        | Task model `kind` field; Evaluation page badges; per-kind marking (binary vs 0-2)      |
 | No-tool retention question                                 | Answer-key task with `kind: "retention"`, carried through both exports; no-tool condition administered by the observer per run-sheet step 5, **not enforced or recorded by the interface** |
 | Pre-study accuracy gate                                    | `accuracy_gate.py` + gate templates + Step 2                                          |
 | Seeded known-inaccurate cases (Buçinca)                    | `seededInaccurate`/`seededAnswerShown`/`errorDetected`; sourced only from gate output |
-| Time, accuracy, NASA-TLX, SUS, comments                    | Timers, scoring buttons, TLX + SUS phases, observer notes                             |
-| Per-answer confidence / confidence-accuracy gap            | 1–5 slider per task; gap computed in analysis                                         |
+| Time, accuracy, NASA-TLX, SUS, comments                    | Timers, scoring buttons, TLX + SUS phases (both refuse to advance until complete), observer notes |
+| Per-answer confidence / confidence-accuracy gap            | 1–5 slider per task, unset until recorded; gap computed in analysis over rated tasks only |
 | Wilcoxon + effect sizes, p < 0.05, exploratory framing     | `analyze_sessions.py` (validated)                                                     |
-| Within-subjects, counterbalanced, two matched repos        | Setup condition/order fields; `repo_stats.py` matching evidence                       |
+| Within-subjects, counterbalanced, two matched repos        | Setup condition/order fields; on-screen condition banner; `repo_stats.py` matching evidence |
 | 12–20 participants, experience recorded                    | Run-sheet Steps 1 & 4                                                                 |
 | JISC only; consent; withdrawal; debrief incl. seeded items | Step 3 & 4; ethics gate above                                                         |
 | Pilot before main study                                    | Step 4 pilot note                                                                     |

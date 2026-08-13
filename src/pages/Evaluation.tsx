@@ -11,7 +11,8 @@ import { Play, CheckCircle, Clock, Download, Upload, AlertTriangle } from "lucid
 import SEO from "@/components/SEO";
 import {
   Condition, StudySession, StudyTask, TLX_SCALES, TlxRatings, GroundTruthFile,
-  DEMO_ANSWER_KEY, tasksFromGroundTruth, isDemoTaskSet, canBeginTasks,
+  DEMO_ANSWER_KEY, EMPTY_TLX, tasksFromGroundTruth, isDemoTaskSet, canBeginTasks,
+  isTlxComplete, isSusComplete, taskMaxScore, taskScore,
   susScore, tlxScore, sessionToCsv, download,
 } from "@/lib/evaluation/session";
 import { readMetrics } from "@/lib/evaluation/metrics";
@@ -65,8 +66,10 @@ export default function EvaluationPage() {
   // --- runtime ---
   const [activeTaskId, setActiveTaskId] = useState<number | null>(null);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
-  const [tlx, setTlx] = useState<TlxRatings>({ mental: 50, physical: 50, temporal: 50, performance: 50, effort: 50, frustration: 50 });
-  const [sus, setSus] = useState<Record<number, number>>(Object.fromEntries(Array.from({ length: 10 }, (_, i) => [i, 3])));
+  // Both instruments start empty. A control resting at a default records a response nobody gave,
+  // and the phase buttons below refuse to advance until every item has actually been answered.
+  const [tlx, setTlx] = useState<TlxRatings>(EMPTY_TLX);
+  const [sus, setSus] = useState<Record<number, number | null>>({});
   const [notes, setNotes] = useState("");
 
   // Restore offer is decided once on mount so it does not reappear after being dismissed.
@@ -159,6 +162,8 @@ export default function EvaluationPage() {
     setTasks((prev) => prev.map((t) => (t.id === id ? { ...t, [key]: value } : t)));
 
   const allTasksDone = tasks.every((t) => t.status === "completed");
+  const tlxComplete = isTlxComplete(tlx);
+  const susComplete = isSusComplete(sus);
 
   const buildSession = (): StudySession => ({
     participantId: participantId || "unassigned",
@@ -175,7 +180,10 @@ export default function EvaluationPage() {
     // retention answer twice, or read the block and ignored the task.
     const payload = {
       session,
+      // Null rather than a computed figure when the instrument is incomplete. A score derived from
+      // partial responses is not a weaker measurement of the same thing, it is a different one.
       scores: { sus: susScore(sus), tlxRaw: tlxScore(tlx) },
+      instrumentsComplete: { sus: susComplete, tlx: tlxComplete },
       pilotMetrics: readMetrics(),
       exportedAt: new Date().toISOString(),
     };
@@ -215,6 +223,43 @@ export default function EvaluationPage() {
         <h1 className="text-2xl font-bold">Evaluation Session</h1>
         <Badge variant="outline">{phase.toUpperCase()}</Badge>
       </header>
+
+      {/*
+        Which condition is running, on screen for the whole session.
+        A within-subjects design depends on the manual half actually being manual. Nothing else in
+        the interface said which half was in progress, so a participant could drift into the tool
+        during a manual task and the observer could lose track of which half they were in — and
+        neither slip leaves a trace in the export, which records the condition the observer set at
+        setup regardless of what happened. The manual wording is an instruction, not a label,
+        because it is the case where behaviour has to change.
+      */}
+      {phase !== "setup" && (
+        <div
+          role="status"
+          className={
+            condition === "manual"
+              ? "rounded-md border-2 border-destructive bg-destructive/15 px-4 py-3"
+              : "rounded-md border border-primary/60 bg-primary/10 px-4 py-3"
+          }
+        >
+          <p className="text-ui font-semibold text-foreground flex items-center gap-2">
+            {condition === "manual" ? (
+              <>
+                <AlertTriangle className="w-4 h-4 text-destructive shrink-0" aria-hidden="true" />
+                Condition: Manual — do not use the tool
+              </>
+            ) : (
+              <>
+                <CheckCircle className="w-4 h-4 text-primary shrink-0" aria-hidden="true" />
+                Condition: Tool
+              </>
+            )}
+          </p>
+          <p className="text-meta text-muted-foreground mt-0.5">
+            {participantId || "unassigned"} · {repository || "unspecified"} · {order}
+          </p>
+        </div>
+      )}
 
       {phase === "setup" && (
         <Card><CardContent className="pt-6 space-y-4">
@@ -312,16 +357,65 @@ export default function EvaluationPage() {
                 <div className="space-y-2">
                   <p className="text-sm"><span className="font-medium">Answer: </span>{t.answer || "—"}</p>
                   <div className="flex items-center gap-3">
-                    <Label className="text-sm">Confidence in this answer (1–5)</Label>
-                    <Slider className="w-40" min={1} max={5} step={1} value={[t.confidence]}
-                      onValueChange={([v]) => setTaskField(t.id, "confidence", v)} />
-                    <Badge variant="outline">{t.confidence}</Badge>
+                    <Label className="text-sm" htmlFor={`confidence-${t.id}`}>
+                      Confidence in this answer (1–5)
+                    </Label>
+                    <Slider
+                      id={`confidence-${t.id}`}
+                      className={`w-40 ${t.confidence === null ? "opacity-50" : ""}`}
+                      min={1} max={5} step={1}
+                      value={[t.confidence ?? 3]}
+                      aria-label={`Confidence for ${t.name}`}
+                      aria-valuetext={t.confidence === null ? "not recorded" : String(t.confidence)}
+                      onValueChange={([v]) => setTaskField(t.id, "confidence", v)}
+                    />
+                    <Badge variant={t.confidence === null ? "destructive" : "outline"}>
+                      {t.confidence ?? "not recorded"}
+                    </Badge>
                   </div>
-                  <div className="flex items-center gap-2 text-sm">
-                    <span>Scored against answer key:</span>
-                    <Button size="sm" variant={t.isCorrect === true ? "default" : "outline"} onClick={() => setTaskField(t.id, "isCorrect", true)}>Correct</Button>
-                    <Button size="sm" variant={t.isCorrect === false ? "default" : "outline"} onClick={() => setTaskField(t.id, "isCorrect", false)}>Incorrect</Button>
-                  </div>
+
+                  {/*
+                    Locating tasks are binary; applied and retention tasks are 0-2. That split is
+                    the marking rubric in the protocol and the answer keys, which award 1 for the
+                    correct insertion point and 1 for at least two further affected areas. The
+                    runner used to offer Correct/Incorrect for every kind, so an answer worth 1 of
+                    2 had to be forced into one or the other and half the rubric could not be
+                    recorded at all.
+                  */}
+                  {t.kind === "locating" ? (
+                    <div className="flex items-center gap-2 text-sm">
+                      <span>Scored against answer key:</span>
+                      <Button size="sm" variant={t.isCorrect === true ? "default" : "outline"} onClick={() => setTaskField(t.id, "isCorrect", true)}>Correct</Button>
+                      <Button size="sm" variant={t.isCorrect === false ? "default" : "outline"} onClick={() => setTaskField(t.id, "isCorrect", false)}>Incorrect</Button>
+                      {t.isCorrect === null && (
+                        <Badge variant="destructive">not marked</Badge>
+                      )}
+                    </div>
+                  ) : (
+                    <div className="flex items-center gap-2 text-sm flex-wrap">
+                      <span>Rubric score (0–2):</span>
+                      {[0, 1, 2].map((p) => (
+                        <Button
+                          key={p}
+                          size="sm"
+                          variant={t.points === p ? "default" : "outline"}
+                          onClick={() => setTaskField(t.id, "points", p)}
+                          aria-pressed={t.points === p}
+                        >
+                          {p}
+                        </Button>
+                      ))}
+                      {t.points === null && <Badge variant="destructive">not marked</Badge>}
+                      <span className="text-meta text-muted-foreground w-full">
+                        1 for the correct insertion point, 1 for at least two further affected
+                        areas with written justification.
+                      </span>
+                    </div>
+                  )}
+
+                  <p className="text-meta text-muted-foreground">
+                    Score: {taskScore(t) ?? "—"} / {taskMaxScore(t.kind)}
+                  </p>
                 </div>
               )}
             </CardContent></Card>
@@ -335,32 +429,64 @@ export default function EvaluationPage() {
       {phase === "tlx" && (
         <Card><CardContent className="pt-6 space-y-5">
           <h3 className="font-semibold">NASA-TLX workload (0–100)</h3>
+          <p className="text-meta text-muted-foreground">
+            Click or drag every scale, including any the participant leaves at the middle. A scale
+            that is never touched is exported as unrecorded, not as 50.
+          </p>
           {TLX_SCALES.map(({ key, label, prompt }) => (
             <div key={key} className="space-y-1">
-              <div className="flex justify-between text-sm"><span className="font-medium">{label}</span><span>{tlx[key]}</span></div>
+              <div className="flex justify-between text-sm">
+                <span className="font-medium">{label}</span>
+                <span className={tlx[key] === null ? "text-destructive font-medium" : ""}>
+                  {tlx[key] ?? "not recorded"}
+                </span>
+              </div>
               <p className="text-xs text-muted-foreground">{prompt}</p>
-              <Slider min={0} max={100} step={5} value={[tlx[key]]} onValueChange={([v]) => setTlx((p) => ({ ...p, [key]: v }))} />
+              <Slider
+                min={0} max={100} step={5}
+                className={tlx[key] === null ? "opacity-50" : ""}
+                value={[tlx[key] ?? 50]}
+                aria-label={label}
+                aria-valuetext={tlx[key] === null ? "not recorded" : String(tlx[key])}
+                onValueChange={([v]) => setTlx((p) => ({ ...p, [key]: v }))}
+              />
             </div>
           ))}
-          <Button className="w-full" onClick={() => setPhase("sus")}>Continue to SUS</Button>
+          <Button className="w-full" disabled={!tlxComplete} onClick={() => setPhase("sus")}>
+            {tlxComplete
+              ? "Continue to SUS"
+              : `Continue to SUS · ${TLX_SCALES.filter(({ key }) => tlx[key] === null).length} scale(s) not recorded`}
+          </Button>
         </CardContent></Card>
       )}
 
       {phase === "sus" && (
         <Card><CardContent className="pt-6 space-y-4">
           <h3 className="font-semibold">System Usability Scale (1 = strongly disagree, 5 = strongly agree)</h3>
+          <p className="text-meta text-muted-foreground">
+            All ten items are required. SUS has no defined score from a partial response, so an
+            unfinished questionnaire is exported without one rather than with an estimate.
+          </p>
           {SUS_QUESTIONS.map((q, i) => (
             <div key={i} className="flex items-center justify-between gap-4">
-              <p className="text-sm flex-1">{i + 1}. {q}</p>
+              <p className="text-sm flex-1">
+                {i + 1}. {q}
+                {sus[i] == null && <span className="text-destructive"> ·&nbsp;unanswered</span>}
+              </p>
               <div className="flex gap-1">
                 {[1, 2, 3, 4, 5].map((v) => (
                   <Button key={v} size="sm" variant={sus[i] === v ? "default" : "outline"}
+                    aria-pressed={sus[i] === v}
                     onClick={() => setSus((p) => ({ ...p, [i]: v }))}>{v}</Button>
                 ))}
               </div>
             </div>
           ))}
-          <Button className="w-full" onClick={() => setPhase("export")}>Review and export</Button>
+          <Button className="w-full" disabled={!susComplete} onClick={() => setPhase("export")}>
+            {susComplete
+              ? "Review and export"
+              : `Review and export · ${SUS_QUESTIONS.filter((_, i) => sus[i] == null).length} item(s) unanswered`}
+          </Button>
         </CardContent></Card>
       )}
 
@@ -370,9 +496,30 @@ export default function EvaluationPage() {
           <div className="grid grid-cols-2 gap-2 text-sm">
             <span>Participant: <Badge variant="outline">{participantId}</Badge></span>
             <span>Condition: <Badge variant="outline">{condition}</Badge></span>
-            <span>SUS score: <Badge>{susScore(sus)}</Badge></span>
-            <span>NASA-TLX (raw): <Badge>{tlxScore(tlx)}</Badge></span>
+            <span>SUS score: <Badge variant={susComplete ? "default" : "destructive"}>{susScore(sus) ?? "incomplete"}</Badge></span>
+            <span>NASA-TLX (raw): <Badge variant={tlxComplete ? "default" : "destructive"}>{tlxScore(tlx) ?? "incomplete"}</Badge></span>
           </div>
+
+          {/* Marking is the observer's, and an unmarked task is easy to miss on a long list. */}
+          {tasks.some((t) => taskScore(t) === null || t.confidence === null) && (
+            <div className="flex items-start gap-2 rounded-md border border-warning/60 bg-warning/10 p-3">
+              <AlertTriangle className="w-4 h-4 text-warning shrink-0 mt-0.5" aria-hidden="true" />
+              <p className="text-meta text-muted-foreground">
+                <span className="font-semibold text-foreground">Not every task is fully recorded.</span>{" "}
+                {tasks.filter((t) => taskScore(t) === null).map((t) => `Q${t.id}`).join(", ") || "None"} unmarked;{" "}
+                {tasks.filter((t) => t.confidence === null).map((t) => `Q${t.id}`).join(", ") || "none"} without a
+                confidence rating. Exporting is still allowed — the gaps are recorded as gaps — but
+                fill them now if the participant is still present.
+              </p>
+            </div>
+          )}
+
+          <p className="text-meta text-muted-foreground">
+            Total score:{" "}
+            {tasks.reduce((n, t) => n + (taskScore(t) ?? 0), 0)} /{" "}
+            {tasks.reduce((n, t) => n + taskMaxScore(t.kind), 0)}
+            {" "}(unmarked tasks count as 0 in this preview only; the export records them as null)
+          </p>
           <div>
             <Label htmlFor="notes">Observer notes</Label>
             <Textarea id="notes" value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="Think-aloud observations, incidents, deviations…" />

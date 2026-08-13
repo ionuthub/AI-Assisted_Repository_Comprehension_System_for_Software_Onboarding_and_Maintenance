@@ -60,15 +60,43 @@ runs at 15:55Z and 15:57Z still recorded `fd5f5ab` — a change of checkout, not
 deploy. Confirm the deployed commit in the Vercel dashboard and record it alongside the figure,
 or re-run with an explicit `--tool-version`.
 
-**Deployed build: `c5fb72a`.** Confirmed in the Vercel dashboard on 10 August — deployment
-`repo-comprehension-system-hr9g9drqr-ionuthubs-projects.vercel.app`, serving the
-`repo-comprehension-system.vercel.app` domain, status Ready, built from `main` at `c5fb72a`. This
-is the build pilots and participants meet, and the SHA to record against each session.
+**Deployed build: `b816b64`, built from source at `beae1ae`.** Confirmed in the Vercel dashboard
+on 13 August. This is the build pilots and participants meet, and the SHA to record against each
+session. It supersedes `c5fb72a`, confirmed deployed on 10 August.
+
+Two SHAs are recorded because they answer different questions, and both answer keys carry both:
+
+- `artefactVersion` = **`b816b64`**, the commit the deployment was built from. This is what the
+  dashboard reports and what identifies the deployment.
+- `artefactSourceCommit` = **`beae1ae`**, the last commit that changed anything the application is
+  built from. `beae1ae..b816b64` touches only `study/answer-key.*.json`, so the running
+  application is unchanged across that range:
+
+      git diff --stat beae1ae..b816b64 -- src/ api/ package.json package-lock.json \
+        vite.config.ts index.html tailwind.config.ts postcss.config.js
+
+  That command returns nothing.
+
+The distinction matters because study material lives in the same repository as the artefact.
+Every commit to `study/` triggers a redeploy and moves the deployment SHA without changing a line
+of the tool, so `artefactVersion` alone drifts away from the last real change to the instrument.
+A reader asking "did the tool change between these two participants?" should read
+`artefactSourceCommit`; a reader asking "which deployment served this session?" should read
+`artefactVersion`. Answering the first question with the second would report a change that never
+happened.
+
+**`beae1ae` is the current freeze point for the artefact.** It carries the three changes made on
+13 August: unrecorded responses are exported as unrecorded rather than as instrument defaults, the
+0–2 rubric for applied and retention tasks is recordable, and the running condition is displayed
+on screen throughout the session. None of them touches ingestion, retrieval or the prompt, so the
+gate figure is not re-captured — the same reasoning as for `c5fb72a`, and the diff below still
+returns nothing against the capture build.
 
 **Why the 6/24 figure is not re-captured against it.** The gate figure was captured against
-`429f830`, and every file the gate exercises is byte-identical between `429f830` and `c5fb72a`:
+`429f830`, and every file the gate exercises is byte-identical between `429f830` and the current
+freeze point `beae1ae`:
 
-    git diff --stat 429f830..c5fb72a -- \
+    git diff --stat 429f830..beae1ae -- \
       src/lib/github.ts src/lib/semanticSearch.ts src/lib/promptBuilder.ts \
       src/lib/generationProtocol.ts src/lib/ingestionFilters.ts src/lib/staticAnalysis.ts \
       src/lib/repositoryScanner.ts src/components/WorkspaceQAView.tsx \
@@ -76,10 +104,11 @@ is the build pilots and participants meet, and the SHA to record against each se
       src/components/CodeViewer.tsx src/pages/Index.tsx src/store/useProjectStore.ts \
       src/constants/appConstants.ts api/
 
-That command returns nothing. The only changes in the range are to the study session runner
-(`src/pages/Evaluation.tsx`, `src/lib/evaluation/sessionStorage.ts`) and its tests, none of which
-sit on the capture path — the gate drives the question-answering flow, not the evaluation page. So
-the recorded figure measures the code now deployed.
+That command returns nothing. The only source changes in the range are to the study session runner
+and its supporting model — `src/pages/Evaluation.tsx`, `src/lib/evaluation/session.ts`,
+`src/lib/evaluation/sessionStorage.ts`, `src/test/setup.ts` — and their tests. None sits on the
+capture path: the gate drives the question-answering flow, not the evaluation page. So the
+recorded figure measures the code now deployed.
 
 Re-capturing an unchanged pipeline could only confirm the figure or move it by model
 nondeterminism, and the second is a live risk rather than a theoretical one: two captures of the
@@ -88,11 +117,11 @@ that flipped on a re-run would move the headline AE2 figure for a reason unconne
 artefact. The figure therefore stands as captured, with its build stated, and a re-capture is
 required only if a change lands on one of the paths listed above.
 
-**What this does not establish.** The dashboard confirms `c5fb72a` is deployed now; it says nothing
+**What this does not establish.** The dashboard confirms what is deployed now; it says nothing
 about which commit was being served at 16:00Z on 5 August, when the marked capture ran. That
 deployments are built from `main` on push makes it likely `429f830` — pushed 34 minutes earlier —
 was live, but likely is not confirmed, and the `toolVersion` limitation above still applies to that
-capture.
+capture. No later confirmation can close that gap retrospectively.
 
 ## Step 3 — Build the study materials
 
@@ -197,10 +226,13 @@ the cause; running everything against the deployed build removes the class. Reco
 commit SHA of the deployed build alongside each session, as the accuracy gate already
 does in its `toolVersion` field.
 
-At the time of writing that build is **`c5fb72a`** (see Step 2). Read the SHA from the Vercel
-dashboard at the start of each session rather than from a local `git log`: the two are the same
-only when nothing has been pushed since the last deploy, and `toolVersion` reads the local
-checkout, which is how the ambiguity in the 5 August capture arose.
+At the time of writing that build is **`b816b64`**, from source at **`beae1ae`** (see Step 2).
+Read the SHA from the Vercel dashboard at the start of each session rather than from a local
+`git log`: the two are the same only when nothing has been pushed since the last deploy, and
+`toolVersion` reads the local checkout, which is how the ambiguity in the 5 August capture arose.
+Record the dashboard SHA against the session, and check it against `artefactSourceCommit` in the
+answer key — if the two disagree the tool itself may have changed mid-study, which is a condition
+change rather than a bookkeeping detail.
 
 ## Step 5 — Analysis (already implemented, validated)
 

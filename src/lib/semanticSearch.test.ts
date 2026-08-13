@@ -36,7 +36,7 @@ describe('tokenize', () => {
 describe('buildSearchIndex', () => {
   it('indexes file content, not only the path', () => {
     const index = buildSearchIndex(CORPUS);
-    // "charge" occurs only inside the file body (chargeCard), never in its path — so its
+    // "charge" occurs only inside the file body (chargeCard), never in its path, so its
     // presence proves the index covers content. Ingestion previously left content null
     // for every GitHub file, which reduced the index to path tokens alone.
     const tokens = Object.keys(index.docVectors['src/lib/paymentProcessor.ts']);

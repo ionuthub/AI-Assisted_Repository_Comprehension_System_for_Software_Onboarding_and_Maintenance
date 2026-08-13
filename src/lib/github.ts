@@ -144,7 +144,7 @@ const validateFilePath = (path: string): boolean => {
  * Classifies every blob in the tree into the set that is indexed and the set that is not,
  * recording why each exclusion happened.
  *
- * The reasons are the ones the code actually applies — nothing is inferred or invented — so
+ * The reasons are the ones the code actually applies, nothing is inferred or invented, so
  * the coverage figures the interface shows, and any statement made about them in the study,
  * are traceable to the filter that produced them.
  */
@@ -191,7 +191,7 @@ const buildProjectFiles = (items: GitHubTreeItem[]): ProjectFile[] =>
  * Fetches file contents with bounded concurrency.
  *
  * The search index is built from `file.content`, so a project whose files all carry
- * `content: null` produces an index over path tokens alone — retrieval then degrades to
+ * `content: null` produces an index over path tokens alone, retrieval then degrades to
  * filename matching and the RAG prompt is assembled with no evidence. Contents are
  * therefore hydrated during ingestion rather than lazily as the user opens files.
  *

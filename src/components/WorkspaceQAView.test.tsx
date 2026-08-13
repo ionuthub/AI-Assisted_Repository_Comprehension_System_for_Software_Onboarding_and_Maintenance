@@ -7,7 +7,7 @@ describe('MENTIONED_PATH', () => {
   it('keeps the x on .tsx and .jsx', () => {
     // Listing `ts` before `tsx` in the alternation truncated every React component path, so the
     // unverified-mentions panel accused correct answers of citing files that were never
-    // retrieved — while showing the real file as evidence immediately above the accusation.
+    // retrieved, while showing the real file as evidence immediately above the accusation.
     expect(extract('see src/components/PriorityPanel.tsx here')).toEqual([
       'src/components/PriorityPanel.tsx',
     ]);
@@ -34,7 +34,7 @@ describe('MENTIONED_PATH', () => {
 // The Answers tab is reachable before any question exists. These tests pin the
 // empty state discovered in the 1 August smoke test: the view rendered its full
 // answer layout for a question that was never asked, and the evidence panel
-// reported "No evidence · 0 files retrieved" for a retrieval that never ran —
+// reported "No evidence · 0 files retrieved" for a retrieval that never ran,
 // a manufactured failure state in an instrument whose subject is trust.
 import { render, screen } from '@testing-library/react';
 import WorkspaceQAView from './WorkspaceQAView';

@@ -73,7 +73,7 @@ export const useProjectStore = create<ProjectState>((set) => ({
             project,
             // The file cache is keyed by path alone, so it MUST be discarded whenever the
             // project changes. The two study repositories are a matched pair and therefore
-            // share paths deliberately — src/types/domain.ts exists in both. Carrying the
+            // share paths deliberately, src/types/domain.ts exists in both. Carrying the
             // cache across a switch served the previous repository's contents under the new
             // repository's file name: clinic-triage's ReferralType displayed as though it
             // were part of warehouse-dispatch.
@@ -98,7 +98,7 @@ export const useProjectStore = create<ProjectState>((set) => ({
 
         // Since ingestion hydrates content up front, opening a file usually supplies the
         // same text the index already holds. Rebuilding then costs a full synchronous pass
-        // over every file — a visible freeze during a timed task — and produces an
+        // over every file, a visible freeze during a timed task, and produces an
         // identical index. Only the analysis for this file is refreshed in that case.
         if (contentUnchanged && state.searchIndex) {
             const filePaths = state.project.files.map(f => f.path);

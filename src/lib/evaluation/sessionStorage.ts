@@ -13,7 +13,9 @@ export interface PersistedSession {
   savedAtIso: string;
   phase: string;
   participantId: string;
-  condition: Condition;
+  // Null until the observer picks one. Persisting a default would restore a session into the
+  // wrong arm as silently as defaulting to it in the first place.
+  condition: Condition | null;
   order: "manual-first" | "tool-first";
   repository: string;
   tasks: StudyTask[];
@@ -24,7 +26,7 @@ export interface PersistedSession {
   // and Evaluation.tsx resumes an unrecognised `phase` at setup.
   tlx: TlxRatings;
   // Null entries, and absent entries, both mean "not answered". tsconfig sets
-  // strictNullChecks: false, so this annotation documents the contract rather than enforcing it —
+  // strictNullChecks: false, so this annotation documents the contract rather than enforcing it,
   // the enforcement is in session.test.ts, which asserts that an incomplete instrument scores null
   // rather than being completed with a default.
   sus: Record<number, number | null>;

@@ -59,7 +59,7 @@ describe('partitionTreeFiles', () => {
   });
 });
 
-describe('partitionTreeFiles — vendored directories', () => {
+describe('partitionTreeFiles, vendored directories', () => {
   it('excludes node_modules so the file budget is spent on the project itself', () => {
     // Reproduces the observed failure: a repository with committed dependencies filled all
     // 50 slots with vendored files, and the model reported the entry point as absent.

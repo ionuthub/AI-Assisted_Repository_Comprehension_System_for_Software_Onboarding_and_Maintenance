@@ -357,7 +357,7 @@ export const scanRepository = (files: ProjectFile[]): RepositoryScanResult => {
   // The summary states only what detection measured: language, counts, and
   // which technologies were found. Earlier versions appended quality judgements
   // ("clean architecture", "designed for scalability") that no analysis had
-  // established — in a tool whose subject is calibrated trust, the overview
+  // established, in a tool whose subject is calibrated trust, the overview
   // must not assert what it has not checked.
   let archSummary = `This workspace features a **${primaryLang}** codebase containing **${fileCount}** files with a total size of **${(totalSize / 1024).toFixed(1)} KB**.`;
 

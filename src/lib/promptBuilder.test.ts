@@ -15,7 +15,7 @@ describe('retrieval parameters against the context cap', () => {
    * The evidence panel states which files and line ranges were sent to the model. The
    * deployed function caps the context at MAX_SYSTEM_CONTEXT_CHARS. If the retrieval
    * parameters are ever tuned past that cap, production silently truncates evidence the
-   * panel has already claimed was sent — the panel becomes a false statement, in the one
+   * panel has already claimed was sent, the panel becomes a false statement, in the one
    * part of the artefact whose whole purpose is letting a reader check the answer.
    *
    * RETRIEVAL is documented as an experimental parameter set, so it will be tuned. This
@@ -31,7 +31,7 @@ describe('retrieval parameters against the context cap', () => {
       worstCase,
       `Retrieval can assemble ${worstCase} characters but the deployed function caps ` +
         `context at ${MAX_SYSTEM_CONTEXT_CHARS}. Raise MAX_SYSTEM_CONTEXT_CHARS or lower ` +
-        `RAG_TOP_K / RAG_CONTEXT_CHARS — do not leave them apart, or production will drop ` +
+        `RAG_TOP_K / RAG_CONTEXT_CHARS, do not leave them apart, or production will drop ` +
         `evidence the evidence panel reports as sent.`
     ).toBeLessThanOrEqual(MAX_SYSTEM_CONTEXT_CHARS);
   });

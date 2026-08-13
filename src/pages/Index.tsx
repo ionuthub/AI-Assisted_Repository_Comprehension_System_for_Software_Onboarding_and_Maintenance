@@ -269,7 +269,7 @@ const Index = () => {
 
     // Retrieval can return nothing, or return files whose content was never loaded. The
     // prompt was previously sent unchanged in that case, so an ungrounded answer was
-    // presented in a UI that implies grounding — the exact condition the study's
+    // presented in a UI that implies grounding, the exact condition the study's
     // over-trust probes are meant to measure deliberately, not to produce by accident.
     if (evidenceFileCount === 0) {
       systemContext += "\n\n[No repository context could be retrieved for this question. Say so explicitly in the first sentence of your answer, and do not describe specific files, functions or behaviour in this repository.]";
@@ -375,7 +375,7 @@ const Index = () => {
                         <div className="min-w-0 flex-1 space-y-1.5">
                           <p className={`text-ui ${state === "pending" ? "text-muted-foreground" : "text-foreground"}`}>
                             {step.label}
-                            {state === "done" && <span className="sr-only"> — complete</span>}
+                            {state === "done" && <span className="sr-only">, complete</span>}
                           </p>
 
                           {step.phase === "fetching" && ingestionProgress?.phase === "fetching" && (

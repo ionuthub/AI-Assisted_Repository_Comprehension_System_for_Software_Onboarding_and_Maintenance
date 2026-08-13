@@ -24,7 +24,7 @@ interface ResultDetail {
 
 /**
  * Results state why each file matched and how strongly, so a user can judge relevance
- * without opening every one — and so a claim about search quality can be checked rather
+ * without opening every one, and so a claim about search quality can be checked rather
  * than taken on trust.
  */
 export default function WorkspaceSearchView({

@@ -9,6 +9,7 @@ import { Slider } from "@/components/ui/slider";
 import { useToast } from "@/hooks/use-toast";
 import { Play, CheckCircle, Clock, Download, Upload, AlertTriangle } from "lucide-react";
 import SEO from "@/components/SEO";
+import AnswerBody from "@/components/AnswerBody";
 import {
   Condition, StudySession, StudyTask, TLX_SCALES, TlxRatings, GroundTruthFile,
   DEMO_ANSWER_KEY, EMPTY_TLX, tasksFromGroundTruth, isDemoTaskSet, canBeginTasks,
@@ -38,7 +39,7 @@ const SUS_QUESTIONS = [
  *
  * There was a dedicated "retention" phase here. Once the answer keys began carrying retention as
  * a task with `kind: "retention"`, the phase asked a question the participant had already
- * answered — and asked it wrongly, since it displayed `appliedTask.description` rather than the
+ * answered, and asked it wrongly, since it displayed `appliedTask.description` rather than the
  * retention task's own. A participant met the applied task's prompt twice and the retention
  * prompt never, so the retention measure recorded a second attempt at a question they had just
  * completed with the tool in front of them.
@@ -57,7 +58,9 @@ export default function EvaluationPage() {
 
   // --- session setup ---
   const [participantId, setParticipantId] = useState("");
-  const [condition, setCondition] = useState<Condition>("tool");
+  // No default. See canBeginTasks: a condition that defaults to one arm runs and exports as that
+  // arm whenever nobody notices, and the mistake leaves no trace in the data.
+  const [condition, setCondition] = useState<Condition | null>(null);
   const [order, setOrder] = useState<"manual-first" | "tool-first">("manual-first");
   const [repository, setRepository] = useState("");
   const [tasks, setTasks] = useState<StudyTask[]>(tasksFromGroundTruth(DEMO_ANSWER_KEY));
@@ -148,8 +151,8 @@ export default function EvaluationPage() {
       prev.map((t) => {
         if (t.id !== id) return t;
         // Derive the duration from the two timestamps rather than the interval tick count:
-        // browsers throttle timers in background tabs, which would under-report task time —
-        // the study's primary dependent variable — by an amount correlated with condition.
+        // browsers throttle timers in background tabs, which would under-report task time,
+        // the study's primary dependent variable, by an amount correlated with condition.
         const elapsedSeconds = t.startTimeIso
           ? Math.max(0, Math.round((Date.parse(completionTimeIso) - Date.parse(t.startTimeIso)) / 1000))
           : t.elapsedSeconds;
@@ -187,11 +190,11 @@ export default function EvaluationPage() {
       pilotMetrics: readMetrics(),
       exportedAt: new Date().toISOString(),
     };
-    download(`session_${session.participantId}_${condition}.json`, JSON.stringify(payload, null, 2), "application/json");
+    download(`session_${session.participantId}_${condition ?? "unset"}.json`, JSON.stringify(payload, null, 2), "application/json");
   };
 
   const exportCsv = () => {
-    download(`session_${participantId || "unassigned"}_${condition}.csv`, sessionToCsv(buildSession()), "text/csv");
+    download(`session_${participantId || "unassigned"}_${condition ?? "unset"}.csv`, sessionToCsv(buildSession()), "text/csv");
   };
 
   return (
@@ -228,7 +231,7 @@ export default function EvaluationPage() {
         Which condition is running, on screen for the whole session.
         A within-subjects design depends on the manual half actually being manual. Nothing else in
         the interface said which half was in progress, so a participant could drift into the tool
-        during a manual task and the observer could lose track of which half they were in — and
+        during a manual task and the observer could lose track of which half they were in, and
         neither slip leaves a trace in the export, which records the condition the observer set at
         setup regardless of what happened. The manual wording is an instruction, not a label,
         because it is the case where behaviour has to change.
@@ -246,7 +249,7 @@ export default function EvaluationPage() {
             {condition === "manual" ? (
               <>
                 <AlertTriangle className="w-4 h-4 text-destructive shrink-0" aria-hidden="true" />
-                Condition: Manual — do not use the tool
+                Condition: Manual. Do not use the tool.
               </>
             ) : (
               <>
@@ -272,8 +275,9 @@ export default function EvaluationPage() {
           <div className="grid grid-cols-2 gap-4">
             <div><Label>Condition for this session</Label>
               <div className="flex gap-2 mt-1">
-                <Button variant={condition === "manual" ? "default" : "outline"} onClick={() => setCondition("manual")}>Manual</Button>
-                <Button variant={condition === "tool" ? "default" : "outline"} onClick={() => setCondition("tool")}>Tool</Button>
+                <Button variant={condition === "manual" ? "default" : "outline"} aria-pressed={condition === "manual"} onClick={() => setCondition("manual")}>Manual</Button>
+                <Button variant={condition === "tool" ? "default" : "outline"} aria-pressed={condition === "tool"} onClick={() => setCondition("tool")}>Tool</Button>
+                {condition === null && <Badge variant="destructive">not set</Badge>}
               </div></div>
             <div><Label>Counterbalancing order</Label>
               <div className="flex gap-2 mt-1">
@@ -305,7 +309,7 @@ export default function EvaluationPage() {
           )}
           <Button
             className="w-full"
-            disabled={!canBeginTasks(participantId, tasks)}
+            disabled={!canBeginTasks(participantId, tasks, condition)}
             onClick={() => setPhase("tasks")}
           >
             Begin tasks
@@ -333,7 +337,16 @@ export default function EvaluationPage() {
                   <div className="flex items-center gap-2 font-medium">
                     <AlertTriangle className="w-4 h-4" />Tool answer shown to participant:
                   </div>
-                  <p className="italic">{t.seededAnswerShown}</p>
+                  {/*
+                    Rendered by the same component as the workspace Answers tab, so a pre-recorded
+                    seeded answer is laid out exactly as a live one. It was previously a single
+                    italic run with newlines collapsed and markdown left as literal characters,
+                    which made the one known-wrong answer in the session the one that looked
+                    unlike all the others. A participant flagging it might then be reporting that
+                    it looked odd rather than that they checked it, and the export cannot tell
+                    those apart.
+                  */}
+                  <AnswerBody content={t.seededAnswerShown ?? ""} className="max-w-[68ch]" />
                   <div className="flex gap-2 items-center">
                     <span>Participant flagged this answer as incorrect?</span>
                     <Button size="sm" variant={t.errorDetected ? "default" : "outline"} onClick={() => setTaskField(t.id, "errorDetected", true)}>Yes</Button>
@@ -495,7 +508,7 @@ export default function EvaluationPage() {
           <h3 className="font-semibold">Session summary</h3>
           <div className="grid grid-cols-2 gap-2 text-sm">
             <span>Participant: <Badge variant="outline">{participantId}</Badge></span>
-            <span>Condition: <Badge variant="outline">{condition}</Badge></span>
+            <span>Condition: <Badge variant="outline">{condition ?? "not set"}</Badge></span>
             <span>SUS score: <Badge variant={susComplete ? "default" : "destructive"}>{susScore(sus) ?? "incomplete"}</Badge></span>
             <span>NASA-TLX (raw): <Badge variant={tlxComplete ? "default" : "destructive"}>{tlxScore(tlx) ?? "incomplete"}</Badge></span>
           </div>
@@ -508,7 +521,7 @@ export default function EvaluationPage() {
                 <span className="font-semibold text-foreground">Not every task is fully recorded.</span>{" "}
                 {tasks.filter((t) => taskScore(t) === null).map((t) => `Q${t.id}`).join(", ") || "None"} unmarked;{" "}
                 {tasks.filter((t) => t.confidence === null).map((t) => `Q${t.id}`).join(", ") || "none"} without a
-                confidence rating. Exporting is still allowed — the gaps are recorded as gaps — but
+                confidence rating. Exporting is still allowed, the gaps are recorded as gaps, but
                 fill them now if the participant is still present.
               </p>
             </div>
@@ -538,8 +551,8 @@ export default function EvaluationPage() {
             </Button>
           </div>
           <p className="text-xs text-muted-foreground">
-            The JSON export includes every task with its own timing, answer and confidence — the
-            retention task among them — plus the SUS and TLX scores and the pilot metrics
+            The JSON export includes every task with its own timing, answer and confidence, the
+            retention task among them, plus the SUS and TLX scores and the pilot metrics
             (indexing durations and QA response times) recorded on this device.
           </p>
         </CardContent></Card>

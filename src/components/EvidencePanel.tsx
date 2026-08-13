@@ -70,12 +70,12 @@ interface EvidencePanelProps {
  * evidence present, and no evidence.
  *
  * The no-evidence state is marked by an icon, a border weight, a hatched background and the
- * wording itself — never by colour alone — because a reader must be able to tell an answer
+ * wording itself, never by colour alone, because a reader must be able to tell an answer
  * with supporting files from one without, and that distinction is what the study measures.
  *
  * The headings state what the panel can actually establish, which is what was retrieved and
  * sent to the model. They deliberately do not characterise the answer. An earlier wording
- * read "Grounded", which was read as a verdict that the answer was supported — it appeared
+ * read "Grounded", which was read as a verdict that the answer was supported, it appeared
  * above answers that were outright refusals, since retrieval had returned files but the model
  * had found nothing in them. Whether an answer follows from its evidence is a judgement only
  * the reader can make, and inviting them to make it is the point of the panel.

@@ -1,6 +1,7 @@
 {
   "repository": "warehouse-dispatch",
-  "artefactVersion": "c5fb72a",
+  "artefactVersion": "b816b64",
+  "artefactSourceCommit": "beae1ae",
   "repositoryCommit": "937be9d5598f81703e95c1a3ce2a2ec234287ee9",
   "tasks": [
     {

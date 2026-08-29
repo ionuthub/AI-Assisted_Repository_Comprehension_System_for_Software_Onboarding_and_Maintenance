@@ -29,7 +29,7 @@ The system is a browser-based research artefact for understanding unfamiliar Jav
 | [`docs/TESTING.md`](docs/TESTING.md) | Software verification, answer-reliability gate and participant evaluation |
 | [`docs/LIMITATIONS.md`](docs/LIMITATIONS.md) | Engineering and evidence limitations |
 | [`study/PHASE3_PROTOCOL.md`](study/PHASE3_PROTOCOL.md) | Study procedure and frozen-build/deployment record |
-| [`study/AI-DISCLOSURE.md`](study/AI-DISCLOSURE.md) | Authoritative repository-side AI-assistance disclosure |
+| [`study/AI-DISCLOSURE.md`](study/AI-DISCLOSURE.md) | Authoritative AI-assistance and authorship disclosure |
 | [`study/SHA-MAP-REAUTHOR.md`](study/SHA-MAP-REAUTHOR.md) | Old-to-new commit mapping after metadata normalisation |
 | [`analysis/README.md`](analysis/README.md) | Reproduction instructions for analysis and measurement scripts |
 
@@ -87,12 +87,12 @@ The model API key remains server-side. The generation endpoint applies origin va
 
 MIT. See [`LICENSE.md`](LICENSE.md).
 
-## Provenance and AI disclosure
+## Authorship, AI assistance and provenance
 
-The initial codebase was substantially developed with Google Antigravity and was subsequently configured, debugged, tested, reviewed and adapted with AI assistance. The authoritative record of AI-tool involvement is [`study/AI-DISCLOSURE.md`](study/AI-DISCLOSURE.md) and the dissertation's AI Declaration.
+Generative-AI tools were used during software development, debugging, refactoring, testing, analysis, review, study-document preparation, literature discovery/checking and report editing. The exact tools and their roles are recorded in [`study/AI-DISCLOSURE.md`](study/AI-DISCLOSURE.md) and are intended to match the dissertation's AI Declaration.
 
-On 29 August 2026 the `main` history was normalised so Git author and committer metadata identifies the researcher responsible for the repository. AI-tool co-author/session trailers were removed from the rewritten `main` history. This must not be interpreted as a claim that the work was produced without AI assistance.
+AI-assisted work was reviewed rather than treated as independent evidence. The researcher retained responsibility for the final scope and requirements, methodological decisions, participant-study conduct, research marking decisions, interpretation of results, limitations and conclusions. Participant data and experimental measurements were not fabricated by AI tools.
 
-The original pre-normalisation history remains under `archive/pre-reauthor`, and [`study/SHA-MAP-REAUTHOR.md`](study/SHA-MAP-REAUTHOR.md) preserves the old-to-new commit mapping so historical SHAs remain traceable.
+On 29 August 2026 the `main` history was normalised so Git author and committer metadata identifies the researcher responsible for the repository. AI-tool co-author/session trailers were removed from the rewritten `main` history. Git authorship therefore records repository responsibility and must not be interpreted as evidence of unaided authorship.
 
-The author retained responsibility for the final project scope and requirements, reviewed implemented changes, made the research marking judgements, conducted the participant study and is responsible for the interpretation and conclusions reported in the dissertation.
+The original pre-normalisation history remains under `archive/pre-reauthor`, and [`study/SHA-MAP-REAUTHOR.md`](study/SHA-MAP-REAUTHOR.md) preserves the old-to-new commit mapping so historical SHAs remain traceable. The disclosure record, rather than Git metadata, is authoritative for AI involvement.

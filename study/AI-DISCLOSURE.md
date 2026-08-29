@@ -55,11 +55,27 @@ dissertation. This is already stated in `README.md`.
 The application began as a Lovable-hosted project calling the Lovable AI Gateway; commit
 `5e02c4d` migrated the backend to the Google Gemini API directly and rebranded the project.
 
-Subsequent work on the code was done with **Claude Code**. Of the 71 commits on `main`, 17 are
-authored `Claude <noreply@anthropic.com>` and 18 carry a `Co-Authored-By: Claude` trailer; the
-remainder are authored by the researcher, though many of those were also produced with
-assistance. **Commit authorship is therefore a lower bound on machine involvement, not a
-measure of it.** The honest summary is that no part of `src/` or `api/` is unassisted authorship.
+Subsequent work on the code was done with **Claude Code**.
+
+**Commit authorship does not record this, and must not be read as if it did.** Every commit on
+`main` is authored by the researcher. Until 29 August 2026 the history also carried 29 commits
+authored `Claude <noreply@anthropic.com>` and 30 carrying `Co-Authored-By: Claude` and
+`Claude-Session:` trailers; all were re-authored to the researcher and the trailers removed in a
+single history rewrite. The rewrite changed metadata only: the file content at the tip is
+byte-identical, verified by `git diff` between the two refs returning nothing, and the commit count
+is unchanged at 90.
+
+`study/SHA-MAP-REAUTHOR.md` maps every superseded commit hash to its replacement, and the original
+history is preserved unaltered under the ref `archive/pre-reauthor`, so nothing is destroyed and
+the earlier attribution remains inspectable.
+
+Two consequences follow, and both matter more than the metadata:
+
+- **Git authorship is now uniform and therefore carries no information about machine involvement.**
+  It was never a reliable measure even before the rewrite, since many researcher-authored commits
+  were equally assisted. It is now not a measure at all. **This document is the record; the history
+  is not.**
+- **The honest summary is unchanged: no part of `src/` or `api/` is unassisted authorship.**
 
 `src/` is approximately 7,650 lines of TypeScript, TSX and CSS; `api/explain-code.ts` is 298
 lines; there are 12 test files.
@@ -93,9 +109,12 @@ Two properties of that record are worth stating because they affect how it shoul
 
 - Commit messages record what the gates reported at the time, and are accurate to that. They are
   not independent confirmation, because the same process wrote the code and the message.
-- Machine trailers (`Co-Authored-By`, `Claude-Session`) are present on 18 commits and absent from
-  others that were equally assisted. Their presence is evidence of assistance; their absence is
-  not evidence of its absence.
+- Machine trailers (`Co-Authored-By`, `Claude-Session`) were removed by the 29 August rewrite
+  described in section 1. Before it they were present on 30 commits and absent from others that
+  were equally assisted, so even then their absence was not evidence of absence. They are now
+  absent everywhere and carry no information at all. The commit messages themselves were not
+  rewritten and remain machine-drafted; a reader comparing their register against the researcher's
+  own prose will see the difference, which is intended.
 
 ## 4. Automated code review
 

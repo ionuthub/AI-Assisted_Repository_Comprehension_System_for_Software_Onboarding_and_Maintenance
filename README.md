@@ -125,6 +125,21 @@ MIT. See [`LICENSE.md`](LICENSE.md).
 
 The initial codebase was substantially developed with an AI agentic coding tool (Google
 Antigravity), then configured, debugged, tested and adapted by the author for this dissertation.
-All AI assistance, including subsequent AI-assisted auditing and refactoring, is disclosed in
-[`study/AI-DISCLOSURE.md`](study/AI-DISCLOSURE.md) and in the dissertation's AI Declaration. The
-evaluation study design, the marking judgements and all research data are the author's own work.
+Additional AI-assisted development, review, analysis and writing support is disclosed in
+[`study/AI-DISCLOSURE.md`](study/AI-DISCLOSURE.md) and in the dissertation's AI Declaration.
+
+On 29 August 2026 the `main` branch history was normalised so that Git author and committer metadata
+identifies the researcher responsible for the repository. AI-tool co-author/session trailers were
+removed from the rewritten `main` history. This metadata normalisation must **not** be interpreted as
+a claim that the work was produced without AI assistance. The substantive AI disclosure is retained
+separately and remains authoritative.
+
+The original pre-normalisation history is preserved under `archive/pre-reauthor`, and
+[`study/SHA-MAP-REAUTHOR.md`](study/SHA-MAP-REAUTHOR.md) records the old-to-new commit mappings so
+historical SHAs cited by study material remain traceable. Git authorship therefore records repository
+responsibility, while the AI disclosure records how AI tools contributed to the work.
+
+The author retained responsibility for the final project scope and requirements, reviewed the
+implemented changes, made the research marking judgements, conducted the participant study, and is
+responsible for the interpretation of the retained research data and the conclusions reported in the
+dissertation.

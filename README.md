@@ -1,77 +1,120 @@
-# 🎓 Repository Comprehension System
+# AI-Assisted Repository Comprehension System for Software Onboarding
 
-**Design and Evaluation of an AI-Assisted Repository Comprehension System for Software Onboarding and Maintenance**
+Software artefact for the BSc Computer Science dissertation *Design and Evaluation of an
+AI-Assisted Repository Comprehension System for Software Onboarding*.
 
-This repository contains the software artefact for the Computer Science dissertation. It is designed to assist software developers in onboarding and maintaining unfamiliar repositories.
+The Repository Comprehension System is a browser-based research artefact designed to assist users
+in understanding unfamiliar JavaScript and TypeScript repositories. It provides repository
+orientation, import-based structural analysis, natural-language code search using TF-IDF, grounded
+question answering, source inspection, and a verification layer that exposes the evidence supplied
+to the language model.
 
-**Scope.** Ingestion, search and grounded question-answering operate across common source and configuration file types. Import resolution parses JavaScript and TypeScript syntax only, so the overview's import-based rankings are empty for other languages. The evaluation study uses JavaScript/TypeScript repositories exclusively; the wider file-type support exists so the tool degrades gracefully rather than rejecting a repository outright.
+**Scope.** Initial comprehension of small- to medium-sized JavaScript and TypeScript repositories,
+particularly React applications. Long-term software maintenance and implementation of code changes
+are outside the evaluated scope.
 
----
+A secondary limit applies within that scope: ingestion, search and question answering accept common
+source and configuration file types, but import resolution parses JavaScript and TypeScript syntax
+only, so the import-based rankings are empty for other languages. The wider file-type support exists
+so the tool degrades gracefully rather than rejecting a repository outright.
 
-## Deployment
-Run locally with `npm install && npm run dev`, or see the deployment link in the dissertation report.
+## Repository map
 
----
+| Directory | Purpose |
+| --- | --- |
+| `src/` | Browser artefact implementation |
+| `api/` | Server-side Gemini proxy (Vercel edge function) |
+| `e2e/` | End-to-end application tests |
+| `analysis/` | Reproducible research and evaluation scripts |
+| `study/` | Accuracy-gate material, answer keys and retained study artefacts |
+| `docs/` | Requirements, architecture, development process, testing and research documentation |
+| `.github/` | Continuous integration configuration |
 
-## 🚀 Key Capabilities
+Start at [`docs/01-project-overview.md`](docs/01-project-overview.md). The requirements and their
+traceability to code and tests are in [`docs/02-requirements/`](docs/02-requirements/); the
+architecture, including the trust boundary, is in
+[`docs/03-architecture/`](docs/03-architecture/).
 
-- **Repository Overview**: Detects technologies and frameworks, displaying critical files, components, and functions count.
-- **Import Analysis**: Parses import/export relationships to rank the files most depended on, so the blast radius of a change is visible from the overview.
-- **Semantic Repository Search**: Fast, client-side TF-IDF vector similarity queries for natural-language search over files and code snippets.
-- **Grounded Repository Q&A**: Natural language Q&A grounded in codebase context (RAG) using the Google Gemini API to explain file roles and design details.
-- **Verifiable answers**: Every answer is accompanied by the evidence it was built from — the retrieved files in rank order, their relevance scores, and the exact excerpt supplied to the model. Paths the answer mentions that were not retrieved are listed separately as unverified, and an answer for which nothing could be retrieved is explicitly marked as ungrounded. Citations are derived from the retrieval layer, never from parsing the model's output.
-- **Honest coverage**: Ingestion reports how many files were indexed against how many the repository offered, including files excluded by the analysis cap or that failed to load.
+## Evaluated version
 
----
+The participant study evaluated a frozen build. Subsequent repository changes are limited to
+documentation, presentation, reproducibility support and explicitly identified post-study
+maintenance unless otherwise stated. The commits and study artefacts used for the dissertation are
+recorded in [`study/PHASE3_PROTOCOL.md`](study/PHASE3_PROTOCOL.md), which names the deployed build
+and the build the accuracy gate was captured against.
 
+Documentation under `docs/` was written after the study, not during it. It describes the artefact
+retrospectively and is dated accordingly; it is not a contemporaneous development record.
 
+## Capabilities
 
----
+- **Repository overview** — detects technologies and frameworks, and reports file, component and
+  function counts.
+- **Import analysis** — parses import and export relationships and ranks the files most depended on
+  by other indexed files.
+- **Natural-language code search using TF-IDF** — client-side term-frequency index with smoothed
+  inverse document frequency and cosine similarity. It is lexical, not neural: no embedding model
+  is involved.
+- **Grounded question answering** — retrieval-augmented generation over the indexed repository,
+  using the Google Gemini API. Only the question and the selected excerpts leave the browser.
+- **Verification layer** — every answer is shown beside the evidence it was built from: the
+  retrieved files in rank order, their relevance scores, the line ranges supplied, and the exact
+  excerpt sent to the model. Paths the answer names that retrieval did not return are listed
+  separately as unverified mentions. Citations are derived from the retrieval layer, never by
+  parsing the model's output. The layer exposes evidence and unsupported references; **it does not
+  establish that an answer is correct.** See
+  [`docs/03-architecture/verification-layer.md`](docs/03-architecture/verification-layer.md).
+- **Coverage reporting** — ingestion reports how many files were indexed against how many the
+  repository offered, with a reason recorded for every exclusion.
 
-## 🛠 Tech Stack
+## Technology
 
-- **Frontend**: React 18, TypeScript, Vite
-- **Styling**: Tailwind CSS, Shadcn/UI, Framer Motion
-- **Static Analysis**: Custom AST-like import/export parser, file tokenizer, and folder tree builder.
-- **RAG & Search**: Local TF-IDF index matching + Google Gemini (Edge Runtime proxy). The
-  generation model is pinned by the `GEMINI_MODEL` environment variable, defaulting to
-  `gemini-3.5-flash`; the exact model used for any reported results is recorded in the
-  dissertation's Methodology chapter.
-- **Backend/Hosting**: Vercel Serverless Functions
+- **Frontend** — React 18, TypeScript, Vite
+- **Styling** — Tailwind CSS, shadcn/ui
+- **Structural analysis** — regular-expression import/export parser, tokeniser, folder-tree builder
+- **Retrieval** — client-side TF-IDF index; top 3 files, 2,500 characters of excerpt each
+- **Generation** — Google Gemini through a Vercel edge function. The model is set by the
+  `GEMINI_MODEL` environment variable and defaults to `gemini-3.5-flash`; the value used for any
+  reported result is recorded in the dissertation's methodology chapter.
+- **Hosting** — Vercel
 
----
+## Getting started
 
-## 💻 Getting Started
-
-### Prerequisites
-
-- Node.js 18+
-- NPM
-- Google Gemini API Key (configured in environment variables for Q&A function)
-
-### Installation
+Prerequisites: Node.js 20 or 22, npm, and a Google Gemini API key for the question-answering
+function.
 
 ```bash
-# Clone the repository
 git clone https://github.com/ionuthub/AI-Assisted_Repository_Comprehension_System_for_Software_Onboarding_and_Maintenance.git
-
-# Install dependencies
 npm install
-
-# Start development server
 npm run dev
 ```
 
----
+Quality gates:
 
-## 🔒 Security
+```bash
+npm run typecheck     # tsc -b across the project references
+npm run lint
+npx vitest run        # unit tests
+npx playwright test   # end-to-end tests
+npm run build
+```
 
-No API secrets are stored on the client side. All model interactions are proxied through secure Vercel Serverless functions.
+## Security
 
----
+No API secret is stored client-side. Model calls are proxied through a Vercel edge function that
+reads the key from the server environment, enforces an origin allowlist, validates the request and
+clamps the context. Rate limiting is applied only when Upstash Redis credentials are configured;
+see [`docs/02-requirements/non-functional-requirements.md`](docs/02-requirements/non-functional-requirements.md)
+for the caveat.
 
-_Built as a dissertation research project._
+## Licence
 
-## Provenance and AI Disclosure
+MIT. See [`LICENSE.md`](LICENSE.md).
 
-The initial codebase was substantially developed with an AI agentic coding tool (Google Antigravity), then configured, debugged, tested and adapted by the author for this dissertation. All AI assistance, including subsequent AI-assisted auditing and refactoring, is disclosed in the dissertation's AI Declaration. The evaluation study design and all research data are the author's own work.
+## Provenance and AI disclosure
+
+The initial codebase was substantially developed with an AI agentic coding tool (Google
+Antigravity), then configured, debugged, tested and adapted by the author for this dissertation.
+All AI assistance, including subsequent AI-assisted auditing and refactoring, is disclosed in
+[`study/AI-DISCLOSURE.md`](study/AI-DISCLOSURE.md) and in the dissertation's AI Declaration. The
+evaluation study design, the marking judgements and all research data are the author's own work.

@@ -1,97 +1,67 @@
 # AI-Assisted Repository Comprehension System for Software Onboarding
 
-Software artefact for the BSc Computer Science dissertation *Design and Evaluation of an
-AI-Assisted Repository Comprehension System for Software Onboarding*.
+Software artefact for the BSc Computer Science dissertation *Design and Evaluation of an AI-Assisted Repository Comprehension System for Software Onboarding*.
 
-The Repository Comprehension System is a browser-based research artefact designed to assist users
-in understanding unfamiliar JavaScript and TypeScript repositories. It provides repository
-orientation, import-based structural analysis, natural-language code search using TF-IDF, grounded
-question answering, source inspection, and a verification layer that exposes the evidence supplied
-to the language model.
+The system is a browser-based research artefact for understanding unfamiliar JavaScript and TypeScript repositories. It provides repository orientation, import-based structural analysis, natural-language code search using TF-IDF, grounded question answering, source inspection and an evidence-based verification layer.
 
-**Scope.** Initial comprehension of small- to medium-sized JavaScript and TypeScript repositories,
-particularly React applications. Long-term software maintenance and implementation of code changes
-are outside the evaluated scope.
+**Scope.** The evaluated artefact focuses on initial comprehension of small- to medium-sized JavaScript and TypeScript repositories, particularly React applications. Long-term maintenance and implementation of code changes are outside the evaluated scope.
 
-A secondary limit applies within that scope: ingestion, search and question answering accept common
-source and configuration file types, but import resolution parses JavaScript and TypeScript syntax
-only, so the import-based rankings are empty for other languages. The wider file-type support exists
-so the tool degrades gracefully rather than rejecting a repository outright.
-
-## Repository map
+## Repository structure
 
 | Directory | Purpose |
 | --- | --- |
 | `src/` | Browser artefact implementation |
-| `api/` | Server-side Gemini proxy (Vercel edge function) |
-| `e2e/` | End-to-end application tests |
-| `analysis/` | Reproducible research and evaluation scripts |
-| `study/` | Accuracy-gate material, answer keys and retained study artefacts |
-| `docs/` | Requirements, architecture, process, testing and limitations |
-| `.github/` | CI workflow, issue templates, pull request template |
+| `api/` | Server-side Gemini proxy |
+| `e2e/` | End-to-end tests |
+| `analysis/` | Reproducible analysis and measurement scripts |
+| `study/` | Retained study material and provenance |
+| `docs/` | Authoritative technical documentation |
+| `.github/` | CI and repository workflow templates |
 
-Start at [`docs/PROJECT_OVERVIEW.md`](docs/PROJECT_OVERVIEW.md).
+## Essential documentation
 
-| Document | |
+| Document | Purpose |
 | --- | --- |
-| [`PROJECT_OVERVIEW.md`](docs/PROJECT_OVERVIEW.md) | Problem, research question, artefact, findings |
-| [`REQUIREMENTS.md`](docs/REQUIREMENTS.md) | FR1–FR12 and NFR1–NFR12 with evidence |
-| [`TRACEABILITY_MATRIX.md`](docs/TRACEABILITY_MATRIX.md) | Requirement → code → test → report section |
-| [`ARCHITECTURE.md`](docs/ARCHITECTURE.md) | Pipeline, trust boundary, and each component |
-| [`AGILE_PROCESS.md`](docs/AGILE_PROCESS.md) | Four sprints, definition of done, retrospective |
-| [`PRODUCT_BACKLOG.md`](docs/PRODUCT_BACKLOG.md) | User stories, priorities, and what was descoped |
-| [`TESTING.md`](docs/TESTING.md) | Software verification, answer reliability, participant evaluation |
-| [`LIMITATIONS.md`](docs/LIMITATIONS.md) | Known limits of the artefact and of the evidence |
-| [`AI_DISCLOSURE.md`](docs/AI_DISCLOSURE.md) | AI use, and the two meanings of "verification" |
-| [`decisions/`](docs/decisions/) | Architecture decision records |
+| [`docs/REQUIREMENTS.md`](docs/REQUIREMENTS.md) | FR1–FR12 and NFR1–NFR12 with implementation evidence |
+| [`docs/TRACEABILITY_MATRIX.md`](docs/TRACEABILITY_MATRIX.md) | Requirement → code → test → dissertation evidence |
+| [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) | System pipeline, trust boundary, ingestion, retrieval and verification layer |
+| [`docs/figure1_provenance.md`](docs/figure1_provenance.md) | Source-level provenance for the architecture figure and claims |
+| [`docs/TESTING.md`](docs/TESTING.md) | Software verification, answer-reliability gate and participant evaluation |
+| [`docs/LIMITATIONS.md`](docs/LIMITATIONS.md) | Engineering and evidence limitations |
+| [`study/PHASE3_PROTOCOL.md`](study/PHASE3_PROTOCOL.md) | Study procedure and frozen-build/deployment record |
+| [`study/AI-DISCLOSURE.md`](study/AI-DISCLOSURE.md) | Authoritative repository-side AI-assistance disclosure |
+| [`study/SHA-MAP-REAUTHOR.md`](study/SHA-MAP-REAUTHOR.md) | Old-to-new commit mapping after metadata normalisation |
+| [`analysis/README.md`](analysis/README.md) | Reproduction instructions for analysis and measurement scripts |
+
+Retrospective development notes, superseded documentation and audit/remediation working papers are retained under [`docs/archive/`](docs/archive/) and [`study/archive/`](study/archive/). They are preserved for provenance but are not the primary documentation for the submitted artefact.
 
 ## Evaluated version
 
-The participant study evaluated a frozen build. Subsequent repository changes are limited to
-documentation, presentation, reproducibility support and explicitly identified post-study
-maintenance unless otherwise stated. The commits and study artefacts used for the dissertation are
-recorded in [`study/PHASE3_PROTOCOL.md`](study/PHASE3_PROTOCOL.md), which names the deployed build
-and the build the accuracy gate was captured against.
+The participant study evaluated a frozen build. Subsequent repository changes are documentation, presentation, reproducibility support or explicitly identified post-study maintenance unless otherwise stated. The study build and deployment identifiers are recorded in [`study/PHASE3_PROTOCOL.md`](study/PHASE3_PROTOCOL.md).
 
-Documentation under `docs/` was written after the study, not during it. It describes the artefact
-retrospectively and is dated accordingly; it is not a contemporaneous development record.
+Documentation written after the study is retrospective and should not be read as a contemporaneous development log.
 
 ## Capabilities
 
-- **Repository overview** — detects technologies and frameworks, and reports file, component and
-  function counts.
-- **Import analysis** — parses import and export relationships and ranks the files most depended on
-  by other indexed files.
-- **Natural-language code search using TF-IDF** — client-side term-frequency index with smoothed
-  inverse document frequency and cosine similarity. It is lexical, not neural: no embedding model
-  is involved.
-- **Grounded question answering** — retrieval-augmented generation over the indexed repository,
-  using the Google Gemini API. Only the question and the selected excerpts leave the browser.
-- **Verification layer** — every answer is shown beside the evidence it was built from: the
-  retrieved files in rank order, their relevance scores, the line ranges supplied, and the exact
-  excerpt sent to the model. Paths the answer names that retrieval did not return are listed
-  separately as unverified mentions. Citations are derived from the retrieval layer, never by
-  parsing the model's output. The layer exposes evidence and unsupported references; **it does not
-  establish that an answer is correct.** See
-  [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md#the-verification-layer).
-- **Coverage reporting** — ingestion reports how many files were indexed against how many the
-  repository offered, with a reason recorded for every exclusion.
+- **Repository overview** — detects technologies and reports file and structural information.
+- **Import analysis** — resolves JavaScript/TypeScript imports and ranks files by indexed dependants.
+- **Natural-language code search using TF-IDF** — deterministic client-side lexical retrieval using smoothed IDF and cosine similarity.
+- **Grounded question answering** — retrieves repository evidence before calling Gemini through a Vercel edge function.
+- **Verification layer** — displays retrieved files, scores, line ranges and excerpts, and separately flags repository paths mentioned by an answer but absent from retrieved evidence.
+- **Coverage reporting** — records how many files were indexed and why files were excluded.
 
 ## Technology
 
-- **Frontend** — React 18, TypeScript, Vite
-- **Styling** — Tailwind CSS, shadcn/ui
-- **Structural analysis** — regular-expression import/export parser, tokeniser, folder-tree builder
-- **Retrieval** — client-side TF-IDF index; top 3 files, 2,500 characters of excerpt each
-- **Generation** — Google Gemini through a Vercel edge function. The model is set by the
-  `GEMINI_MODEL` environment variable and defaults to `gemini-3.5-flash`; the value used for any
-  reported result is recorded in the dissertation's methodology chapter.
-- **Hosting** — Vercel
+- React 18, TypeScript and Vite
+- Tailwind CSS and shadcn/ui
+- Regex-based JavaScript/TypeScript structural analysis
+- Client-side TF-IDF retrieval
+- Google Gemini through a Vercel edge function
+- Vercel hosting
 
 ## Getting started
 
-Prerequisites: Node.js 20 or 22, npm, and a Google Gemini API key for the question-answering
-function.
+Prerequisites: Node.js 20 or 22, npm and a Google Gemini API key.
 
 ```bash
 git clone https://github.com/ionuthub/AI-Assisted_Repository_Comprehension_System_for_Software_Onboarding_and_Maintenance.git
@@ -102,20 +72,16 @@ npm run dev
 Quality gates:
 
 ```bash
-npm run typecheck     # tsc -b across the project references
+npm run typecheck
 npm run lint
-npx vitest run        # unit tests
-npx playwright test   # end-to-end tests
+npx vitest run
+npx playwright test
 npm run build
 ```
 
 ## Security
 
-No API secret is stored client-side. Model calls are proxied through a Vercel edge function that
-reads the key from the server environment, enforces an origin allowlist, validates the request and
-clamps the context. Rate limiting is applied only when Upstash Redis credentials are configured;
-see [`docs/REQUIREMENTS.md`](docs/REQUIREMENTS.md)
-for the caveat.
+The model API key remains server-side. The generation endpoint applies origin validation, request validation and context limits. Rate limiting is active only when the configured Upstash Redis store is available; see [`docs/REQUIREMENTS.md`](docs/REQUIREMENTS.md).
 
 ## Licence
 
@@ -123,23 +89,10 @@ MIT. See [`LICENSE.md`](LICENSE.md).
 
 ## Provenance and AI disclosure
 
-The initial codebase was substantially developed with an AI agentic coding tool (Google
-Antigravity), then configured, debugged, tested and adapted by the author for this dissertation.
-Additional AI-assisted development, review, analysis and writing support is disclosed in
-[`study/AI-DISCLOSURE.md`](study/AI-DISCLOSURE.md) and in the dissertation's AI Declaration.
+The initial codebase was substantially developed with Google Antigravity and was subsequently configured, debugged, tested, reviewed and adapted with AI assistance. The authoritative record of AI-tool involvement is [`study/AI-DISCLOSURE.md`](study/AI-DISCLOSURE.md) and the dissertation's AI Declaration.
 
-On 29 August 2026 the `main` branch history was normalised so that Git author and committer metadata
-identifies the researcher responsible for the repository. AI-tool co-author/session trailers were
-removed from the rewritten `main` history. This metadata normalisation must **not** be interpreted as
-a claim that the work was produced without AI assistance. The substantive AI disclosure is retained
-separately and remains authoritative.
+On 29 August 2026 the `main` history was normalised so Git author and committer metadata identifies the researcher responsible for the repository. AI-tool co-author/session trailers were removed from the rewritten `main` history. This must not be interpreted as a claim that the work was produced without AI assistance.
 
-The original pre-normalisation history is preserved under `archive/pre-reauthor`, and
-[`study/SHA-MAP-REAUTHOR.md`](study/SHA-MAP-REAUTHOR.md) records the old-to-new commit mappings so
-historical SHAs cited by study material remain traceable. Git authorship therefore records repository
-responsibility, while the AI disclosure records how AI tools contributed to the work.
+The original pre-normalisation history remains under `archive/pre-reauthor`, and [`study/SHA-MAP-REAUTHOR.md`](study/SHA-MAP-REAUTHOR.md) preserves the old-to-new commit mapping so historical SHAs remain traceable.
 
-The author retained responsibility for the final project scope and requirements, reviewed the
-implemented changes, made the research marking judgements, conducted the participant study, and is
-responsible for the interpretation of the retained research data and the conclusions reported in the
-dissertation.
+The author retained responsibility for the final project scope and requirements, reviewed implemented changes, made the research marking judgements, conducted the participant study and is responsible for the interpretation and conclusions reported in the dissertation.

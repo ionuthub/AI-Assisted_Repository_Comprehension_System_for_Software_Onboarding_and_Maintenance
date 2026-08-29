@@ -15,11 +15,8 @@ labels: ''
 
 ## Could this affect a measurement?
 
-Answer explicitly. A defect that could alter a recorded time, score, confidence rating or seeded
-probe outcome is a study-validity issue, not a bug, and is handled differently: see the
-retrospective in `docs/AGILE_PROCESS.md`.
+Answer explicitly. A defect that could alter a recorded time, score, confidence rating or seeded probe outcome is a study-validity issue, not just an application bug. The retrospective development record is retained in `docs/archive/AGILE_PROCESS.md`.
 
 ## How it was found
 
-Which gate caught it — typecheck, lint, unit, e2e, CI, review, or manual use. Worth recording:
-across this project no two defect classes were caught by the same method.
+Which gate caught it: typecheck, lint, unit test, e2e, CI, review or manual use.

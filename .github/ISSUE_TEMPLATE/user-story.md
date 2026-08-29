@@ -23,5 +23,4 @@ Maps to: <FR / NFR id from docs/REQUIREMENTS.md>
 
 ## Definition of done
 
-See `docs/AGILE_PROCESS.md`. In particular: type checking and lint pass, relevant tests exist,
-failure states are handled, and the behaviour can be exercised through the deployed artefact.
+Type checking and lint must pass, relevant tests must exist, failure states must be handled, and research-critical behaviour must remain traceable to the requirements and frozen-study record. Historical process notes are retained in `docs/archive/AGILE_PROCESS.md`.

@@ -1,7 +1,12 @@
 # Known limitations
 
 Limitations of the artefact and of the evidence for it. Study limitations are in Chapter 7 of the
-dissertation; this file covers the engineering.
+dissertation; this file covers the engineering and evidence boundaries.
+
+**AI-assistance note.** Development, testing, analysis and documentation were AI-assisted. That
+assistance is disclosed in [`../study/AI-DISCLOSURE.md`](../study/AI-DISCLOSURE.md). References to
+researcher responsibility below identify who made and owns the final judgement; they are not claims
+of unaided authorship.
 
 ## Artefact
 
@@ -34,15 +39,15 @@ documentation, not enforcement. The guarantees they describe are held by tests.
 
 ## Evidence
 
-**The reference answers are tool-verified, not independently human-established.** Drafted with AI
-assistance and checked through multiple adversarial passes with the full repositories available;
-the researcher did not reconstruct each answer line by line. Final correctness verdicts are the
-researcher's. Disclosed in `study/AI-DISCLOSURE.md` and Appendix A, and enforced by the capture
-harness, which requires an explicit flag and records the weaker provenance.
+**The reference answers are tool-verified, not independently human-established.** They were drafted
+with AI assistance and checked through multiple adversarial passes with the full repositories
+available; the researcher did not reconstruct each answer line by line. The researcher made the
+final correctness verdicts and retains responsibility for those judgements. This is disclosed in
+`study/AI-DISCLOSURE.md` and Appendix A, and is enforced by the capture harness, which requires an
+explicit flag and records the weaker provenance.
 
 **Second marking was machine-produced.** `study/second-marking.md` was blind to the first verdicts
-but is not an independent human check. The commitment to blind second-marking by a person is
-outstanding.
+but is not an independent human check. It must not be presented as human corroboration.
 
 **`toolVersion` records the researcher's checkout.** The capture harness defaults it to local git
 `HEAD`, not to the commit the deployed site was serving. It is evidence of a checkout, not of a
@@ -52,3 +57,8 @@ deployment, and Appendix G says so.
 University-managed storage, consistent with the ethics approval. Chapter 6 and Appendix I are
 therefore not reproducible from this repository alone; `analysis/analyze_sessions.py` reproduces
 them from the retained records.
+
+**AI assistance is not an independent validation layer.** AI tools supported implementation,
+review, analysis, checking and drafting, but the same assistance cannot be counted as independent
+human replication. Participant measurements were not fabricated by AI tools; interpretation and
+final reporting remain the researcher's responsibility.

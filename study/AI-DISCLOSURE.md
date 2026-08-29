@@ -5,7 +5,7 @@ This is the repository-side record of AI assistance used in the dissertation pro
 The project uses AI in two different ways:
 
 1. **As part of the artefact:** Google Gemini generates repository-grounded answers that are evaluated in the study.
-2. **As research and development assistance:** AI tools also supported coding, testing, analysis, review, source work and writing.
+2. **As research and development assistance:** AI tools also assisted with coding, testing, analysis, review, source work and writing.
 
 The repository does not claim unaided authorship.
 

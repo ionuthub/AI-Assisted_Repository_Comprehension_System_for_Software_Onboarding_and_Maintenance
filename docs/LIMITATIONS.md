@@ -12,12 +12,12 @@
 
 ## Evidence
 
-The reference answers were AI-assisted and checked with tools against the study repositories. They are described as **tool-verified**, not independently established by a human. The researcher made the final binary gate verdicts.
+The reference answers were AI-assisted and checked with tools against the study repositories. They are described as **tool-verified**, not independently established by a separate human reference author. The researcher made the final binary gate verdicts.
 
-The existing second marking was machine-produced. It is not independent human confirmation.
+The blind second marking was machine-produced and then independently checked and confirmed by the researcher. It was not performed by a separate human second marker.
 
 `toolVersion` in a gate capture records the researcher's local checkout unless a deployment version is supplied separately. It should not be treated as proof of the deployed commit.
 
 Participant session exports are stored pseudonymised on University-managed storage and are not published in this repository.
 
-AI assistance supported implementation, testing, analysis, checking and writing. It is disclosed in [`../study/AI-DISCLOSURE.md`](../study/AI-DISCLOSURE.md) and should not be counted as independent human validation.
+AI assistance supported implementation, testing, analysis, checking and writing. It is disclosed in [`../study/AI-DISCLOSURE.md`](../study/AI-DISCLOSURE.md) and should not be counted as separate independent human validation.

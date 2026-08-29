@@ -5,12 +5,19 @@ what it was built to do. **Answer-reliability testing** asks how often its gener
 match a reference standard. **Participant evaluation** asks whether it helped people. Reporting
 any one of them as another would overclaim.
 
+**AI-assistance note.** Tests, analysis scripts and supporting research tooling were developed with
+AI assistance. Their outputs are treated as evidence from the relevant instruments, not as
+independent human verification merely because a script or test passed. The researcher reviewed the
+reported evidence and retains responsibility for the final research judgements. Full disclosure is
+in [`../study/AI-DISCLOSURE.md`](../study/AI-DISCLOSURE.md).
+
 ---
 
 ## A. Software verification
 
-artefact does what it was built to do; **research validation** asks whether its output is accurate
-enough for the study to mean anything. They are separate activities with separate evidence.
+Artefact verification asks whether the artefact does what it was built to do; **research
+validation** asks whether its output is accurate enough for the study to mean anything. They are
+separate activities with separate evidence.
 
 ## 1. Static checks
 
@@ -154,8 +161,8 @@ Three things must travel with that figure:
 1. **The reference standard is tool-verified, not independently human-established.** The 24
    reference answers were AI-assisted and then checked against the complete repositories through
    multiple adversarial passes, with cited line ranges mechanically checked. The researcher did not
-   reconstruct each answer line by line. **Final binary correctness verdicts were the researcher's**,
-   recorded in `study/marking.*.md`.
+   reconstruct each answer line by line. The researcher made the **final binary correctness
+   verdicts** and retains responsibility for those judgements, recorded in `study/marking.*.md`.
 2. **The questions are demanding by design.** Several assert that a declared behaviour never reaches
    the running application — something a tool retrieving three excerpts cannot establish.
 3. **The capture harness enforces the qualification.** It requires an explicit
@@ -186,6 +193,10 @@ tasks in a manual and a tool condition, on two different purpose-built repositor
 Exact statistics are in Chapter 6 of the dissertation and are reproduced by
 `analysis/analyze_sessions.py` from the retained session records. They are deliberately not
 duplicated here: a number kept in two places drifts, and the report is authoritative.
+
+AI tools were not used to fabricate participant responses or experimental measurements. AI
+assistance in analysis, checking and presentation is disclosed separately from the underlying
+recorded data.
 
 The seeded-probe result is the finding that most concerns the artefact's central feature.
 Participants were warned in advance that some responses might be inaccurate, and were prompted

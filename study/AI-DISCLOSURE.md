@@ -35,14 +35,16 @@ What this file discloses is the AI used **to build and analyse** the artefact.
 | **Google Antigravity** | The initial artefact codebase, agentic code generation across the React/TypeScript application |
 | **Claude Code** (Claude Opus) | Auditing, refactoring, defect diagnosis and fixes, test authoring, the `analysis/` measurement scripts, and applying and committing patches |
 | **Claude** (chat) | Design discussion, protocol drafting, reviewing the study design, drafting and revising study documents |
-| **CodeRabbit** | Automated review of pull requests |
-| **ChatGPT** | *[AUTHOR TO CONFIRM the role and scope]* |
-| **Perplexity** | *[AUTHOR TO CONFIRM the role and scope, literature searching is the expected use]* |
-| **NotebookLM** | *[AUTHOR TO CONFIRM the role and scope, source organisation is the expected use]* |
+| **CodeRabbit** | Automated code review, identifying issues for subsequent human verification |
+| **ChatGPT** (OpenAI) | Technical discussion and debugging during artefact development; scope refinement, literature and source checking, report organisation, editing and critical review |
+| **Perplexity** | Identifying candidate literature and discovering related work; every source independently verified against the original publication before inclusion |
+| **NotebookLM** | Organising and checking sources against the research problem |
+| **Grammarly** | Language-level proofreading: spelling, grammar, punctuation, clarity and style. Suggestions were reviewed individually and did not determine research content, analysis or conclusions |
 
-The three marked entries are the author's to complete. They are named here because they were
-used; the specific role of each is left for the author rather than guessed, since an invented
-description in a disclosure document is exactly the defect this file exists to avoid.
+These roles are taken from Appendix A of the dissertation, which is the authoritative declaration.
+Earlier revisions of this file left ChatGPT, Perplexity and NotebookLM marked for the author to
+complete, and omitted Grammarly entirely; both gaps are closed here so that the two documents
+agree.
 
 ## 1. The artefact code
 
@@ -237,16 +239,28 @@ all-machine chain and give this disclosure a materially stronger conclusion.
 
 ## 9. Reading and writing support
 
-**Claude**, **ChatGPT**, **Perplexity** and **NotebookLM** were used in the reading and writing
-process, literature searching, source organisation, drafting and revision. This is the use the
-Solent policy addresses most directly, and the condition it attaches is verification: any claim
-or citation that reached the dissertation was checked against the source itself.
+**Claude**, **ChatGPT**, **Perplexity**, **NotebookLM** and **Grammarly** were used in the reading
+and writing process. This is the use the Solent policy addresses most directly, and the condition
+it attaches is verification.
 
-*[AUTHOR TO COMPLETE: which tool did what, and the verification actually performed on citations
-obtained through Perplexity or summarised in NotebookLM. A source suggested by a tool and then
-read by the author in full is a different thing from a source described by a tool and cited on
-that description, the policy makes the second one misconduct, and only the author knows which
-happened.]*
+Per Appendix A of the dissertation:
+
+- **Topic and research question.** The project idea and artefact originated with the author. AI
+  tools assisted in refining the scope, research question and positioning against existing
+  literature; the author retained final responsibility for all four.
+- **Literature and sources.** AI tools supported identification of candidate literature and
+  discovery of related work. **Every source included in the dissertation was independently
+  verified against its original publication, and AI-generated bibliographic information was
+  accepted only after that verification.** This is the condition the policy turns on: a source
+  suggested by a tool and then read in full is a different thing from a source described by a tool
+  and cited on that description.
+- **Report structure and writing.** AI tools supported organisation, editing, wording and critical
+  review; Grammarly was used for language-level proofreading. The author reviewed and revised all
+  resulting text and remains responsible for the arguments and interpretations.
+- **Results and conclusions.** AI tools were not used to fabricate participant data or
+  experimental measurements. The reported statistics derive from the retained participant-session
+  data and the analysis scripts. All decisions on interpretation, limitations and conclusions are
+  the author's.
 
 ## What was the researcher's own work
 

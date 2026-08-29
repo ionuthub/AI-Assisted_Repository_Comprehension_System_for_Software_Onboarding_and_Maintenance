@@ -1,46 +1,23 @@
-# Commit hash map — history re-author of 29 August 2026
+# Commit hash map: history normalisation on 29 August 2026
 
-Every commit on `main` was re-authored to the researcher on 29 August 2026, and the
-`Co-Authored-By: Claude` and `Claude-Session:` trailers were removed from all 30 commit messages
-that carried them. The rewrite changed commit metadata only: **the file content at the tip is
-byte-identical before and after**, which `git diff` between the two refs confirms by returning
-nothing, and the commit count is unchanged at 90.
+On 29 August 2026, `main` was re-authored to the researcher and AI co-author/session trailers were removed. The rewrite changed Git metadata only. The file content at the tip was unchanged and the commit count remained 90.
 
-Rewriting a commit changes its hash. This file exists so every hash quoted elsewhere still resolves,
-because several are load-bearing: they identify the build the accuracy gate was captured against and
-the build each participant session ran on.
+The original history is preserved in `archive/pre-reauthor`. Old study hashes must remain in historical captures because they identify the versions recorded at the time.
 
-**The original history is preserved in full under `archive/pre-reauthor`.** Old hashes remain valid
-against that ref. Nothing was destroyed.
+## Important historical hashes
 
-## What did not change
-
-- File content at the tip: identical.
-- Commit count: 90 before, 90 after. The PR #4 merge commit is preserved as a merge.
-- Commit messages: unchanged apart from the two removed trailer lines. They still quote the **old**
-  hashes in their prose, which is correct for the history they were written against.
-- Commits before `347cb18` (30 July 2026): untouched, because none was machine-authored. That is why
-  `682f38c` and `5e02c4d` do not appear below.
-- Captured data: no gate capture, marking sheet or archived run was edited. `toolVersion` values in
-  `study/accuracy-gate.*.json` and `study/gate-runs/*.json` still record the hashes current when the
-  capture ran, and resolve against the archive ref.
-
-## Load-bearing hashes
-
-| Old | New | Commit | Cited by |
-| --- | --- | --- | --- |
-| `1b9b0e0` | `28766c5` | Merge pull request #3 from ionuthub/claude/simplify-auth-inp | `study/question-scores.json` |
-| `429f830` | `8ff5d5d` | Clear the file cache when the project changes | `docs/REQUIREMENTS.md`, `docs/TESTING.md`, `study/PHASE3_PROTOCOL.md`, `study/accuracy-gate.clinic-triage.json`, `study/accuracy-gate.warehouse-dispatch.json` |
-| `79dafba` | `5565ce0` | Remove em dashes from study and analysis prose, excluding ev | `docs/figure1_architecture.dot`, `docs/figure1_provenance.md`, `study/PHASE3_PROTOCOL.md`, `study/answer-key.clinic-triage.json`, `study/answer-key.warehouse-dispatch.json` |
-| `b816b64` | `66bbc92` | Update answer-key.warehouse-dispatch.json | `study/PHASE3_PROTOCOL.md` |
-| `beae1ae` | `29be083` | Stop the runner inventing responses, and record the 0-2 rubr | `docs/REQUIREMENTS.md`, `docs/TESTING.md`, `study/PHASE3_PROTOCOL.md` |
-| `c5fb72a` | `4bd985f` | Remove the retention phase: retention is a task, not a phase | `docs/REQUIREMENTS.md`, `docs/TESTING.md`, `study/PHASE3_PROTOCOL.md`, `study/answer-key.template.json` |
-| `e7d7efe` | `4aa375a` | Remove three ways the runner could bias its own measurements | `docs/REQUIREMENTS.md`, `docs/TESTING.md`, `docs/TRACEABILITY_MATRIX.md`, `docs/figure1_architecture.dot`, `docs/figure1_provenance.md`, `study/PHASE3_PROTOCOL.md`, `study/answer-key.clinic-triage.json`, `study/answer-key.warehouse-dispatch.json` |
-| `fd5f5ab` | `6e639f2` | Derive the evidence-bar scale from the frozen-build measurem | `docs/REQUIREMENTS.md`, `docs/TESTING.md`, `study/PHASE3_PROTOCOL.md` |
+| Old | New | Purpose |
+| --- | --- | --- |
+| `1b9b0e0` | `28766c5` | Merge of PR 3; cited by question-score data |
+| `429f830` | `8ff5d5d` | Accuracy-gate checkout |
+| `79dafba` | `5565ce0` | Participant deployment identifier |
+| `b816b64` | `66bbc92` | Earlier answer-key version |
+| `beae1ae` | `29be083` | Earlier study-runner version |
+| `c5fb72a` | `4bd985f` | Retention-phase removal |
+| `e7d7efe` | `4aa375a` | Frozen application source |
+| `fd5f5ab` | `6e639f2` | Earlier evidence-bar measurement |
 
 ## Full map
-
-All 41 rewritten commits, oldest first.
 
 | Old | New |
 | --- | --- |
@@ -86,19 +63,10 @@ All 41 rewritten commits, oldest first.
 | `2c50c36af995` | `5642f62566db` |
 | `31f7323a12d2` | `223a8c81ceec` |
 
-## Resolving an old hash
+To inspect an old hash:
 
-    git cat-file -t <old-hash>        # fails against the rewritten history
-    git log archive/pre-reauthor      # the old hash is valid here
+```bash
+git log archive/pre-reauthor
+```
 
-If the archive ref is deleted, the old hashes become unresolvable and the provenance chain in
-`study/PHASE3_PROTOCOL.md` and `docs/figure1_provenance.md` breaks with nothing to recover it from.
-Keep it.
-
-## Still to do after this is pushed
-
-1. **Re-stamp the answer keys.** `study/answer-key.*.json` carry `artefactVersion` and
-   `artefactSourceCommit`. Force-pushing triggers a fresh deployment, so both must be re-read from
-   the Vercel dashboard and updated before any further session.
-2. **Appendix A and F.1** quote hashes and describe the AI record. Appendix A should note the
-   re-author; F.1's hashes remain correct as history and resolve via this map.
+Do not delete `archive/pre-reauthor`. It is the preserved source for the historical hashes used in the study records.

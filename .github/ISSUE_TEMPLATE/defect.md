@@ -1,22 +1,22 @@
 ---
 name: Defect
-about: Something behaves differently from the requirement
+about: Report behaviour that does not match a requirement
 title: ''
 labels: ''
 ---
 
-## What happens
+## Problem
 
-## What should happen
+## Expected behaviour
 
-## Requirement affected
+## Requirement
 
-<FR / NFR id from docs/REQUIREMENTS.md>
+<FR or NFR from docs/REQUIREMENTS.md>
 
-## Could this affect a measurement?
+## Study impact
 
-Answer explicitly. A defect that could alter a recorded time, score, confidence rating or seeded probe outcome is a study-validity issue, not just an application bug. The retrospective development record is retained in `docs/archive/AGILE_PROCESS.md`.
+Could this change a recorded time, score, confidence value or seeded-probe result?
 
 ## How it was found
 
-Which gate caught it: typecheck, lint, unit test, e2e, CI, review or manual use.
+Typecheck, lint, unit test, e2e, CI, review or manual use.

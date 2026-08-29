@@ -4,17 +4,14 @@
 
 ## Requirement
 
-Maps to: <FR / NFR id from docs/REQUIREMENTS.md>, or "none — documentation".
+<FR or NFR from docs/REQUIREMENTS.md, or documentation only>
 
-## Does this touch the evaluated artefact?
+## Does this change the evaluated artefact?
 
-- [ ] No — documentation, analysis or study material only
-- [ ] Yes — `src/`, `api/`, `package.json`, the lockfile or the build config
+- [ ] No
+- [ ] Yes
 
-If yes, say why. The participant study evaluated a frozen build; a change to the application source
-moves the deployed commit away from the one recorded against the study, and
-`study/answer-key.*.json` carries `artefactVersion` and `artefactSourceCommit` that then need
-re-stamping.
+If yes, explain why and whether the recorded study version is affected.
 
 ## Checks
 

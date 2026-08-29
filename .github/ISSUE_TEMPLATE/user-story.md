@@ -1,15 +1,13 @@
 ---
 name: User story
-about: A unit of work expressed from the user's point of view
+about: Describe work from the user's point of view
 title: "As a <role>, I want <capability> so that <benefit>"
 labels: ''
 ---
 
 ## Story
 
-As a <role>,
-I want <capability>,
-so that <benefit>.
+As a <role>, I want <capability> so that <benefit>.
 
 ## Acceptance criteria
 
@@ -19,8 +17,8 @@ so that <benefit>.
 
 ## Requirement
 
-Maps to: <FR / NFR id from docs/REQUIREMENTS.md>
+<FR or NFR from docs/REQUIREMENTS.md>
 
-## Definition of done
+## Done when
 
-Type checking and lint must pass, relevant tests must exist, failure states must be handled, and research-critical behaviour must remain traceable to the requirements and frozen-study record. Historical process notes are retained in `docs/archive/AGILE_PROCESS.md`.
+The change works, relevant checks pass, failure states are handled and research-critical behaviour remains traceable.

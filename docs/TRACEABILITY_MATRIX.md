@@ -1,4 +1,4 @@
-# Requirements traceability
+# Traceability matrix
 
 Requirement → implementation → test → dissertation evidence, for the frozen build.
 

@@ -27,13 +27,23 @@ so the tool degrades gracefully rather than rejecting a repository outright.
 | `e2e/` | End-to-end application tests |
 | `analysis/` | Reproducible research and evaluation scripts |
 | `study/` | Accuracy-gate material, answer keys and retained study artefacts |
-| `docs/` | Requirements, architecture, development process, testing and research documentation |
-| `.github/` | Continuous integration configuration |
+| `docs/` | Requirements, architecture, process, testing and limitations |
+| `.github/` | CI workflow, issue templates, pull request template |
 
-Start at [`docs/01-project-overview.md`](docs/01-project-overview.md). The requirements and their
-traceability to code and tests are in [`docs/02-requirements/`](docs/02-requirements/); the
-architecture, including the trust boundary, is in
-[`docs/03-architecture/`](docs/03-architecture/).
+Start at [`docs/PROJECT_OVERVIEW.md`](docs/PROJECT_OVERVIEW.md).
+
+| Document | |
+| --- | --- |
+| [`PROJECT_OVERVIEW.md`](docs/PROJECT_OVERVIEW.md) | Problem, research question, artefact, findings |
+| [`REQUIREMENTS.md`](docs/REQUIREMENTS.md) | FR1–FR12 and NFR1–NFR12 with evidence |
+| [`TRACEABILITY_MATRIX.md`](docs/TRACEABILITY_MATRIX.md) | Requirement → code → test → report section |
+| [`ARCHITECTURE.md`](docs/ARCHITECTURE.md) | Pipeline, trust boundary, and each component |
+| [`AGILE_PROCESS.md`](docs/AGILE_PROCESS.md) | Four sprints, definition of done, retrospective |
+| [`PRODUCT_BACKLOG.md`](docs/PRODUCT_BACKLOG.md) | User stories, priorities, and what was descoped |
+| [`TESTING.md`](docs/TESTING.md) | Software verification, answer reliability, participant evaluation |
+| [`LIMITATIONS.md`](docs/LIMITATIONS.md) | Known limits of the artefact and of the evidence |
+| [`AI_DISCLOSURE.md`](docs/AI_DISCLOSURE.md) | AI use, and the two meanings of "verification" |
+| [`decisions/`](docs/decisions/) | Architecture decision records |
 
 ## Evaluated version
 
@@ -63,7 +73,7 @@ retrospectively and is dated accordingly; it is not a contemporaneous developmen
   separately as unverified mentions. Citations are derived from the retrieval layer, never by
   parsing the model's output. The layer exposes evidence and unsupported references; **it does not
   establish that an answer is correct.** See
-  [`docs/03-architecture/verification-layer.md`](docs/03-architecture/verification-layer.md).
+  [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md#the-verification-layer).
 - **Coverage reporting** — ingestion reports how many files were indexed against how many the
   repository offered, with a reason recorded for every exclusion.
 
@@ -104,7 +114,7 @@ npm run build
 No API secret is stored client-side. Model calls are proxied through a Vercel edge function that
 reads the key from the server environment, enforces an origin allowlist, validates the request and
 clamps the context. Rate limiting is applied only when Upstash Redis credentials are configured;
-see [`docs/02-requirements/non-functional-requirements.md`](docs/02-requirements/non-functional-requirements.md)
+see [`docs/REQUIREMENTS.md`](docs/REQUIREMENTS.md)
 for the caveat.
 
 ## Licence

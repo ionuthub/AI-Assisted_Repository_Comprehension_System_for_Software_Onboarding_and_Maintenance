@@ -34,7 +34,7 @@ browser, through a Vercel edge function that holds the model credential.
 
 The intervention the study measures is the **verification layer**: every answer is shown beside the
 evidence it was built from, and paths the answer names that retrieval did not return are listed as
-unverified. See [`03-architecture/verification-layer.md`](03-architecture/verification-layer.md) for
+unverified. See [`ARCHITECTURE.md`](ARCHITECTURE.md#the-verification-layer) for
 what that does and does not establish.
 
 ## Scope
@@ -43,7 +43,7 @@ Initial comprehension of small- to medium-sized JavaScript and TypeScript reposi
 React applications. **Long-term software maintenance and implementation of code changes are outside
 the evaluated scope.** Two features, a separate onboarding path and a maintenance mode, were removed
 rather than deferred, because no objective measure was defined for either; see
-[`04-agile/product-backlog.md`](04-agile/product-backlog.md).
+[`PRODUCT_BACKLOG.md`](PRODUCT_BACKLOG.md).
 
 ## What the study found
 
@@ -60,19 +60,19 @@ two purpose-built repositories.
 Exact statistics live in Chapter 6 of the dissertation and are reproduced from the retained records
 by `analysis/analyze_sessions.py`. They are deliberately **not** duplicated here: a number copied
 into two places drifts, and the report is the authoritative one. See
-[`06-research/results-summary.md`](06-research/results-summary.md).
+[`TESTING.md`](TESTING.md) section C.
 
 ## How to check the claims
 
 | Question | Where to look |
 | --- | --- |
-| What was required? | [`02-requirements/`](02-requirements/) — FR1–FR12, NFR1–NFR12, and a traceability matrix to code and tests |
-| How is it built? | [`03-architecture/`](03-architecture/) and `docs/figure1_architecture.png` |
-| How was it developed? | [`04-agile/`](04-agile/) |
-| How was it tested? | [`05-testing/`](05-testing/) |
-| How was it evaluated? | [`06-research/`](06-research/), `study/PHASE3_PROTOCOL.md` |
+| What was required? | [`REQUIREMENTS.md`](REQUIREMENTS.md) and [`TRACEABILITY_MATRIX.md`](TRACEABILITY_MATRIX.md) |
+| How is it built? | [`ARCHITECTURE.md`](ARCHITECTURE.md) and [`figure1_architecture.png`](figure1_architecture.png) |
+| How was it developed? | [`AGILE_PROCESS.md`](AGILE_PROCESS.md) and [`PRODUCT_BACKLOG.md`](PRODUCT_BACKLOG.md) |
+| How was it tested? | [`TESTING.md`](TESTING.md) and [`LIMITATIONS.md`](LIMITATIONS.md) |
+| How was it evaluated? | [`TESTING.md`](TESTING.md) section C, and `study/PHASE3_PROTOCOL.md` |
 | What was measured, and on what build? | `study/accuracy-gate.*.json`, `study/gate-runs/`, `study/PHASE3_PROTOCOL.md` |
-| What AI was used? | `study/AI-DISCLOSURE.md`, and Appendix A of the dissertation |
+| What AI was used? | [`AI_DISCLOSURE.md`](AI_DISCLOSURE.md) |
 
 ## Provenance of this documentation
 

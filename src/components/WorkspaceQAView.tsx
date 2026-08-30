@@ -1,3 +1,7 @@
+import { useState, type FormEvent } from "react";
+import { Sparkles } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import AnswerBody from "@/components/AnswerBody";
 import EvidencePanel, { type RetrievedEvidence, type UnverifiedMention } from "@/components/EvidencePanel";
 import type { GenerationCompleteEvent } from "@/lib/generationProtocol";
@@ -17,6 +21,8 @@ interface WorkspaceQAViewProps {
   totalFileCount?: number;
   onBackToOverview: () => void;
   onFileSelect?: (path: string) => void;
+  /** Runs the existing repository-level retrieval and generation pipeline. */
+  onAsk: (question: string) => void | Promise<void>;
 }
 
 /**
@@ -50,7 +56,9 @@ export default function WorkspaceQAView({
   totalFileCount,
   onBackToOverview,
   onFileSelect,
+  onAsk,
 }: WorkspaceQAViewProps) {
+  const [draft, setDraft] = useState("");
   const evidencePaths = new Set(evidence.map((e) => e.path));
 
   const unverifiedMentions: UnverifiedMention[] = Array.from(
@@ -62,19 +70,24 @@ export default function WorkspaceQAView({
       reason: excludedPaths?.[path] ?? "Not retrieved",
     }));
 
+  const submitQuestion = (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    const nextQuestion = draft.trim();
+    if (!nextQuestion || isLoading) return;
+    setDraft("");
+    void onAsk(nextQuestion);
+  };
 
-  // The Answers tab is reachable from the workspace nav before any question has
-  // been asked. Rendering the answer layout in that state asserted a failure that
-  // never happened: an empty question heading over an empty answer, beside an
-  // evidence panel reporting "No evidence · 0 files retrieved" for a retrieval
-  // that was never run. The panel's no-evidence warning is a claim about an
-  // answer, and it must not render when there is no answer to make a claim about.
+  // The Answers view is the repository-wide AI workspace. Before a question is asked it
+  // presents the question composer itself, rather than pointing the user back to a second
+  // prompt field in the global toolbar. This keeps scope explicit: repository-wide questions
+  // live here, while file-specific questions stay beside the selected file in Code.
   const nothingAskedYet = !question && !isLoading && generationStatus === 'idle';
   if (nothingAskedYet) {
     return (
       <div className="h-full flex flex-col overflow-hidden bg-background">
         <div className="flex items-center justify-between gap-4 px-6 py-3 border-b border-border shrink-0">
-          <h2 className="text-ui font-semibold text-foreground">Answer</h2>
+          <h2 className="text-ui font-semibold text-foreground">Answers</h2>
           <button
             type="button"
             onClick={onBackToOverview}
@@ -83,13 +96,57 @@ export default function WorkspaceQAView({
             Close
           </button>
         </div>
-        <div className="flex-1 flex items-center justify-center p-6">
-          <div className="text-center space-y-1.5 max-w-[44ch]">
-            <p className="text-ui font-medium text-foreground/80">No question asked yet.</p>
-            <p className="text-body text-muted-foreground">
-              Ask from the question bar above, a suggested question on the overview, or the
-              panel beside any file.
-            </p>
+
+        <div className="flex-1 overflow-y-auto flex items-center justify-center p-6">
+          <div className="w-full max-w-2xl space-y-6">
+            <div className="space-y-2">
+              <div className="flex items-center gap-2 text-primary">
+                <Sparkles className="h-5 w-5" aria-hidden="true" />
+                <span className="text-meta font-semibold uppercase tracking-[0.12em]">Repository context</span>
+              </div>
+              <h1 className="text-panel text-foreground">Ask about this repository</h1>
+              <p className="text-body text-muted-foreground max-w-[60ch]">
+                Ask a question about the analysed codebase. The answer will be generated from
+                evidence retrieved from the indexed repository files and shown beside the response.
+              </p>
+            </div>
+
+            <form onSubmit={submitQuestion} className="space-y-3">
+              <label htmlFor="repository-question" className="sr-only">
+                Ask a question about this repository
+              </label>
+              <div className="flex flex-col sm:flex-row gap-3">
+                <div className="relative flex-1">
+                  <Sparkles
+                    className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-primary"
+                    aria-hidden="true"
+                  />
+                  <Input
+                    id="repository-question"
+                    value={draft}
+                    onChange={(event) => setDraft(event.target.value)}
+                    placeholder="What would you like to understand about this codebase?"
+                    className="h-12 pl-10 text-body bg-input border-border rounded-md"
+                    autoFocus
+                  />
+                </div>
+                <Button
+                  type="submit"
+                  disabled={!draft.trim() || isLoading}
+                  className="h-12 px-6 text-ui font-semibold rounded-md bg-primary text-primary-foreground hover:bg-primary-glow border-none"
+                >
+                  Ask
+                </Button>
+              </div>
+              <div className="flex flex-wrap gap-x-4 gap-y-1 text-meta text-muted-foreground">
+                <span>
+                  {indexedFileCount !== undefined && totalFileCount !== undefined
+                    ? `${indexedFileCount} of ${totalFileCount} repository files indexed`
+                    : "Uses the indexed repository as context"}
+                </span>
+                <span>For one file only, open Code and use “Ask about this file”.</span>
+              </div>
+            </form>
           </div>
         </div>
       </div>
@@ -99,7 +156,7 @@ export default function WorkspaceQAView({
   return (
     <div className="h-full flex flex-col overflow-hidden bg-background">
       <div className="flex items-center justify-between gap-4 px-6 py-3 border-b border-border shrink-0">
-        <h2 className="text-ui font-semibold text-foreground">Answer</h2>
+        <h2 className="text-ui font-semibold text-foreground">Answers</h2>
         <button
           type="button"
           onClick={onBackToOverview}
@@ -107,6 +164,35 @@ export default function WorkspaceQAView({
         >
           Close
         </button>
+      </div>
+
+      <div className="border-b border-border px-6 py-3 bg-card/40 shrink-0">
+        <form onSubmit={submitQuestion} className="flex gap-3 max-w-3xl">
+          <label htmlFor="repository-question-follow-up" className="sr-only">
+            Ask another question about this repository
+          </label>
+          <div className="relative flex-1">
+            <Sparkles
+              className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-primary"
+              aria-hidden="true"
+            />
+            <Input
+              id="repository-question-follow-up"
+              value={draft}
+              onChange={(event) => setDraft(event.target.value)}
+              placeholder="Ask another question about this repository"
+              className="h-10 pl-9 text-ui bg-input border-border rounded-md"
+              disabled={isLoading}
+            />
+          </div>
+          <Button
+            type="submit"
+            disabled={!draft.trim() || isLoading}
+            className="h-10 px-5 text-ui font-semibold rounded-md bg-primary text-primary-foreground hover:bg-primary-glow border-none"
+          >
+            Ask
+          </Button>
+        </form>
       </div>
 
       <div className="flex-1 overflow-y-auto">

@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
-import { Search, GitBranch, Sparkles } from "lucide-react";
+import { Search, GitBranch } from "lucide-react";
 import CodeViewer from "@/components/CodeViewer";
 import FolderTree from "@/components/FolderTree";
 import WorkspaceQAView, { type RetrievedEvidence } from "@/components/WorkspaceQAView";
@@ -65,14 +65,14 @@ function ingestionStepState(
 type WorkspaceView = 'overview' | 'code' | 'search' | 'qa';
 
 /**
- * The four views, in the order a user moves through them: orient, locate, read, ask.
- * Search and answer results are reached from the Code tab rather than being tabs of their
- * own, since both are entered from a field rather than by navigation.
+ * The permanent workspace tabs represent user goals: orient, inspect and ask.
+ * Search remains a global repository utility entered from the toolbar, so it is
+ * represented as a transient result state rather than a fourth permanent tab.
  */
 const WORKSPACE_TABS: { view: WorkspaceView; label: string; matches: WorkspaceView[] }[] = [
   { view: 'overview', label: 'Overview', matches: ['overview'] },
   { view: 'code', label: 'Code', matches: ['code'] },
-  { view: 'qa', label: 'Answers', matches: ['qa', 'search'] },
+  { view: 'qa', label: 'Answers', matches: ['qa'] },
 ];
 
 const Index = () => {
@@ -117,7 +117,6 @@ const Index = () => {
   const [searchVal, setSearchVal] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
   const [searchResults, setSearchResults] = useState<SearchResult[]>([]);
-  const [qaVal, setQaVal] = useState("");
   const [qaQuestion, setQaQuestion] = useState("");
   const [qaAnswer, setQaAnswer] = useState("");
   const [qaEvidence, setQaEvidence] = useState<RetrievedEvidence[]>([]);
@@ -209,15 +208,9 @@ const Index = () => {
     setSearchResults(results);
   };
 
-  const handleQASubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    const questionText = qaVal;
-    setQaVal("");
-    await runQuestion(questionText);
-  };
-
-  // Retrieval and generation for one question. Separated from the form handler so the
-  // suggested questions on the overview run exactly the same path.
+  // Retrieval and generation for one question. The Answers view, suggested questions and
+  // file-context panel all call this same path so UI entry-point changes do not alter the
+  // retrieval, prompt or generation behaviour evaluated by the project.
   const runQuestion = async (questionText: string) => {
     if (!questionText.trim() || !project) return;
 
@@ -504,7 +497,7 @@ const Index = () => {
             // Screen 3: Repository Workspace - Three-panel layout (Explorer | Content | Insights)
             <div className="flex flex-col h-[82vh] border border-border rounded-[4px] bg-card overflow-hidden shadow-none animate-fade-in">
               {/* Workspace Top Bar */}
-              {/* Workspace chrome: repository identity, the four views, and a way out */}
+              {/* Workspace chrome: repository identity, goal-based views, search, and a way out */}
               <div className="border-b border-border px-4 py-2.5 flex flex-wrap items-center gap-x-6 gap-y-3 shrink-0 bg-card">
                 <div className="flex items-center gap-2 min-w-0">
                   <GitBranch className="w-4 h-4 text-primary shrink-0" aria-hidden="true" />
@@ -544,7 +537,7 @@ const Index = () => {
                 </nav>
 
                 <div className="flex flex-1 flex-wrap items-center justify-end gap-2.5 min-w-0">
-                  <form onSubmit={handleSearchSubmit} className="relative w-full sm:w-[200px]">
+                  <form onSubmit={handleSearchSubmit} className="relative w-full sm:w-[240px]">
                     <label htmlFor="workspace-search" className="sr-only">Search the indexed code</label>
                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" aria-hidden="true" />
                     <Input
@@ -552,18 +545,6 @@ const Index = () => {
                       placeholder="Search the code"
                       value={searchVal}
                       onChange={(e) => setSearchVal(e.target.value)}
-                      className="pl-9 h-10 text-ui bg-input border-border rounded-md"
-                    />
-                  </form>
-
-                  <form onSubmit={handleQASubmit} className="relative w-full sm:w-[220px]">
-                    <label htmlFor="workspace-ask" className="sr-only">Ask a question about this repository</label>
-                    <Sparkles className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-primary" aria-hidden="true" />
-                    <Input
-                      id="workspace-ask"
-                      placeholder="Ask a question"
-                      value={qaVal}
-                      onChange={(e) => setQaVal(e.target.value)}
                       className="pl-9 h-10 text-ui bg-input border-border rounded-md"
                     />
                   </form>
@@ -674,6 +655,7 @@ const Index = () => {
                            indexedFileCount={project.ingestion?.filesWithContent ?? project.files.length}
                            totalFileCount={project.ingestion?.totalRepositoryFiles ?? project.files.length}
                            onBackToOverview={() => setWorkspaceView('overview')}
+                           onAsk={runQuestion}
                            onFileSelect={(path) => {
                              handleFileSelect(path);
                              setWorkspaceView('code');

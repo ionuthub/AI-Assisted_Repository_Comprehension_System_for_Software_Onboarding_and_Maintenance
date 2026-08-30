@@ -1,5 +1,6 @@
-import { describe, it, expect } from 'vitest';
-import { MENTIONED_PATH } from './WorkspaceQAView';
+import { describe, it, expect, vi } from 'vitest';
+import { fireEvent, render, screen } from '@testing-library/react';
+import WorkspaceQAView, { MENTIONED_PATH } from './WorkspaceQAView';
 
 const extract = (text: string) => text.match(new RegExp(MENTIONED_PATH.source, 'g')) ?? [];
 
@@ -31,14 +32,6 @@ describe('MENTIONED_PATH', () => {
   });
 });
 
-// The Answers tab is reachable before any question exists. These tests pin the
-// empty state discovered in the 1 August smoke test: the view rendered its full
-// answer layout for a question that was never asked, and the evidence panel
-// reported "No evidence · 0 files retrieved" for a retrieval that never ran,
-// a manufactured failure state in an instrument whose subject is trust.
-import { render, screen } from '@testing-library/react';
-import WorkspaceQAView from './WorkspaceQAView';
-
 const idleProps = {
   question: '',
   answer: '',
@@ -49,13 +42,32 @@ const idleProps = {
   indexedFileCount: 50,
   totalFileCount: 54,
   onBackToOverview: () => {},
+  onAsk: vi.fn(),
 };
 
 describe('WorkspaceQAView before any question is asked', () => {
-  it('shows the empty state instead of the answer layout', () => {
+  it('makes Answers the repository-wide question entry point', () => {
     render(<WorkspaceQAView {...idleProps} />);
-    expect(screen.getByText('No question asked yet.')).toBeInTheDocument();
+
+    expect(screen.getByRole('heading', { name: 'Ask about this repository' })).toBeInTheDocument();
+    expect(screen.getByPlaceholderText('What would you like to understand about this codebase?')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Ask' })).toBeInTheDocument();
+    expect(screen.getByText('50 of 54 repository files indexed')).toBeInTheDocument();
     expect(screen.queryByText('Your question')).not.toBeInTheDocument();
+  });
+
+  it('submits a repository question through the existing onAsk entry point', () => {
+    const onAsk = vi.fn();
+    render(<WorkspaceQAView {...idleProps} onAsk={onAsk} />);
+
+    fireEvent.change(
+      screen.getByPlaceholderText('What would you like to understand about this codebase?'),
+      { target: { value: 'Where does execution start?' } }
+    );
+    fireEvent.click(screen.getByRole('button', { name: 'Ask' }));
+
+    expect(onAsk).toHaveBeenCalledTimes(1);
+    expect(onAsk).toHaveBeenCalledWith('Where does execution start?');
   });
 
   it('does not render the no-evidence warning for a retrieval that never ran', () => {
@@ -65,9 +77,17 @@ describe('WorkspaceQAView before any question is asked', () => {
   });
 
   it('still renders the answer layout once a question exists', () => {
-    render(<WorkspaceQAView {...idleProps} question="Where does execution start?" generationStatus="complete" answer="In src/main.tsx." />);
+    render(
+      <WorkspaceQAView
+        {...idleProps}
+        question="Where does execution start?"
+        generationStatus="complete"
+        answer="In src/main.tsx."
+      />
+    );
     expect(screen.getByText('Your question')).toBeInTheDocument();
     expect(screen.getByText('Where does execution start?')).toBeInTheDocument();
-    expect(screen.queryByText('No question asked yet.')).not.toBeInTheDocument();
+    expect(screen.getByPlaceholderText('Ask another question about this repository')).toBeInTheDocument();
+    expect(screen.queryByRole('heading', { name: 'Ask about this repository' })).not.toBeInTheDocument();
   });
 });

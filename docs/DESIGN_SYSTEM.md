@@ -14,12 +14,27 @@ The artefact does not copy those products. Their interaction patterns were used 
 
 ## Design principles
 
-1. **One main task at a time.** The start screen focuses on repository input. Search and answer results take the full workspace width instead of being squeezed between unrelated panels.
-2. **Use developer-tool conventions.** File paths and code use a monospace font, the code view behaves like an editor, and the repository workspace uses explorer, content and insight areas.
-3. **Evidence is more important than decoration.** Generated answers are paired with the files, scores, line ranges and excerpts supplied to the model.
-4. **Show system limits.** Index coverage, excluded files, missing evidence and unverified file mentions are visible rather than hidden.
-5. **Do not present AI output as proven correct.** The interface reports what was retrieved and asks the user to make the final judgement.
-6. **Visual meaning must not depend on colour alone.** Important states also use text, icons, borders, underlines or patterns.
+1. **Repository context comes first.** AI interaction is not presented before a repository has been analysed. Questions are about the analysed codebase rather than a general-purpose chat context.
+2. **One main task at a time.** The start screen focuses on repository input. Search and answer results take the full workspace width instead of being squeezed between unrelated panels.
+3. **Use developer-tool conventions.** File paths and code use a monospace font, the code view behaves like an editor, and the repository workspace uses explorer, content and insight areas.
+4. **Put actions where their scope is clear.** Repository-wide questions live in Answers. File-specific questions live beside the selected file in Code. Search remains available from the workspace bar because it is a repository-wide navigation utility.
+5. **Evidence is more important than decoration.** Generated answers are paired with the files, scores, line ranges and excerpts supplied to the model.
+6. **Show system limits.** Index coverage, excluded files, missing evidence and unverified file mentions are visible rather than hidden.
+7. **Do not present AI output as proven correct.** The interface reports what was retrieved and asks the user to make the final judgement.
+8. **Visual meaning must not depend on colour alone.** Important states also use text, icons, borders, underlines or patterns.
+
+## Interaction model
+
+The intended journey is deliberately sequential:
+
+1. The user enters a public GitHub repository URL.
+2. The artefact resolves repository metadata, reads the file tree, fetches eligible file contents and builds the search index.
+3. The analysed repository becomes the active context for the workspace.
+4. The user can orient through Overview, inspect files in Code, search the indexed repository, or ask repository-wide questions in Answers.
+5. When a file is selected, the right-hand file panel offers **Ask about this file** for a narrower file-scoped question.
+6. Repository-wide and file-scoped questions both use the same retrieval and generation path; the interface changes the visible scope, not the underlying answer pipeline.
+
+This separation avoids presenting a generic AI prompt in the global toolbar. The application is a repository-comprehension tool first, with AI used after repository context exists.
 
 ## Colour system
 
@@ -86,25 +101,27 @@ The layout is dense enough to feel like a developer tool but keeps the main read
 | --- | --- |
 | **Start** | One repository field and one primary action. This follows the low-distraction Claude/ChatGPT pattern and keeps the first decision obvious. Recent repositories and an example are secondary actions below the main form. |
 | **Analysing** | Shows only the current ingestion stages and file progress. The user is not given other actions while the repository state is incomplete. |
-| **Overview** | Answers the first onboarding questions before showing individual files: what the project is, where it starts, how large it is, what it uses and which files have the most incoming dependencies. Coverage is shown because the tool may only index part of the repository. |
-| **Code** | Uses the VS Code/Antigravity style mental model. The explorer is on the left, source code is central and file-specific information is on the right. This keeps navigation, reading and local context visible together. |
-| **Search results** | Uses a full-width result list ordered by relevance. Each result explains what matched and shows a nearby code excerpt so the user can judge whether opening the file is worthwhile. |
-| **Answers** | The question and generated answer are the main reading task, with retrieved evidence beside them. Explorer and file-insight panels are hidden here so the answer is not compressed into a narrow centre column. |
+| **Overview** | Answers the first onboarding questions before showing individual files: what the project is, where it starts, how large it is, what it uses and which files have the most incoming dependencies. Coverage is shown because the tool may only index part of the repository. Suggested repository questions can also start the same Answers flow. |
+| **Code** | Uses the VS Code/Antigravity style mental model. The explorer is on the left, source code is central and file-specific information is on the right. This keeps navigation, reading and local context visible together. The right panel contains **Ask about this file**, making file scope explicit. |
+| **Search results** | Uses a full-width result list ordered by relevance. Each result explains what matched and shows a nearby code excerpt so the user can judge whether opening the file is worthwhile. Search remains a toolbar utility rather than a permanent workspace tab. |
+| **Answers** | This is the repository-wide AI workspace. Before a question exists it presents **Ask about this repository** as the primary action. After submission, the question and generated answer become the main reading task, with retrieved evidence beside them and a compact follow-up composer above. Explorer and file-insight panels are hidden here so the answer is not compressed into a narrow centre column. |
 | **Evaluation** | Uses a separate linear flow for setup, tasks, NASA-TLX, SUS and export. The current experimental condition remains visible so the observer does not lose track of the manual or tool condition. |
 
 ## Workspace navigation
 
 The top-level header contains only **Analyse** and **Evaluation**. The active item uses both font weight and an underline, so state is not communicated by colour alone.
 
-Inside a loaded repository, the workspace uses **Overview**, **Code** and **Answers**. Search results are entered from the search field rather than treated as a permanent tab. This keeps navigation based on user goals rather than every possible internal state.
+Inside a loaded repository, the workspace uses **Overview**, **Code** and **Answers**. These correspond to three stable user goals: orient to the repository, inspect source, and ask repository-level questions. Search results are entered from the search field rather than treated as a permanent tab.
 
-Search and question inputs stay in the workspace top bar so they can be reached from any repository view.
+The workspace bar therefore contains repository identity, the three goal-based views, **Search the code**, and **New repository**. It does not contain a second repository-question box. Repository-wide questions belong inside Answers, while file-specific questions belong beside the selected file in Code.
 
 ## Inputs and actions
 
 Primary actions use the green primary colour with dark text. Secondary actions use borders or underlined text rather than competing filled buttons.
 
 The repository field is 48px high on the start screen to make the main action visually clear. Workspace inputs and buttons are generally 40px high to preserve the denser editor layout.
+
+The initial repository-wide question field in Answers is 48px high so the empty state has one clear primary interaction. After an answer exists, the follow-up question field becomes a compact 40px workspace control. This keeps the first action prominent while preserving more vertical space during answer review.
 
 Repository paths are shown in JetBrains Mono. Clickable paths use either an underline or a clear hover change so they read as actions rather than plain metadata.
 
@@ -167,7 +184,7 @@ Motion is deliberately limited. Route changes use a short 0.3-second fade and ve
 | Code editor behaviour | `src/components/CodeViewer.tsx` |
 | File context panel | `src/components/FileInsightsPanel.tsx` |
 | Search result layout | `src/components/WorkspaceSearchView.tsx` |
-| Answer and evidence layout | `src/components/WorkspaceQAView.tsx` |
+| Repository question, answer and evidence layout | `src/components/WorkspaceQAView.tsx` |
 | Evidence states | `src/components/EvidencePanel.tsx` |
 | Research-session interface | `src/pages/Evaluation.tsx` |
 | Base UI components | `src/components/ui/` using shadcn/ui patterns |

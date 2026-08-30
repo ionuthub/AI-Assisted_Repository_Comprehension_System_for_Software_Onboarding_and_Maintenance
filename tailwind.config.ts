@@ -14,30 +14,28 @@ export default {
       },
     },
     extend: {
-      // Design-system type scale (Claude Design sheet). Body text is never below 14px and
-      // 12px is metadata only, so the named steps encode the rule rather than leaving it to
-      // each call site.
       fontSize: {
-        "meta": ["12px", { lineHeight: "1.5" }],        // secondary metadata only
-        "ui": ["14px", { lineHeight: "1.5" }],          // labels, list rows, buttons
-        "body": ["16px", { lineHeight: "1.65" }],       // answers and descriptions
-        "section": ["16px", { lineHeight: "1.4", fontWeight: "600" }],
-        "panel": ["20px", { lineHeight: "1.3", fontWeight: "600" }],
-        "code": ["15px", { lineHeight: "1.7" }],        // code blocks
-        "path": ["15px", { lineHeight: "1.5" }],        // file paths and identifiers
+        "meta": ["12px", { lineHeight: "18px" }],
+        "ui": ["14px", { lineHeight: "21px" }],
+        "body": ["16px", { lineHeight: "26px" }],
+        "section": ["18px", { lineHeight: "26px", fontWeight: "600" }],
+        "panel": ["20px", { lineHeight: "28px", fontWeight: "600" }],
+        "view": ["24px", { lineHeight: "32px", fontWeight: "600" }],
+        "page": ["32px", { lineHeight: "40px", fontWeight: "700" }],
+        "code": ["15px", { lineHeight: "1.7" }],
+        "path": ["15px", { lineHeight: "1.5" }],
       },
       spacing: {
         "1.5": "6px", "4.5": "18px",
       },
       fontFamily: {
-        // Inter for interface text and prose; JetBrains Mono reserved for code, file paths
-        // and identifiers. Both are open-licensed and drawn for screen reading at small sizes.
         sans: ['Inter', 'ui-sans-serif', 'system-ui', 'sans-serif'],
         mono: ['"JetBrains Mono"', 'ui-monospace', 'SFMono-Regular', 'monospace'],
       },
       colors: {
         border: "hsl(var(--border))",
         "border-strong": "hsl(var(--border-strong))",
+        "control-border": "hsl(var(--control-border))",
         "surface-raised": "hsl(var(--surface-raised))",
         "foreground-secondary": "hsl(var(--foreground-secondary))",
         "foreground-dim": "hsl(var(--foreground-dim))",
@@ -92,20 +90,12 @@ export default {
       },
       keyframes: {
         "accordion-down": {
-          from: {
-            height: "0",
-          },
-          to: {
-            height: "var(--radix-accordion-content-height)",
-          },
+          from: { height: "0" },
+          to: { height: "var(--radix-accordion-content-height)" },
         },
         "accordion-up": {
-          from: {
-            height: "var(--radix-accordion-content-height)",
-          },
-          to: {
-            height: "0",
-          },
+          from: { height: "var(--radix-accordion-content-height)" },
+          to: { height: "0" },
         },
       },
       animation: {

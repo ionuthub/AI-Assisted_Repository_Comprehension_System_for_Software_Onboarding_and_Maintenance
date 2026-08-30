@@ -35,8 +35,6 @@ export default function RepositoryOverview({
       project.files.find((f) => /^(src\/)?(index|main)\.[jt]sx?$/.test(f.path))?.path ??
       null;
 
-    // Ranked by how many indexed files import each one. Incoming references are the
-    // practical measure of blast radius: change these and the most breaks.
     const mostDependedOn = Object.values(staticAnalyses)
       .map((analysis) => ({ path: analysis.path, count: analysis.usedBy.length }))
       .filter((entry) => entry.count > 0)
@@ -60,7 +58,7 @@ export default function RepositoryOverview({
     <div className="grid grid-cols-1 xl:grid-cols-[minmax(0,1fr)_340px] gap-8">
       <div className="min-w-0 space-y-6">
         <div className="space-y-3">
-          <h1 className="text-panel text-foreground">What this project is</h1>
+          <h1 className="text-view text-foreground">What this project is</h1>
           <p className="text-body text-foreground/90 max-w-[68ch]">
             {overview?.description || project.summary.description || "No description was available for this repository."}
           </p>
@@ -72,12 +70,12 @@ export default function RepositoryOverview({
 
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
           <section className="rounded-md border border-border bg-card p-4 space-y-1.5">
-            <h2 className="text-meta text-muted-foreground">Entry point</h2>
+            <h2 className="text-meta font-semibold text-muted-foreground">Entry point</h2>
             {stats.entryPoint ? (
               <button
                 type="button"
                 onClick={() => onFileSelect(stats.entryPoint as string)}
-                className="text-path font-mono text-primary underline underline-offset-2 hover:text-primary-glow break-all text-left"
+                className="focus-ring rounded-sm text-path font-mono text-primary underline underline-offset-2 hover:text-primary-glow break-all text-left"
               >
                 {stats.entryPoint}
               </button>
@@ -87,7 +85,7 @@ export default function RepositoryOverview({
           </section>
 
           <section className="rounded-md border border-border bg-card p-4 space-y-1.5">
-            <h2 className="text-meta text-muted-foreground">Size</h2>
+            <h2 className="text-meta font-semibold text-muted-foreground">Size</h2>
             <p className="text-ui font-semibold text-foreground">{stats.indexedCount} files indexed</p>
             <p className="text-meta text-muted-foreground">
               {stats.totalLines.toLocaleString()} lines · {stats.sourceFiles} source, {stats.testFiles} test
@@ -95,7 +93,7 @@ export default function RepositoryOverview({
           </section>
 
           <section className="rounded-md border border-border bg-card p-4 space-y-2">
-            <h2 className="text-meta text-muted-foreground">Built with</h2>
+            <h2 className="text-meta font-semibold text-muted-foreground">Built with</h2>
             {technologies.length > 0 ? (
               <ul className="flex flex-wrap gap-1.5">
                 {technologies.slice(0, 4).map((tech) => (
@@ -132,7 +130,7 @@ export default function RepositoryOverview({
                   <button
                     type="button"
                     onClick={() => onFileSelect(entry.path)}
-                    className="text-path font-mono text-foreground hover:text-primary truncate flex-1 text-left"
+                    className="focus-ring rounded-sm text-path font-mono text-foreground hover:text-primary truncate flex-1 text-left"
                   >
                     {entry.path}
                   </button>

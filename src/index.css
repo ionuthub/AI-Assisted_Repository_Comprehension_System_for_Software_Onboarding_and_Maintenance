@@ -2,14 +2,8 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Definition of the design system. All colors, gradients, fonts, etc should be defined here. 
-All colors MUST be HSL.
-*/
-
 @layer base {
   :root {
-    /* Palette from the Codemap design (Claude Design). Hex source noted per token so the
-       values can be traced back to the design file. */
     --background: 160 18% 3%;               /* #070a09 */
     --foreground: 200 16% 93%;              /* #e9edef */
     --foreground-secondary: 200 12% 81%;    /* #c8d0d4 */
@@ -17,7 +11,6 @@ All colors MUST be HSL.
 
     --card: 160 19% 6%;                     /* #0d1311 */
     --card-foreground: 200 16% 93%;
-
     --popover: 158 18% 9%;                  /* #121a17 */
     --popover-foreground: 200 16% 93%;
 
@@ -27,7 +20,6 @@ All colors MUST be HSL.
 
     --secondary: 156 17% 12%;               /* #19231f */
     --secondary-foreground: 200 16% 93%;
-
     --muted: 156 17% 12%;
     --muted-foreground: 200 9% 66%;         /* #a2acb1 */
 
@@ -37,34 +29,29 @@ All colors MUST be HSL.
 
     --destructive: 8 79% 71%;               /* #ef8a7a */
     --destructive-foreground: 160 18% 3%;
-
     --warning: 37 71% 65%;                  /* #e5b567 */
     --warning-foreground: 160 18% 3%;
 
-    --border: 155 14% 16%;                  /* #24302b */
-    --border-strong: 154 12% 22%;           /* #313f39 */
+    --border: 155 14% 16%;                  /* #24302b: layout separators */
+    --border-strong: 154 12% 22%;           /* #313f39: stronger separators */
+    --control-border: 152 7% 42%;           /* #64736c: >= 3:1 on dark controls */
     --input: 158 18% 9%;
     --ring: 145 72% 67%;
 
     --code-bg: 156 20% 5%;                  /* #0a0f0d */
     --code-line: 158 18% 9%;
     --code-number: 201 6% 57%;
-
     --surface-raised: 156 17% 12%;
 
     --radius: 6px;
-
     --gradient-primary: transparent;
     --gradient-glow: transparent;
     --shadow-glow: none;
     --shadow-card: none;
-
     --transition-base: all 0.15s ease;
     --transition-smooth: all 0.2s ease;
   }
-}
 
-@layer base {
   * {
     @apply border-border;
   }
@@ -77,15 +64,46 @@ All colors MUST be HSL.
   body {
     @apply bg-background text-foreground antialiased;
     font-feature-settings: "liga" 1, "calt" 1;
-    /* Global padding: 0–8px on all sides (no side gutters on desktop) */
     padding: 0.5rem;
     margin: 0;
+  }
+
+  /* Every native interactive element receives the same keyboard-visible focus treatment,
+     including raw buttons and disclosure summaries that do not use the shared components. */
+  a:focus-visible,
+  button:focus-visible,
+  summary:focus-visible,
+  [role="button"]:focus-visible,
+  [role="treeitem"]:focus-visible {
+    outline: 2px solid hsl(var(--ring));
+    outline-offset: 2px;
   }
 
   @media (max-width: 768px) {
     body {
       padding: 0.25rem;
     }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    html {
+      scroll-behavior: auto;
+    }
+
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+      scroll-behavior: auto !important;
+    }
+  }
+}
+
+@layer components {
+  .focus-ring {
+    @apply focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background;
   }
 }
 
@@ -96,68 +114,38 @@ All colors MUST be HSL.
     -webkit-text-fill-color: transparent;
     background-clip: text;
   }
-  
-  .glow {
-    box-shadow: var(--shadow-glow);
-  }
-  
-  .animate-float {
-    animation: float 6s ease-in-out infinite;
-  }
-  
+
+  .glow { box-shadow: var(--shadow-glow); }
+  .animate-float { animation: float 6s ease-in-out infinite; }
   .slide-in-left {
     animation: slideInLeft 0.6s cubic-bezier(0.4, 0, 0.2, 1) forwards;
     opacity: 0;
   }
-  
   .slide-in-right {
     animation: slideInRight 0.6s cubic-bezier(0.4, 0, 0.2, 1) forwards;
     opacity: 0;
   }
-  
   .slide-out-right {
     animation: slideOutRight 0.6s cubic-bezier(0.4, 0, 0.2, 1) forwards;
   }
-  
+
   @keyframes float {
-    0%, 100% {
-      transform: translateY(0px);
-    }
-    50% {
-      transform: translateY(-20px);
-    }
+    0%, 100% { transform: translateY(0px); }
+    50% { transform: translateY(-20px); }
   }
-  
+
   @keyframes slideInLeft {
-    from {
-      opacity: 0;
-      transform: translateX(-60px);
-    }
-    to {
-      opacity: 1;
-      transform: translateX(0);
-    }
+    from { opacity: 0; transform: translateX(-60px); }
+    to { opacity: 1; transform: translateX(0); }
   }
-  
+
   @keyframes slideInRight {
-    from {
-      opacity: 0;
-      transform: translateX(60px);
-    }
-    to {
-      opacity: 1;
-      transform: translateX(0);
-    }
+    from { opacity: 0; transform: translateX(60px); }
+    to { opacity: 1; transform: translateX(0); }
   }
-  
+
   @keyframes slideOutRight {
-    from {
-      opacity: 1;
-      transform: translateX(0);
-    }
-    to {
-      opacity: 0;
-      transform: translateX(60px);
-    }
+    from { opacity: 1; transform: translateX(0); }
+    to { opacity: 0; transform: translateX(60px); }
   }
 }

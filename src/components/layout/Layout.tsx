@@ -1,6 +1,6 @@
 import React from "react";
 import Header from "./Header";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion, AnimatePresence, useReducedMotion } from "framer-motion";
 import { useLocation } from "react-router-dom";
 
 interface LayoutProps {
@@ -9,18 +9,19 @@ interface LayoutProps {
 
 const Layout = ({ children }: LayoutProps) => {
     const location = useLocation();
+    const reduceMotion = useReducedMotion();
 
     return (
         <div className="relative flex min-h-screen flex-col bg-background">
             <Header />
             <main className="flex-1 flex flex-col">
-                <AnimatePresence mode="wait">
+                <AnimatePresence mode="wait" initial={false}>
                     <motion.div
                         key={location.pathname}
-                        initial={{ opacity: 0, y: 10 }}
+                        initial={reduceMotion ? { opacity: 1, y: 0 } : { opacity: 0, y: 10 }}
                         animate={{ opacity: 1, y: 0 }}
-                        exit={{ opacity: 0, y: -10 }}
-                        transition={{ duration: 0.3 }}
+                        exit={reduceMotion ? { opacity: 1, y: 0 } : { opacity: 0, y: -10 }}
+                        transition={{ duration: reduceMotion ? 0 : 0.2 }}
                         className="flex-1 flex flex-col"
                     >
                         {children}

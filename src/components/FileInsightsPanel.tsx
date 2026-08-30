@@ -10,11 +10,8 @@ interface FileInsightsPanelProps {
 
 /**
  * Describes the selected file from static analysis alone.
- *
- * Everything here is derived from parsing this file and the other indexed files, no model
- * is involved, so the panel is stated as fact while answers elsewhere are marked as
- * grounded or not. Import parsing covers JavaScript and TypeScript, so the relationships
- * are empty for other languages and the panel says so rather than appearing broken.
+ * Everything here is derived from parsed repository data; the AI question composer below
+ * deliberately states that related indexed files may still be retrieved as evidence.
  */
 export default function FileInsightsPanel({ path, analysis, onFileSelect, onAsk }: FileInsightsPanelProps) {
   const [question, setQuestion] = useState("");
@@ -64,7 +61,7 @@ export default function FileInsightsPanel({ path, analysis, onFileSelect, onAsk 
                   <button
                     type="button"
                     onClick={() => onFileSelect(dependent)}
-                    className="text-path font-mono text-foreground hover:text-primary truncate block w-full text-left"
+                    className="focus-ring rounded-sm text-path font-mono text-foreground hover:text-primary truncate block w-full text-left"
                   >
                     {dependent}
                   </button>
@@ -90,7 +87,7 @@ export default function FileInsightsPanel({ path, analysis, onFileSelect, onAsk 
                 <button
                   type="button"
                   onClick={() => item.resolvedPath && onFileSelect(item.resolvedPath)}
-                  className="text-meta font-mono px-2 py-1 rounded border border-border bg-surface-raised text-foreground-secondary hover:border-primary/60 hover:text-foreground"
+                  className="focus-ring text-meta font-mono px-2 py-1 rounded border border-control-border bg-surface-raised text-foreground-secondary hover:border-primary/60 hover:text-foreground"
                 >
                   {item.source}
                 </button>
@@ -99,8 +96,6 @@ export default function FileInsightsPanel({ path, analysis, onFileSelect, onAsk 
             {externalImports.map((item) => (
               <li
                 key={item.source}
-                // Dashed border marks a target outside the index: the file exists somewhere,
-                // but nothing here can show it, and saying so beats an unclickable chip.
                 className="text-meta font-mono px-2 py-1 rounded border border-dashed border-border-strong text-muted-foreground"
               >
                 {item.source} · not indexed
@@ -112,6 +107,9 @@ export default function FileInsightsPanel({ path, analysis, onFileSelect, onAsk 
 
       <section className="space-y-2">
         <h2 className="text-section text-foreground">Ask about this file</h2>
+        <p className="text-meta text-muted-foreground leading-relaxed">
+          The selected file anchors the question; related indexed files may also be retrieved as evidence.
+        </p>
         <form
           onSubmit={(e) => {
             e.preventDefault();
@@ -129,11 +127,11 @@ export default function FileInsightsPanel({ path, analysis, onFileSelect, onAsk 
             value={question}
             onChange={(e) => setQuestion(e.target.value)}
             placeholder="What calls this?"
-            className="w-full h-10 px-3 rounded-md bg-input border border-border text-ui text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+            className="w-full h-10 px-3 rounded-md bg-input border border-control-border text-ui text-foreground placeholder:text-muted-foreground focus-ring"
           />
           <button
             type="submit"
-            className="w-full h-10 rounded-md bg-primary text-primary-foreground text-ui font-semibold hover:bg-primary-glow disabled:opacity-50"
+            className="focus-ring w-full h-10 rounded-md bg-primary text-primary-foreground text-ui font-semibold hover:bg-primary-glow disabled:opacity-50"
             disabled={!question.trim()}
           >
             Ask

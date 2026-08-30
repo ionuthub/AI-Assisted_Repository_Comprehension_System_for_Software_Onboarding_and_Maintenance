@@ -9,7 +9,6 @@ interface CoveragePanelProps {
   treeTruncated?: boolean;
 }
 
-/** Excluded files grouped by the reason the ingestion filter recorded. */
 function groupByReason(excluded: ExcludedFile[]): { reason: string; paths: string[] }[] {
   const groups = new Map<string, string[]>();
   for (const item of excluded) {
@@ -22,13 +21,6 @@ function groupByReason(excluded: ExcludedFile[]): { reason: string; paths: strin
     .sort((a, b) => b.paths.length - a.paths.length);
 }
 
-/**
- * States how much of the repository was actually read.
- *
- * The file list is capped and several filters apply, so an answer can only ever be grounded
- * in part of a repository. Leaving that implicit invites a reader to assume whole-repository
- * coverage; this panel makes the limit, and the reason for each exclusion, inspectable.
- */
 export default function CoveragePanel({
   indexedFiles,
   totalRepositoryFiles,
@@ -39,12 +31,7 @@ export default function CoveragePanel({
   const groups = groupByReason(excluded);
   const ratio = totalRepositoryFiles > 0 ? indexedFiles / totalRepositoryFiles : 0;
   const percent = ratio * 100;
-  // Rounding a real fraction to "0%" reads as "nothing was indexed", which is wrong and
-  // undermines the figure beside it.
   const percentLabel = percent > 0 && percent < 1 ? "under 1%" : `${Math.round(percent)}%`;
-  // Below this, an answer is drawn from so small a slice that treating it as a statement
-  // about the repository is unsafe. Said plainly rather than left for the user to infer
-  // from a progress bar.
   const coverageTooLowToRelyOn = totalRepositoryFiles > 0 && ratio < 0.1;
 
   return (
@@ -109,7 +96,7 @@ export default function CoveragePanel({
                       type="button"
                       onClick={() => setOpenReason(isOpen ? null : group.reason)}
                       aria-expanded={isOpen}
-                      className="text-ui text-primary underline underline-offset-2 hover:text-primary-glow"
+                      className="focus-ring rounded-sm text-ui text-primary underline underline-offset-2 hover:text-primary-glow"
                     >
                       {isOpen ? "Hide them" : "Show them"}
                     </button>

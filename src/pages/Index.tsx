@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
-import { Search, GitBranch } from "lucide-react";
+import { Search, GitBranch, CheckCircle2, Loader2, Circle } from "lucide-react";
 import CodeViewer from "@/components/CodeViewer";
 import FolderTree from "@/components/FolderTree";
 import WorkspaceQAView, { type RetrievedEvidence } from "@/components/WorkspaceQAView";
@@ -91,7 +91,6 @@ const Index = () => {
     searchIndex
   } = useProjectStore();
 
-  
   const overview = useMemo(() => {
     if (!project) return null;
     return analyzeProject(project);
@@ -99,20 +98,13 @@ const Index = () => {
 
   const [searchParams] = useSearchParams();
 
-  // Path -> why it was not indexed. Lets a path the model names be reported with the reason
-  // it is absent ("Over the 50-file limit") rather than a bare "not retrieved", which is the
-  // difference between a user being able to act on the gap and merely noticing it.
   const excludedPathReasons = useMemo(() => {
     const map: Record<string, string> = {};
     for (const item of project?.ingestion?.excluded ?? []) map[item.path] = item.reason;
     return map;
   }, [project]);
 
-  // Workspace dynamic view states
   const [workspaceView, setWorkspaceView] = useState<WorkspaceView>('overview');
-  // The file explorer and the per-file panel are only meaningful when a file is the
-  // subject. An answer or a result list is the whole task and takes the full width;
-  // nested inside three columns the answer prose collapsed to roughly 250px.
   const showsFileChrome = workspaceView === 'code';
   const [searchVal, setSearchVal] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
@@ -129,7 +121,6 @@ const Index = () => {
   const [githubUrl, setGithubUrl] = useState("");
   const [recentRepos, setRecentRepos] = useState<RecentRepoItem[]>([]);
 
-
   const {
     handleAnalyze,
     handleFileSelect,
@@ -139,8 +130,6 @@ const Index = () => {
   const handleLineSelect = (lineNumber: number, isMultiSelect?: boolean) => {
     if (!currentFileContent) return;
     setSelectedLine(lineNumber);
-    // Plain click starts a fresh selection; Ctrl/Cmd/Shift+click toggles the
-    // line in or out of the existing one.
     if (!isMultiSelect) {
       setSelectedLines(new Set([lineNumber]));
       return;
@@ -151,7 +140,6 @@ const Index = () => {
     setSelectedLines(next);
   };
 
-  // Load recent repositories from localStorage on mount
   useEffect(() => {
     const saved = localStorage.getItem("recent_repos");
     if (saved) {
@@ -177,7 +165,6 @@ const Index = () => {
     });
   }, []);
 
-  // Add project to history when loaded
   useEffect(() => {
     if (project) {
       const name = project.summary.name;
@@ -197,8 +184,6 @@ const Index = () => {
     handleAnalyze(githubUrl, "");
   };
 
-
-  // Search submit handler
   const handleSearchSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!searchVal.trim() || !searchIndex || !project) return;
@@ -208,9 +193,8 @@ const Index = () => {
     setSearchResults(results);
   };
 
-  // Retrieval and generation for one question. The Answers view, suggested questions and
-  // file-context panel all call this same path so UI entry-point changes do not alter the
-  // retrieval, prompt or generation behaviour evaluated by the project.
+  // Retrieval and generation remain unchanged by the interface redesign. Answers, suggested
+  // questions and the file-context panel all call this same path.
   const runQuestion = async (questionText: string) => {
     if (!questionText.trim() || !project) return;
 
@@ -222,15 +206,10 @@ const Index = () => {
     setQaAnswer("");
     setQaEvidence([]);
 
-    // Timed from before retrieval to after the last streamed token, so the recorded figure
-    // is the latency the participant experiences rather than time-to-first-byte.
     const qaStart = performance.now();
 
     let systemContext = `You are a technical code tutor. Answer the user's question about the codebase. Refer to the provided source code context. Always cite files and explain reasoning. Avoid hallucinated claims.`;
 
-    // The evidence actually sent to the model is recorded here and handed to the answer
-    // view. Citations must be derived from this, never from parsing the answer text:
-    // a path the model invents would otherwise be presented to the reader as a source.
     const evidence: RetrievedEvidence[] = [];
     if (searchIndex) {
       const matches = searchRepository(questionText, searchIndex, project.files, RETRIEVAL.RAG_TOP_K);
@@ -240,8 +219,6 @@ const Index = () => {
           if (evidence.length === 0) {
             systemContext += "\n\n[Grounded Repository Context for RAG - Answer using this evidence and cite file paths]";
           }
-          // The region most relevant to the question, not the head of the file, so the line
-          // range shown as a citation is the text the model actually received.
           const region = selectExcerptRegion(fileObj.content, questionText, RETRIEVAL.RAG_CONTEXT_CHARS);
           systemContext += `\n\n--- File: ${res.path} (lines ${region.startLine}-${region.endLine} of ${region.totalLines}) ---\n${region.text}`;
           evidence.push({
@@ -260,10 +237,6 @@ const Index = () => {
     const evidenceFileCount = evidence.length;
     setQaEvidence(evidence);
 
-    // Retrieval can return nothing, or return files whose content was never loaded. The
-    // prompt was previously sent unchanged in that case, so an ungrounded answer was
-    // presented in a UI that implies grounding, the exact condition the study's
-    // over-trust probes are meant to measure deliberately, not to produce by accident.
     if (evidenceFileCount === 0) {
       systemContext += "\n\n[No repository context could be retrieved for this question. Say so explicitly in the first sentence of your answer, and do not describe specific files, functions or behaviour in this repository.]";
     }
@@ -296,9 +269,6 @@ const Index = () => {
       setQaAnswer(fullText);
       setQaCompletion(completion);
       setQaGenerationStatus('complete');
-      // The evidence count is recorded with the timing so an ungrounded answer is
-      // identifiable in the exported metrics rather than indistinguishable from a
-      // grounded one.
       const outputTokens = completion.usageMetadata?.candidatesTokenCount;
       recordMetric(
         'qa_response',
@@ -340,14 +310,13 @@ const Index = () => {
         title="Repository Comprehension System"
         description="Understand unfamiliar codebases using a repository overview, semantic search, and answers grounded in the files they came from."
       />
-      <div className="flex flex-col relative overflow-hidden min-h-[82vh]">
+      <div className="flex flex-col relative overflow-x-hidden min-h-[82vh]">
         <main className="flex-1 container mx-auto px-4 py-8 md:px-8 flex flex-col">
           {!project ? (
             (isLoading || isFileLoading) ? (
-              // Screen 2: Analysing
               <div className="max-w-2xl w-full mx-auto py-12 animate-fade-in space-y-6">
                 <div className="space-y-2">
-                  <h1 className="text-panel text-foreground">Analysing repository</h1>
+                  <h1 className="text-view text-foreground">Analysing repository</h1>
                   <p className="text-body text-muted-foreground max-w-[54ch]">
                     Reading the file list, fetching source, and building the search index.
                     Larger repositories take longer.
@@ -359,16 +328,20 @@ const Index = () => {
                     const state = ingestionStepState(step.phase, ingestionProgress?.phase);
                     return (
                       <li key={step.phase} className="flex items-start gap-3">
-                        <span
-                          className={`mt-1 h-2 w-2 rounded-full shrink-0 ${
-                            state === "done" ? "bg-primary" : state === "active" ? "bg-primary animate-pulse" : "bg-secondary"
-                          }`}
-                          aria-hidden="true"
-                        />
+                        <span className="mt-0.5 w-5 h-5 shrink-0 flex items-center justify-center" aria-hidden="true">
+                          {state === "done" ? (
+                            <CheckCircle2 className="w-4 h-4 text-primary" />
+                          ) : state === "active" ? (
+                            <Loader2 className="w-4 h-4 text-primary animate-spin" />
+                          ) : (
+                            <Circle className="w-4 h-4 text-foreground-dim" />
+                          )}
+                        </span>
                         <div className="min-w-0 flex-1 space-y-1.5">
                           <p className={`text-ui ${state === "pending" ? "text-muted-foreground" : "text-foreground"}`}>
                             {step.label}
                             {state === "done" && <span className="sr-only">, complete</span>}
+                            {state === "active" && <span className="sr-only">, in progress</span>}
                           </p>
 
                           {step.phase === "fetching" && ingestionProgress?.phase === "fetching" && (
@@ -399,10 +372,9 @@ const Index = () => {
                 </ol>
               </div>
             ) : (
-              // Screen 1: Start
               <div className="max-w-2xl w-full mx-auto py-12 animate-fade-in space-y-8">
                 <div className="space-y-2">
-                  <h1 className="text-3xl font-semibold text-foreground tracking-tight">Analyse a repository</h1>
+                  <h1 className="text-page text-foreground tracking-tight">Analyse a repository</h1>
                   <p className="text-body text-muted-foreground max-w-[54ch]">
                     Paste a public GitHub URL. You get an overview, a searchable index, and
                     answers with the files they came from.
@@ -419,7 +391,7 @@ const Index = () => {
                       placeholder="https://github.com/expressjs/express"
                       value={githubUrl}
                       onChange={(e) => setGithubUrl(e.target.value)}
-                      className="flex-1 h-12 text-path font-mono bg-input border-border rounded-md focus-visible:ring-primary"
+                      className="flex-1 h-12 text-path font-mono bg-input rounded-md focus-visible:ring-primary"
                       disabled={isLoading}
                     />
                     <Button
@@ -452,7 +424,7 @@ const Index = () => {
                       setMode(TAB_MODES.GITHUB);
                       handleAnalyze(EXAMPLE_REPOSITORY, "");
                     }}
-                    className="text-ui text-primary underline underline-offset-2 hover:text-primary-glow disabled:opacity-50"
+                    className="focus-ring rounded-sm text-ui text-primary underline underline-offset-2 hover:text-primary-glow disabled:opacity-50"
                     disabled={isLoading}
                   >
                     Try an example: expressjs/express
@@ -474,7 +446,7 @@ const Index = () => {
                                 handleAnalyze(repo.url, "");
                               }
                             }}
-                            className="w-full flex items-center justify-between gap-4 px-4 py-3 text-left hover:bg-surface-raised transition-colors"
+                            className="focus-ring w-full flex items-center justify-between gap-4 px-4 py-3 text-left hover:bg-surface-raised transition-colors"
                           >
                             <span className="min-w-0">
                               <span className="block text-path font-mono text-foreground truncate">{repo.name}</span>
@@ -494,10 +466,7 @@ const Index = () => {
               </div>
             )
           ) : (
-            // Screen 3: Repository Workspace - Three-panel layout (Explorer | Content | Insights)
-            <div className="flex flex-col h-[82vh] border border-border rounded-[4px] bg-card overflow-hidden shadow-none animate-fade-in">
-              {/* Workspace Top Bar */}
-              {/* Workspace chrome: repository identity, goal-based views, search, and a way out */}
+            <div className="flex flex-col min-h-[82vh] lg:h-[82vh] border border-border rounded-md bg-card overflow-visible lg:overflow-hidden shadow-none animate-fade-in">
               <div className="border-b border-border px-4 py-2.5 flex flex-wrap items-center gap-x-6 gap-y-3 shrink-0 bg-card">
                 <div className="flex items-center gap-2 min-w-0">
                   <GitBranch className="w-4 h-4 text-primary shrink-0" aria-hidden="true" />
@@ -522,7 +491,7 @@ const Index = () => {
                               }
                               setWorkspaceView(tab.view);
                             }}
-                            className={`px-3 py-1.5 rounded text-ui transition-colors ${
+                            className={`focus-ring px-3 py-1.5 rounded text-ui transition-colors ${
                               isCurrent
                                 ? "bg-surface-raised text-foreground font-semibold"
                                 : "text-muted-foreground hover:text-foreground"
@@ -545,7 +514,7 @@ const Index = () => {
                       placeholder="Search the code"
                       value={searchVal}
                       onChange={(e) => setSearchVal(e.target.value)}
-                      className="pl-9 h-10 text-ui bg-input border-border rounded-md"
+                      className="pl-9 h-10 text-ui bg-input rounded-md"
                     />
                   </form>
 
@@ -557,135 +526,128 @@ const Index = () => {
                       setSelectedFile(null);
                       setWorkspaceView('overview');
                     }}
-                    className="h-10 px-4 text-ui rounded-md border-border bg-card text-foreground hover:border-primary/60 hover:bg-surface-raised"
+                    className="h-10 px-4 text-ui rounded-md border-control-border bg-card text-foreground hover:border-primary/60 hover:bg-surface-raised"
                   >
                     New repository
                   </Button>
                 </div>
               </div>
 
-               {/* Conditional Panels Layout */}
-               <div className="flex-1 flex overflow-hidden">
-                  {workspaceView === 'overview' ? (
-                    // Screen 2: Repository Overview - Full width, no sidebars, no clutter
-                    <div className="flex-1 h-full overflow-y-auto bg-background/30 flex justify-center">
-                      <div className="max-w-5xl w-full p-6 animate-fade-in space-y-8">
-                        <RepositoryOverview
-                          project={project}
-                          overview={overview}
-                          staticAnalyses={staticAnalyses}
+              <div className="flex-1 flex flex-col lg:flex-row overflow-visible lg:overflow-hidden">
+                {workspaceView === 'overview' ? (
+                  <div className="flex-1 h-full overflow-y-auto bg-background/30 flex justify-center">
+                    <div className="max-w-5xl w-full p-4 md:p-6 animate-fade-in space-y-8">
+                      <RepositoryOverview
+                        project={project}
+                        overview={overview}
+                        staticAnalyses={staticAnalyses}
+                        onFileSelect={(path) => {
+                          handleFileSelect(path);
+                          setWorkspaceView('code');
+                        }}
+                      />
+
+                      {project.ingestion && (
+                        <CoveragePanel
+                          indexedFiles={project.ingestion.filesWithContent}
+                          totalRepositoryFiles={project.ingestion.totalRepositoryFiles}
+                          excluded={project.ingestion.excluded}
+                          treeTruncated={project.ingestion.treeTruncatedByGitHub}
+                        />
+                      )}
+
+                      <SuggestedQuestions onAsk={runQuestion} />
+                    </div>
+                  </div>
+                ) : (
+                  <>
+                    {showsFileChrome && (
+                      <div className="w-full h-60 lg:w-[280px] lg:h-full shrink-0 border-b lg:border-b-0 lg:border-r border-border/80 overflow-y-auto bg-secondary/5">
+                        <FolderTree
+                          tree={scanResult?.folderTree || { name: "Root", path: "", type: "folder", children: [] }}
+                          selectedFile={selectedFile}
                           onFileSelect={(path) => {
                             handleFileSelect(path);
                             setWorkspaceView('code');
                           }}
                         />
-
-                        {project.ingestion && (
-                          <CoveragePanel
-                            indexedFiles={project.ingestion.filesWithContent}
-                            totalRepositoryFiles={project.ingestion.totalRepositoryFiles}
-                            excluded={project.ingestion.excluded}
-                            treeTruncated={project.ingestion.treeTruncatedByGitHub}
-                          />
-                        )}
-
-                        <SuggestedQuestions onAsk={runQuestion} />
                       </div>
+                    )}
+
+                    <div className="w-full flex-1 min-h-[420px] lg:min-h-0 lg:h-full overflow-hidden bg-background/30 flex flex-col">
+                      {workspaceView === 'code' && (
+                        <div className="h-full flex flex-col">
+                          <div className="flex-1 min-h-0">
+                            <CodeViewer
+                              isLoading={isFileLoading}
+                              fileName={selectedFile}
+                              fileContent={currentFileContent}
+                              onLineSelect={handleLineSelect}
+                              selectedLine={selectedLine}
+                              selectedLines={selectedLines}
+                            />
+                          </div>
+                        </div>
+                      )}
+
+                      {workspaceView === 'search' && (
+                        <WorkspaceSearchView
+                          query={searchQuery}
+                          results={searchResults}
+                          indexedFileCount={project.ingestion?.filesWithContent ?? project.files.length}
+                          totalFileCount={project.ingestion?.totalRepositoryFiles ?? project.files.length}
+                          projectFiles={project.files}
+                          onBackToOverview={() => setWorkspaceView('overview')}
+                          onFileSelect={(path) => {
+                            handleFileSelect(path);
+                            setWorkspaceView('code');
+                          }}
+                        />
+                      )}
+
+                      {workspaceView === 'qa' && (
+                        <WorkspaceQAView
+                          question={qaQuestion}
+                          answer={qaAnswer}
+                          isLoading={isQaLoading}
+                          generationStatus={qaGenerationStatus}
+                          completion={qaCompletion}
+                          evidence={qaEvidence}
+                          excludedPaths={excludedPathReasons}
+                          indexedFileCount={project.ingestion?.filesWithContent ?? project.files.length}
+                          totalFileCount={project.ingestion?.totalRepositoryFiles ?? project.files.length}
+                          onBackToOverview={() => setWorkspaceView('overview')}
+                          onAsk={runQuestion}
+                          onFileSelect={(path) => {
+                            handleFileSelect(path);
+                            setWorkspaceView('code');
+                          }}
+                        />
+                      )}
                     </div>
-                  ) : (
-                   // Screen 3: Repository Workspace - Three-panel layout (Explorer | Content | Insights)
-                   <>
-                     {/* The explorer and the file panel belong to file-centred views. An
-                         answer or a result list is the whole task, so they take the full
-                         width rather than being squeezed into the middle column. */}
-                     {showsFileChrome && (
-                     <div className="w-[260px] md:w-[280px] shrink-0 border-r border-border/80 h-full overflow-y-auto bg-secondary/5">
-                       <FolderTree
-                         tree={scanResult?.folderTree || { name: "Root", path: "", type: "folder", children: [] }}
-                         selectedFile={selectedFile}
-                         onFileSelect={(path) => {
-                           handleFileSelect(path);
-                           setWorkspaceView('code');
-                         }}
-                       />
-                     </div>
-                     )}
 
-                     {/* Middle Panel: Workspace Content (Flex 1) */}
-                     <div className="flex-1 h-full overflow-hidden bg-background/30 flex flex-col">
-                       {workspaceView === 'code' && (
-                         <div className="h-full flex flex-col">
-                           <div className="flex-1 min-h-0">
-                             <CodeViewer
-                               isLoading={isFileLoading}
-                               fileName={selectedFile}
-                               fileContent={currentFileContent}
-                               onLineSelect={handleLineSelect}
-                               selectedLine={selectedLine}
-                               selectedLines={selectedLines}
-                             />
-                           </div>
-                         </div>
-                       )}
+                    {showsFileChrome && (
+                      <div className="w-full max-h-96 lg:w-[320px] lg:max-h-none lg:h-full shrink-0 border-t lg:border-t-0 lg:border-l border-border/80 overflow-y-auto">
+                        <FileInsightsPanel
+                          path={selectedFile}
+                          analysis={selectedFile ? staticAnalyses[selectedFile] : null}
+                          onFileSelect={(path) => {
+                            handleFileSelect(path);
+                            setWorkspaceView('code');
+                          }}
+                          onAsk={runQuestion}
+                        />
+                      </div>
+                    )}
+                  </>
+                )}
+              </div>
+            </div>
+          )}
+        </main>
+      </div>
+    </ErrorBoundary>
+  );
+};
 
-                       {workspaceView === 'search' && (
-                         <WorkspaceSearchView
-                           query={searchQuery}
-                           results={searchResults}
-                           indexedFileCount={project.ingestion?.filesWithContent ?? project.files.length}
-                           totalFileCount={project.ingestion?.totalRepositoryFiles ?? project.files.length}
-                           projectFiles={project.files}
-                           onBackToOverview={() => setWorkspaceView('overview')}
-                           onFileSelect={(path) => {
-                             handleFileSelect(path);
-                             setWorkspaceView('code');
-                           }}
-                         />
-                       )}
-
-                       {workspaceView === 'qa' && (
-                         <WorkspaceQAView
-                           question={qaQuestion}
-                           answer={qaAnswer}
-                           isLoading={isQaLoading}
-                           generationStatus={qaGenerationStatus}
-                           completion={qaCompletion}
-                           evidence={qaEvidence}
-                           excludedPaths={excludedPathReasons}
-                           indexedFileCount={project.ingestion?.filesWithContent ?? project.files.length}
-                           totalFileCount={project.ingestion?.totalRepositoryFiles ?? project.files.length}
-                           onBackToOverview={() => setWorkspaceView('overview')}
-                           onAsk={runQuestion}
-                           onFileSelect={(path) => {
-                             handleFileSelect(path);
-                             setWorkspaceView('code');
-                           }}
-                         />
-                       )}
-                     </div>
-
-                     {showsFileChrome && (
-                     <div className="w-[300px] md:w-[320px] shrink-0 border-l border-border/80 h-full overflow-y-auto">
-                       <FileInsightsPanel
-                         path={selectedFile}
-                         analysis={selectedFile ? staticAnalyses[selectedFile] : null}
-                         onFileSelect={(path) => {
-                           handleFileSelect(path);
-                           setWorkspaceView('code');
-                         }}
-                         onAsk={runQuestion}
-                       />
-                     </div>
-                     )}
-                   </>
-                 )}
-               </div>
-             </div>
-           )}
-         </main>
-       </div>
-     </ErrorBoundary>
-   );
- };
-
- export default Index;
+export default Index;

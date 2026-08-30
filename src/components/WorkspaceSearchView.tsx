@@ -22,11 +22,6 @@ interface ResultDetail {
   snippetStartLine: number;
 }
 
-/**
- * Results state why each file matched and how strongly, so a user can judge relevance
- * without opening every one, and so a claim about search quality can be checked rather
- * than taken on trust.
- */
 export default function WorkspaceSearchView({
   query,
   results,
@@ -68,7 +63,6 @@ export default function WorkspaceSearchView({
           if (lineHits > 0 && bestLine === -1) bestLine = i;
         }
 
-        // Centre the snippet on the first matching line rather than showing the file head.
         const start = bestLine >= 0 ? Math.max(0, bestLine - 1) : 0;
         const end = Math.min(lines.length, start + 5);
 
@@ -86,14 +80,14 @@ export default function WorkspaceSearchView({
 
   return (
     <div className="h-full flex flex-col overflow-hidden bg-background">
-      <div className="flex items-center justify-between gap-4 px-6 py-3 border-b border-border shrink-0">
-        <h2 className="text-ui font-semibold text-foreground">Search results</h2>
+      <div className="flex items-center justify-between gap-4 px-6 py-4 border-b border-border shrink-0">
+        <h1 className="text-view text-foreground">Search results</h1>
         <button
           type="button"
           onClick={onBackToOverview}
-          className="text-ui text-muted-foreground hover:text-foreground underline underline-offset-2"
+          className="focus-ring rounded-sm text-ui text-muted-foreground hover:text-foreground underline underline-offset-2"
         >
-          Close
+          ← Back to overview
         </button>
       </div>
 
@@ -126,7 +120,7 @@ export default function WorkspaceSearchView({
                     <button
                       type="button"
                       onClick={() => onFileSelect?.(detail.path)}
-                      className="inline-flex items-center gap-2 text-path font-mono text-foreground hover:text-primary underline underline-offset-2"
+                      className="focus-ring rounded-sm inline-flex items-center gap-2 text-path font-mono text-foreground hover:text-primary underline underline-offset-2"
                     >
                       <FileCode2 className="w-4 h-4 text-muted-foreground shrink-0" aria-hidden="true" />
                       {detail.path}
@@ -144,7 +138,7 @@ export default function WorkspaceSearchView({
                   )}
 
                   {detail.snippet && (
-                    <pre className="text-code font-mono text-foreground/85 bg-code-bg border border-border rounded-md p-3 overflow-x-auto">
+                    <pre className="text-code font-mono text-foreground/90 bg-code-bg border border-border rounded-md p-3 overflow-x-auto">
                       {detail.snippet}
                     </pre>
                   )}

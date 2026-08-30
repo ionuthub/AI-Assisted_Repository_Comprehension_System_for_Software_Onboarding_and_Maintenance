@@ -144,6 +144,18 @@ The shared `Button` and `Input` components implement the standard states. A glob
 | **Answers** | Repository-wide AI workspace. The answer and retrieved evidence are the primary reading task. |
 | **Evaluation** | Separate research instrumentation. It remains reachable from the header but is labelled as research evaluation so it is not confused with the normal product journey. |
 
+### Evaluation runner
+
+The Evaluation view is separate from the normal repository-comprehension journey because it is research instrumentation rather than an end-user product workflow. Its interface is structured around five stages: **Setup, Tasks, NASA-TLX, SUS and Export**. A visible progress indicator communicates the current stage while the controlled sequence remains governed by the study runner.
+
+Session setup deliberately requires an explicit condition selection. **Manual** and **Tool** are presented as mutually exclusive selection cards and no condition is preselected. This prevents an unobserved default from incorrectly classifying a manual session as a tool session. Selection is communicated through text, iconography, border treatment and `aria-pressed`, rather than colour alone.
+
+The setup view also presents counterbalancing order and answer-key state as separate groups. A readiness summary shows whether the required **Participant ID**, **session condition** and **study answer key** are present. **Begin tasks** remains disabled until all three requirements are satisfied.
+
+Once a session begins, the active condition remains visible throughout the task and questionnaire stages. The Manual condition additionally states **Do not use the tool**, reducing the risk of condition contamination during the within-subjects study.
+
+These interface safeguards complement, rather than replace, the underlying study controls. They do not alter the task model, timing, scoring, questionnaire calculations or JSON/CSV export structure. The polished Evaluation presentation was applied after participant data collection and is documented as current-interface evidence rather than as the exact participant-study screen.
+
 ## Responsive behaviour
 
 Desktop Code view uses three columns: explorer, editor and file insights. On smaller screens these regions stack vertically instead of compressing the editor between fixed-width sidebars. Search and Answers remain single-task full-width views.
@@ -171,7 +183,7 @@ Implemented safeguards include:
 - labelled form controls;
 - visible keyboard focus on links, buttons, inputs, summaries and tree items;
 - keyboard line selection in the code viewer;
-- `aria-current`, `aria-expanded`, `aria-selected` and progress semantics where appropriate;
+- `aria-current`, `aria-expanded`, `aria-selected`, `aria-pressed` and progress semantics where appropriate;
 - non-colour state cues;
 - >= 4.5:1 target for ordinary text;
 - >= 3:1 target for interactive control boundaries and non-text UI where required;

@@ -389,12 +389,13 @@ describe('The running condition is on screen', () => {
     // Everything else is in place, so only the unchosen condition is holding the session back.
     // It used to default to Tool, which ran a manual half as a tool session and left no trace.
     const begin = screen.getByRole('button', { name: 'Begin tasks' });
-    await waitFor(() => expect(screen.getByText('not set')).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByText('Required')).toBeInTheDocument());
     expect(begin).toBeDisabled();
 
     await user.click(screen.getByRole('button', { name: 'Manual' }));
     expect(begin).toBeEnabled();
-    expect(screen.queryByText('not set')).toBeNull();
+    expect(screen.queryByText('Required')).toBeNull();
+    expect(screen.getByText('Selected')).toBeInTheDocument();
   });
 
   it('shows nothing during setup, then an instruction once the session starts', async () => {

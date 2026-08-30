@@ -39,7 +39,7 @@ def wilcoxon_paired(a: list[float], b: list[float]):
     diffs = [y - x for x, y in zip(a, b) if y - x != 0]
     if len(diffs) < 1:
         return {"n_nonzero": 0, "p": None, "r_rank_biserial": None, "note": "no non-zero differences"}
-    res = stats.wilcoxon(a, b, zero_method="wilcox", alternative="two-sided", method="auto")
+    res = stats.wilcoxon(a, b, zero_method="wilcox", alternative="two-sided", method="exact")
     ranks = stats.rankdata([abs(d) for d in diffs])
     w_plus = sum(r for r, d in zip(ranks, diffs) if d > 0)
     w_minus = sum(r for r, d in zip(ranks, diffs) if d < 0)
@@ -53,7 +53,7 @@ def wilcoxon_one_sample(values: list[float], mu: float):
     diffs = [v - mu for v in values if v != mu]
     if not diffs:
         return {"n_nonzero": 0, "p": None, "r_rank_biserial": None}
-    res = stats.wilcoxon([v - mu for v in values], alternative="greater", method="auto")
+    res = stats.wilcoxon([v - mu for v in values], alternative="greater", method="exact")
     ranks = stats.rankdata([abs(d) for d in diffs])
     w_plus = sum(r for r, d in zip(ranks, diffs) if d > 0)
     w_minus = sum(r for r, d in zip(ranks, diffs) if d < 0)

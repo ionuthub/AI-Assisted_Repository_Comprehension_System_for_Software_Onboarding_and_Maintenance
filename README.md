@@ -26,6 +26,7 @@ The evaluated scope is initial repository comprehension. Long-term maintenance a
 | [`docs/REQUIREMENTS.md`](docs/REQUIREMENTS.md) | Functional and non-functional requirements |
 | [`docs/TRACEABILITY_MATRIX.md`](docs/TRACEABILITY_MATRIX.md) | Requirements mapped to code, tests and report sections |
 | [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) | System design and data flow |
+| [`docs/DESIGN_SYSTEM.md`](docs/DESIGN_SYSTEM.md) | Interface design system and page rationale |
 | [`docs/TESTING.md`](docs/TESTING.md) | Software checks, answer-reliability gate and participant study |
 | [`docs/LIMITATIONS.md`](docs/LIMITATIONS.md) | Main technical and evidence limits |
 | [`study/PHASE3_PROTOCOL.md`](study/PHASE3_PROTOCOL.md) | Study procedure and frozen build |

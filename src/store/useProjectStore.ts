@@ -54,20 +54,43 @@ export const useProjectStore = create<ProjectState>((set) => ({
     staticAnalyses: {},
     searchIndex: null,
     setProject: (project) => {
+        // Clearing the current project is the explicit "New repository" action. Reset all
+        // repository-specific state, then return to the start route so local page state such
+        // as the GitHub URL field is recreated empty rather than carrying the previous URL.
+        if (!project) {
+            set({
+                project: null,
+                fileCache: {},
+                fileCacheOrder: [],
+                scanResult: null,
+                staticAnalyses: {},
+                searchIndex: null,
+                selectedFile: null,
+                selectedLine: null,
+                selectedLines: new Set(),
+                isExplaining: false,
+                isLoading: false,
+                isFileLoading: false,
+            });
+
+            if (typeof window !== 'undefined') {
+                window.location.assign('/');
+            }
+            return;
+        }
+
         let analyses: Record<string, FileAnalysisResult> = {};
         let index: SearchIndex | null = null;
-        if (project) {
-            const filePaths = project.files.map(f => f.path);
-            project.files.forEach(file => {
-                if (file.content) {
-                    analyses[file.path] = analyzeCodeFile(file.path, file.content, filePaths);
-                }
-            });
-            analyses = computeWorkspaceReferences(analyses);
-            const t0 = performance.now();
-            index = buildSearchIndex(project.files);
-            recordMetric('indexing', performance.now() - t0, `${project.files.length} files`);
-        }
+        const filePaths = project.files.map(f => f.path);
+        project.files.forEach(file => {
+            if (file.content) {
+                analyses[file.path] = analyzeCodeFile(file.path, file.content, filePaths);
+            }
+        });
+        analyses = computeWorkspaceReferences(analyses);
+        const t0 = performance.now();
+        index = buildSearchIndex(project.files);
+        recordMetric('indexing', performance.now() - t0, `${project.files.length} files`);
 
         set({
             project,
@@ -85,7 +108,7 @@ export const useProjectStore = create<ProjectState>((set) => ({
             // has no reason to know about.
             fileCache: {},
             fileCacheOrder: [],
-            scanResult: project ? scanRepository(project.files) : null,
+            scanResult: scanRepository(project.files),
             staticAnalyses: analyses,
             searchIndex: index
         });
@@ -193,4 +216,3 @@ export const useProjectStore = create<ProjectState>((set) => ({
 export const selectSelectedFile = (state: ProjectState) => state.selectedFile;
 export const selectProject = (state: ProjectState) => state.project;
 export const selectIsLoading = (state: ProjectState) => state.isLoading;
-

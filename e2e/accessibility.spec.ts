@@ -57,25 +57,23 @@ test.describe('accessibility design-system smoke checks', () => {
   test('core text and control boundaries meet the documented contrast targets', async ({ page }) => {
     await page.goto('/');
 
-    const colours = await page.evaluate(() => {
-      const heading = document.querySelector('h1');
-      const helper = Array.from(document.querySelectorAll('p')).find((element) =>
-        element.textContent?.includes('Search and questions work across')
-      );
-      const input = document.querySelector<HTMLInputElement>('#github-url');
-      if (!heading || !helper || !input) throw new Error('Expected start-screen elements were not found');
-      return {
-        background: getComputedStyle(document.body).backgroundColor,
-        heading: getComputedStyle(heading).color,
-        helper: getComputedStyle(helper).color,
-        inputBackground: getComputedStyle(input).backgroundColor,
-        inputBorder: getComputedStyle(input).borderTopColor,
-      };
-    });
+    const heading = page.getByRole('heading', { level: 1, name: 'Analyse a repository' });
+    const helper = page.getByText(/Search and questions work across most source and configuration files/);
+    const input = page.getByLabel('Repository URL');
 
-    expect(contrastRatio(colours.heading, colours.background)).toBeGreaterThanOrEqual(4.5);
-    expect(contrastRatio(colours.helper, colours.background)).toBeGreaterThanOrEqual(4.5);
-    expect(contrastRatio(colours.inputBorder, colours.inputBackground)).toBeGreaterThanOrEqual(3);
+    await expect(heading).toBeVisible();
+    await expect(helper).toBeVisible();
+    await expect(input).toBeVisible();
+
+    const background = await page.locator('body').evaluate((element) => getComputedStyle(element).backgroundColor);
+    const headingColour = await heading.evaluate((element) => getComputedStyle(element).color);
+    const helperColour = await helper.evaluate((element) => getComputedStyle(element).color);
+    const inputBackground = await input.evaluate((element) => getComputedStyle(element).backgroundColor);
+    const inputBorder = await input.evaluate((element) => getComputedStyle(element).borderTopColor);
+
+    expect(contrastRatio(headingColour, background)).toBeGreaterThanOrEqual(4.5);
+    expect(contrastRatio(helperColour, background)).toBeGreaterThanOrEqual(4.5);
+    expect(contrastRatio(inputBorder, inputBackground)).toBeGreaterThanOrEqual(3);
   });
 
   test('reduced-motion preference disables smooth scrolling and transition motion', async ({ page }) => {
@@ -87,6 +85,6 @@ test.describe('accessibility design-system smoke checks', () => {
 
     const analyseLink = page.getByRole('link', { name: 'Analyse' });
     const transitionDuration = await analyseLink.evaluate((element) => getComputedStyle(element).transitionDuration);
-    expect(['0s', '0.00001s']).toContain(transitionDuration);
+    expect(parseFloat(transitionDuration)).toBeLessThanOrEqual(0.00001);
   });
 });

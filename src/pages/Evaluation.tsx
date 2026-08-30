@@ -343,6 +343,7 @@ export default function EvaluationPage() {
                     </Label>
                     <Input
                       id="pid"
+                      aria-label="Participant ID"
                       value={participantId}
                       onChange={(e) => setParticipantId(e.target.value)}
                       placeholder="P01"
@@ -387,6 +388,7 @@ export default function EvaluationPage() {
                 <div role="group" aria-labelledby="condition-heading" className="grid gap-3 sm:grid-cols-2">
                   <button
                     type="button"
+                    aria-label="Manual"
                     aria-pressed={condition === "manual"}
                     onClick={() => setCondition("manual")}
                     className={`rounded-lg border p-4 text-left transition-colors ${
@@ -405,6 +407,7 @@ export default function EvaluationPage() {
                   </button>
                   <button
                     type="button"
+                    aria-label="Tool"
                     aria-pressed={condition === "tool"}
                     onClick={() => setCondition("tool")}
                     className={`rounded-lg border p-4 text-left transition-colors ${
@@ -424,7 +427,7 @@ export default function EvaluationPage() {
                 </div>
 
                 {condition === null && (
-                  <div role="status" className="flex items-start gap-2 rounded-md border border-warning/50 bg-warning/10 p-3">
+                  <div className="flex items-start gap-2 rounded-md border border-warning/50 bg-warning/10 p-3">
                     <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-warning" aria-hidden="true" />
                     <p className="text-meta text-foreground-secondary">
                       Choose Manual or Tool before the session can begin.

@@ -8,10 +8,19 @@ const NAV_ITEMS = [
 const Header = () => {
     const location = useLocation();
 
+    const handleLogoClick = (event: React.MouseEvent<HTMLAnchorElement>) => {
+        event.preventDefault();
+        // The logo is a second entry point for the same user intent as "New repository".
+        // A full navigation to the start route clears the in-memory repository workspace and
+        // recreates the Analyse screen with an empty Repository URL field, while recent
+        // repositories remain available because they are stored separately in localStorage.
+        window.location.assign("/");
+    };
+
     return (
         <header className="sticky top-0 z-50 w-full border-b border-border bg-background">
             <div className="container mx-auto flex h-16 items-center justify-between px-4 md:px-8">
-                <Link to="/" className="flex items-center gap-2.5">
+                <Link to="/" onClick={handleLogoClick} className="flex items-center gap-2.5">
                     <span className="h-4 w-4 rounded-sm bg-primary" aria-hidden="true" />
                     <span className="text-ui font-semibold text-foreground">Codemap</span>
                 </Link>

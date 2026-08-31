@@ -17,7 +17,7 @@ export interface RepositoryEvidence {
   totalLines: number;
   omittedLines: number;
   omittedCharacters: number;
-  reason: "direct" | "symbol" | "structural" | "entry";
+  reason: "direct" | "symbol" | "structural" | "entry" | "repository";
 }
 
 export interface RetrievalOptions {
@@ -181,14 +181,11 @@ const rankCandidates = (
     }
   }
 
-  if (candidates.size < 4) {
-    const connected = Object.values(analyses)
-      .filter((analysis) => fileByPath.has(analysis.path))
-      .sort((a, b) => b.usedBy.length - a.usedBy.length || a.path.localeCompare(b.path));
-
-    for (const analysis of connected.slice(0, 4)) {
-      addCandidate(candidates, analysis.path, 0.2 + Math.min(analysis.usedBy.length, 10) * 0.02, "structural");
-    }
+  // Keep every readable file available as low-ranked evidence. If the whole repository fits the
+  // context budget, the model receives the complete eligible source. Larger repositories still
+  // prioritise direct and structural evidence before lower-ranked repository files.
+  for (const file of files) {
+    if (file.content) addCandidate(candidates, file.path, 0.001, "repository");
   }
 
   return [...candidates.values()]
@@ -196,11 +193,11 @@ const rankCandidates = (
 };
 
 /**
- * Builds the evidence set for the current artefact.
+ * Builds the evidence set for repository Q&A.
  *
- * The repository itself is not capped. Retrieval ranks every indexed file and spends a context
- * budget on the best evidence. Small relevant files therefore do not lose their place merely
- * because an arbitrary evidence-file limit has been reached.
+ * There is no file-count limit. Every indexed file is ranked and the function spends a context
+ * budget in rank order. When a repository fits that budget, every readable eligible file is sent
+ * in full. Larger repositories automatically fall back to the strongest evidence that fits.
  */
 export function retrieveRepositoryEvidence(
   query: string,

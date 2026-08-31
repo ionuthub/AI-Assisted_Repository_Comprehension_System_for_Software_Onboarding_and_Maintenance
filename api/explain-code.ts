@@ -26,7 +26,6 @@ const DEFAULT_ALLOWED_ORIGINS = [
 ];
 
 const DEFAULT_GEMINI_MODEL = 'gemini-3.5-flash';
-const REQUEST_TIMEOUT_MS = 90_000;
 
 const getGeminiModel = (): string => process.env.GEMINI_MODEL?.trim() || DEFAULT_GEMINI_MODEL;
 
@@ -433,7 +432,10 @@ export default async function handler(req: Request): Promise<Response> {
     }
 
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
+    const timeoutId = setTimeout(
+      () => controller.abort(),
+      MODEL_BUDGET.MAX_REQUEST_DURATION_MS
+    );
 
     if (stream) {
       return streamVerifiedAnswer(

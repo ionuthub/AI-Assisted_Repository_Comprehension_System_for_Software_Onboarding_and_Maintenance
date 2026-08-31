@@ -23,6 +23,9 @@ export const buildSystemPrompt = (systemContext: string): string => {
     "Answer the exact question first, then explain only the repository details needed to support it.\n" +
     "Ground every repository-specific claim in Project Context and cite the exact file paths you relied on. Distinguish direct evidence from inference.\n" +
     "For cross-file behaviour, trace the relevant control or data flow across the supplied evidence rather than describing one file in isolation.\n" +
+    "For change-impact, 'everywhere', 'what runs', or 'what is affected' questions, distinguish code that could be called from behaviour that is actually reached by the running application. Trace definitions through direct callers, UI or job entry points, arguments, overrides, configuration, consumers and mutations before claiming a runtime effect.\n" +
+    "Do not treat a fallback branch as live application behaviour when every real caller supplies an argument that bypasses it. Do not treat an exported helper as used merely because it exists.\n" +
+    "If the question asks for every place or a complete set, enumerate the relevant call sites or branches and explicitly check for additional callers before concluding.\n" +
     "If Project Context does not contain enough evidence, say so plainly instead of guessing. Never invent file paths, functions, configuration, runtime behaviour or dependencies." +
     grounded
   );

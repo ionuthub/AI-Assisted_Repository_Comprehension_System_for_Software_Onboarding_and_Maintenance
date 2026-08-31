@@ -21,7 +21,8 @@ import { useProjectStore } from "@/store/useProjectStore";
 import SEO from "@/components/SEO";
 import { recordMetric } from "@/lib/evaluation/metrics";
 import { useProjectManagement } from "@/hooks/useProjectManagement";
-import { searchRepository, selectExcerptRegion, SearchResult } from "@/lib/semanticSearch";
+import { searchRepository, SearchResult } from "@/lib/semanticSearch";
+import { retrieveRepositoryEvidence } from "@/lib/retrievalPipeline";
 import RepositoryOverview from "@/components/RepositoryOverview";
 import { analyzeProject } from "@/lib/projectAnalyzer";
 import {
@@ -33,15 +34,12 @@ interface RecentRepoItem {
   name: string;
   url?: string;
   date: string;
-  /** Coverage at the time it was analysed, so the list states what was actually read. */
   indexed?: number;
   total?: number;
 }
 
-/** Offered on the start screen so a first-time user is not facing an empty field. */
 const EXAMPLE_REPOSITORY = "https://github.com/expressjs/express";
 
-/** Ingestion stages in order, for the progress list on the analysing screen. */
 const INGESTION_STEPS = [
   { phase: "metadata" as const, label: "Resolving repository metadata" },
   { phase: "tree" as const, label: "Reading the file list" },
@@ -64,11 +62,6 @@ function ingestionStepState(
 
 type WorkspaceView = 'overview' | 'code' | 'search' | 'qa';
 
-/**
- * The permanent workspace tabs represent user goals: orient, inspect and ask.
- * Search remains a global repository utility entered from the toolbar, so it is
- * represented as a transient result state rather than a fourth permanent tab.
- */
 const WORKSPACE_TABS: { view: WorkspaceView; label: string; matches: WorkspaceView[] }[] = [
   { view: 'overview', label: 'Overview', matches: ['overview'] },
   { view: 'code', label: 'Code', matches: ['code'] },
@@ -155,9 +148,7 @@ const Index = () => {
     setRecentRepos((prev) => {
       const list = [...prev];
       const existingIndex = list.findIndex(r => r.name === name || (url && r.url === url));
-      if (existingIndex !== -1) {
-        list.splice(existingIndex, 1);
-      }
+      if (existingIndex !== -1) list.splice(existingIndex, 1);
       list.unshift({ name, url, date: new Date().toLocaleDateString(), indexed, total });
       const trimmed = list.slice(0, 5);
       localStorage.setItem("recent_repos", JSON.stringify(trimmed));
@@ -169,7 +160,12 @@ const Index = () => {
     if (project) {
       const name = project.summary.name;
       const url = project.summary.source === 'github' ? githubUrl : undefined;
-      addRecentRepo(name, url, project.ingestion?.filesWithContent, project.ingestion?.totalRepositoryFiles);
+      addRecentRepo(
+        name,
+        url,
+        project.ingestion?.filesWithContent,
+        project.ingestion?.totalCandidateFiles ?? project.files.length
+      );
       setWorkspaceView('overview');
     }
   }, [project, githubUrl, addRecentRepo]);
@@ -193,8 +189,6 @@ const Index = () => {
     setSearchResults(results);
   };
 
-  // Retrieval and generation remain unchanged by the interface redesign. Answers, suggested
-  // questions and the file-context panel all call this same path.
   const runQuestion = async (questionText: string) => {
     if (!questionText.trim() || !project) return;
 
@@ -207,38 +201,40 @@ const Index = () => {
     setQaEvidence([]);
 
     const qaStart = performance.now();
+    let systemContext = "Use the repository evidence below to answer the question. Cite the files you rely on and separate direct evidence from inference.";
 
-    let systemContext = `You are a technical code tutor. Answer the user's question about the codebase. Refer to the provided source code context. Always cite files and explain reasoning. Avoid hallucinated claims.`;
+    const retrieved = searchIndex
+      ? retrieveRepositoryEvidence(questionText, searchIndex, project.files, staticAnalyses, {
+          candidateFiles: RETRIEVAL.RAG_CANDIDATE_FILES,
+          structuralSeeds: RETRIEVAL.RAG_STRUCTURAL_SEEDS,
+          maxEvidenceFiles: RETRIEVAL.RAG_TOP_K,
+          excerptChars: RETRIEVAL.RAG_CONTEXT_CHARS,
+        })
+      : [];
 
-    const evidence: RetrievedEvidence[] = [];
-    if (searchIndex) {
-      const matches = searchRepository(questionText, searchIndex, project.files, RETRIEVAL.RAG_TOP_K);
-      matches.forEach(res => {
-        const fileObj = project.files.find(f => f.path === res.path);
-        if (fileObj && fileObj.content) {
-          if (evidence.length === 0) {
-            systemContext += "\n\n[Grounded Repository Context for RAG - Answer using this evidence and cite file paths]";
-          }
-          const region = selectExcerptRegion(fileObj.content, questionText, RETRIEVAL.RAG_CONTEXT_CHARS);
-          systemContext += `\n\n--- File: ${res.path} (lines ${region.startLine}-${region.endLine} of ${region.totalLines}) ---\n${region.text}`;
-          evidence.push({
-            path: res.path,
-            score: res.score,
-            excerpt: region.text,
-            startLine: region.startLine,
-            endLine: region.endLine,
-            totalLines: region.totalLines,
-            omittedLines: region.omittedLines,
-            omittedCharacters: region.omittedCharacters,
-          });
-        }
-      });
+    const evidence: RetrievedEvidence[] = retrieved.map((item) => ({
+      path: item.path,
+      score: item.score,
+      excerpt: item.excerpt,
+      startLine: item.startLine,
+      endLine: item.endLine,
+      totalLines: item.totalLines,
+      omittedLines: item.omittedLines,
+      omittedCharacters: item.omittedCharacters,
+    }));
+
+    if (retrieved.length > 0) {
+      systemContext += "\n\n[Repository evidence selected from lexical, symbol and import relationships]";
+      for (const item of retrieved) {
+        systemContext += `\n\n--- File: ${item.path} (lines ${item.startLine}-${item.endLine} of ${item.totalLines}) ---\n${item.excerpt}`;
+      }
     }
+
     const evidenceFileCount = evidence.length;
     setQaEvidence(evidence);
 
     if (evidenceFileCount === 0) {
-      systemContext += "\n\n[No repository context could be retrieved for this question. Say so explicitly in the first sentence of your answer, and do not describe specific files, functions or behaviour in this repository.]";
+      systemContext += "\n\n[No repository context could be retrieved for this question. Say so explicitly in the first sentence and do not describe repository-specific files, functions or behaviour.]";
     }
 
     try {
@@ -308,7 +304,7 @@ const Index = () => {
     <ErrorBoundary>
       <SEO
         title="Repository Comprehension System"
-        description="Understand unfamiliar codebases using a repository overview, semantic search, and answers grounded in the files they came from."
+        description="Understand unfamiliar codebases using a repository overview, code search, and answers grounded in repository evidence."
       />
       <div className="flex flex-col relative overflow-x-hidden min-h-[82vh]">
         <main className="flex-1 container mx-auto px-4 py-8 md:px-8 flex flex-col">
@@ -403,10 +399,8 @@ const Index = () => {
                     </Button>
                   </div>
                   <p className="text-meta text-muted-foreground">
-                    Search and questions work across most source and configuration files.
-                    Import analysis on the overview covers JavaScript and TypeScript only.
-                    Up to 50 files are indexed, and installed dependencies and build output
-                    are skipped.
+                    All eligible source and configuration files returned by GitHub are indexed.
+                    Installed dependencies, build output, unsupported formats and files over 5 MB are skipped.
                   </p>
                 </form>
 
@@ -452,7 +446,7 @@ const Index = () => {
                               <span className="block text-path font-mono text-foreground truncate">{repo.name}</span>
                               <span className="block text-meta text-muted-foreground">
                                 {repo.indexed !== undefined && repo.total !== undefined
-                                  ? `${repo.indexed} of ${repo.total} files indexed · ${repo.date}`
+                                  ? `${repo.indexed} of ${repo.total} eligible files indexed · ${repo.date}`
                                   : repo.date}
                               </span>
                             </span>
@@ -550,6 +544,7 @@ const Index = () => {
                       {project.ingestion && (
                         <CoveragePanel
                           indexedFiles={project.ingestion.filesWithContent}
+                          eligibleFiles={project.ingestion.totalCandidateFiles}
                           totalRepositoryFiles={project.ingestion.totalRepositoryFiles}
                           excluded={project.ingestion.excluded}
                           treeTruncated={project.ingestion.treeTruncatedByGitHub}
@@ -595,7 +590,7 @@ const Index = () => {
                           query={searchQuery}
                           results={searchResults}
                           indexedFileCount={project.ingestion?.filesWithContent ?? project.files.length}
-                          totalFileCount={project.ingestion?.totalRepositoryFiles ?? project.files.length}
+                          totalFileCount={project.ingestion?.totalCandidateFiles ?? project.files.length}
                           projectFiles={project.files}
                           onBackToOverview={() => setWorkspaceView('overview')}
                           onFileSelect={(path) => {
@@ -615,7 +610,7 @@ const Index = () => {
                           evidence={qaEvidence}
                           excludedPaths={excludedPathReasons}
                           indexedFileCount={project.ingestion?.filesWithContent ?? project.files.length}
-                          totalFileCount={project.ingestion?.totalRepositoryFiles ?? project.files.length}
+                          totalFileCount={project.ingestion?.totalCandidateFiles ?? project.files.length}
                           onBackToOverview={() => setWorkspaceView('overview')}
                           onAsk={runQuestion}
                           onFileSelect={(path) => {

@@ -120,7 +120,7 @@ describe("verification prompts", () => {
     );
     expect(prompt).toContain("real UI/job/runtime entry points");
     expect(prompt).toContain("if every live caller supplies an override");
-    expect(prompt).toContain("possible fallback");
+    expect(prompt).toContain("bypassed fallback as live application behaviour");
   });
 
   it("includes release-gate findings in a repair prompt", () => {

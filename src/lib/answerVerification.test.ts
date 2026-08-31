@@ -113,6 +113,16 @@ describe("verification prompts", () => {
     expect(prompt).toContain("Return only the corrected final answer");
   });
 
+  it("requires runtime caller and override tracing", () => {
+    const prompt = buildAnswerReviewPrompt(
+      "If this configuration changes, what is affected?",
+      "The store uses the fallback value."
+    );
+    expect(prompt).toContain("real UI/job/runtime entry points");
+    expect(prompt).toContain("if every live caller supplies an override");
+    expect(prompt).toContain("bypassed fallback as live application behaviour");
+  });
+
   it("includes release-gate findings in a repair prompt", () => {
     const prompt = buildAnswerRepairPrompt(
       "Where does execution start?",
@@ -121,5 +131,6 @@ describe("verification prompts", () => {
     );
     expect(prompt).toContain("No retrieved file was cited.");
     expect(prompt).toContain("Rejected answer");
+    expect(prompt).toContain("caller arguments/overrides");
   });
 });

@@ -2,8 +2,9 @@
 
 ## Artefact
 
-- **GitHub tree completeness:** the current artefact no longer has a fixed file-count cap, but GitHub can truncate very large recursive tree responses. When that happens the interface warns that whole-repository coverage cannot be established.
+- **No repository file-count cap:** the current artefact does not stop at 50, 100 or another fixed number of eligible files. If GitHub truncates the initial recursive tree response, ingestion expands the affected subtrees until the file listing is complete. If GitHub cannot provide a complete tree, ingestion fails explicitly rather than accepting known-partial coverage.
 - **Per-file size:** files larger than 5 MB are skipped.
+- **GitHub API availability:** complete tree recovery can require additional GitHub API requests on very large repositories and therefore remains dependent on GitHub availability and API rate limits.
 - **Retrieval remains partly lexical:** the current answer pipeline uses a wider TF-IDF candidate pool plus file-path, symbol and import-graph signals. It still does not use learned embeddings, so vocabulary mismatch can remain a failure mode.
 - **Regex analysis:** structural analysis targets common JavaScript and TypeScript syntax, not every language or syntax form. Import-graph expansion is only as complete as this analysis.
 - **Desktop scope:** the current artefact is designed for desktop and laptop browsers. Narrow-window stacking is a defensive layout behaviour, not a supported mobile or tablet experience.

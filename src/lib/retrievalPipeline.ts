@@ -20,10 +20,9 @@ export interface RepositoryEvidence {
 }
 
 export interface RetrievalOptions {
-  candidateFiles: number;
-  structuralSeeds: number;
-  maxEvidenceFiles: number;
-  excerptChars: number;
+  evidenceBudgetChars: number;
+  maxExcerptChars: number;
+  minExcerptChars: number;
 }
 
 interface RankedCandidate {
@@ -43,6 +42,8 @@ const ENTRY_INTENT_TERMS = new Set([
   "initialise",
   "initialize",
 ]);
+
+const EVIDENCE_HEADER_CHARS = 180;
 
 const overlapRatio = (queryTokens: Set<string>, values: string[]): number => {
   if (queryTokens.size === 0 || values.length === 0) return 0;
@@ -100,8 +101,6 @@ const entryPointScore = (path: string, analysis?: FileAnalysisResult): number =>
     score = 0.64;
   }
 
-  // A named entry file with no in-repository callers but with outgoing imports is especially
-  // likely to be a root rather than a utility barrel that merely happens to be named index.
   if (score > 0 && analysis && analysis.usedBy.length === 0 && resolvedNeighbours(analysis).length > 0) {
     score += 0.08;
   }
@@ -109,25 +108,19 @@ const entryPointScore = (path: string, analysis?: FileAnalysisResult): number =>
   return Math.min(score, 1);
 };
 
-/**
- * Builds the evidence set for the current artefact.
- *
- * Retrieval combines lexical rank, path/symbol matches, entry-point intent and import/caller
- * relationships. The graph expansion runs to two hops so a question about a behaviour can
- * reach the configuration and store/controller on either side of a directly matched helper.
- */
-export function retrieveRepositoryEvidence(
+const rankCandidates = (
   query: string,
   index: SearchIndex,
   files: ProjectFile[],
-  analyses: Record<string, FileAnalysisResult>,
-  options: RetrievalOptions
-): RepositoryEvidence[] {
+  analyses: Record<string, FileAnalysisResult>
+): RankedCandidate[] => {
   const fileByPath = new Map(files.map((file) => [file.path, file]));
   const queryTokens = new Set(tokenize(query));
   const candidates = new Map<string, RankedCandidate>();
 
-  const direct = searchRepository(query, index, files, options.candidateFiles);
+  // Search the full indexed repository. The previous candidate-file cap could discard the
+  // correct file before path, symbol or graph evidence had a chance to improve its rank.
+  const direct = searchRepository(query, index, files, files.length);
   for (const result of direct) {
     const pathBoost = overlapRatio(queryTokens, [result.path]) * 0.18;
     const symbolBoost = overlapRatio(queryTokens, symbolValues(analyses[result.path])) * 0.28;
@@ -139,7 +132,6 @@ export function retrieveRepositoryEvidence(
     );
   }
 
-  // A named symbol can be important even when the containing file ranks weakly as a whole.
   for (const [path, analysis] of Object.entries(analyses)) {
     if (!fileByPath.has(path)) continue;
     const symbolMatch = overlapRatio(queryTokens, symbolValues(analysis));
@@ -149,9 +141,6 @@ export function retrieveRepositoryEvidence(
     }
   }
 
-  // Questions such as "Where does execution start?" often share no vocabulary with the
-  // actual main/index/bootstrap file. Use conventional entry names plus graph-root evidence
-  // only when the question itself expresses entry/execution intent.
   const asksForEntryPoint = [...queryTokens].some((token) => ENTRY_INTENT_TERMS.has(token));
   if (asksForEntryPoint) {
     for (const file of files) {
@@ -160,10 +149,13 @@ export function retrieveRepositoryEvidence(
     }
   }
 
-  const structuralSeeds = [...candidates.values()]
-    .sort((a, b) => b.score - a.score || a.path.localeCompare(b.path))
-    .slice(0, options.structuralSeeds);
+  const rankedBeforeGraph = [...candidates.values()]
+    .sort((a, b) => b.score - a.score || a.path.localeCompare(b.path));
+  const bestScore = rankedBeforeGraph[0]?.score ?? 0;
+  const seedThreshold = Math.max(0.18, bestScore * 0.5);
+  const structuralSeeds = rankedBeforeGraph.filter((candidate) => candidate.score >= seedThreshold);
 
+  // Expand all meaningfully ranked seeds rather than an arbitrary top-N seed list.
   for (const seed of structuralSeeds) {
     let frontier = [seed.path];
     const visited = new Set<string>(frontier);
@@ -185,9 +177,7 @@ export function retrieveRepositoryEvidence(
     }
   }
 
-  // If retrieval is still sparse, add well-connected files so a broad architecture question
-  // receives repository-level context instead of an empty prompt.
-  if (candidates.size < Math.min(4, options.maxEvidenceFiles)) {
+  if (candidates.size < 4) {
     const connected = Object.values(analyses)
       .filter((analysis) => fileByPath.has(analysis.path))
       .sort((a, b) => b.usedBy.length - a.usedBy.length || a.path.localeCompare(b.path));
@@ -197,15 +187,45 @@ export function retrieveRepositoryEvidence(
     }
   }
 
-  const ranked = [...candidates.values()]
-    .sort((a, b) => b.score - a.score || a.path.localeCompare(b.path))
-    .slice(0, options.maxEvidenceFiles);
+  return [...candidates.values()]
+    .sort((a, b) => b.score - a.score || a.path.localeCompare(b.path));
+};
 
+/**
+ * Builds the evidence set for the current artefact.
+ *
+ * The repository itself is not capped. Retrieval ranks every indexed file and spends a context
+ * budget on the best evidence. Small relevant files therefore do not lose their place merely
+ * because an arbitrary evidence-file limit has been reached.
+ */
+export function retrieveRepositoryEvidence(
+  query: string,
+  index: SearchIndex,
+  files: ProjectFile[],
+  analyses: Record<string, FileAnalysisResult>,
+  options: RetrievalOptions
+): RepositoryEvidence[] {
+  const fileByPath = new Map(files.map((file) => [file.path, file]));
+  const ranked = rankCandidates(query, index, files, analyses);
   const evidence: RepositoryEvidence[] = [];
+  let usedChars = 0;
+
   for (const candidate of ranked) {
     const file = fileByPath.get(candidate.path);
     if (!file?.content) continue;
-    const region = selectExcerptRegion(file.content, query, options.excerptChars);
+
+    const remaining = options.evidenceBudgetChars - usedChars - EVIDENCE_HEADER_CHARS;
+    if (remaining <= 0) break;
+
+    const excerptLimit = Math.min(options.maxExcerptChars, remaining);
+    if (excerptLimit < options.minExcerptChars && evidence.length > 0) break;
+
+    const region = selectExcerptRegion(
+      file.content,
+      query,
+      Math.max(1, excerptLimit)
+    );
+
     evidence.push({
       path: candidate.path,
       score: candidate.score,
@@ -217,6 +237,9 @@ export function retrieveRepositoryEvidence(
       omittedCharacters: region.omittedCharacters,
       reason: candidate.reason,
     });
+
+    usedChars += region.text.length + EVIDENCE_HEADER_CHARS;
+    if (usedChars >= options.evidenceBudgetChars) break;
   }
 
   return evidence;

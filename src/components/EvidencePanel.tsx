@@ -29,7 +29,8 @@ interface EvidencePanelProps {
 const reasonLabel = (reason?: RetrievedEvidence["retrievalReason"]): string => {
   if (reason === "symbol") return "Symbol match";
   if (reason === "structural") return "Related by imports";
-  return "Direct match";
+  if (reason === "direct") return "Direct match";
+  return "Hybrid match";
 };
 
 export default function EvidencePanel({

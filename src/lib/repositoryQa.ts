@@ -6,13 +6,22 @@ import {
   verifyGeneratedAnswer,
   type AnswerVerificationResult,
 } from "@/lib/answerVerification";
-import type { GenerationCompleteEvent } from "@/lib/generationProtocol";
+import type {
+  GenerationCompleteEvent,
+  GenerationUsageMetadata,
+} from "@/lib/generationProtocol";
 
 interface GenerationResponse {
   explanation?: string;
   finishReason?: string;
-  usageMetadata?: GenerationCompleteEvent["usageMetadata"];
+  usageMetadata?: GenerationUsageMetadata;
   error?: string;
+}
+
+export interface AggregateUsage {
+  promptTokenCount: number;
+  candidatesTokenCount: number;
+  totalTokenCount: number;
 }
 
 export interface VerifiedRepositoryAnswer {
@@ -20,7 +29,14 @@ export interface VerifiedRepositoryAnswer {
   completion: GenerationCompleteEvent;
   verification: AnswerVerificationResult;
   modelCalls: number;
+  aggregateUsage: AggregateUsage;
 }
+
+const addUsage = (aggregate: AggregateUsage, usage?: GenerationUsageMetadata) => {
+  aggregate.promptTokenCount += usage?.promptTokenCount ?? 0;
+  aggregate.candidatesTokenCount += usage?.candidatesTokenCount ?? 0;
+  aggregate.totalTokenCount += usage?.totalTokenCount ?? 0;
+};
 
 async function requestCompletion(message: string, systemContext: string) {
   const response = await fetch('/api/explain-code', {
@@ -61,15 +77,22 @@ export async function generateVerifiedRepositoryAnswer(
   evidence: RetrievedEvidence[]
 ): Promise<VerifiedRepositoryAnswer> {
   let modelCalls = 0;
+  const aggregateUsage: AggregateUsage = {
+    promptTokenCount: 0,
+    candidatesTokenCount: 0,
+    totalTokenCount: 0,
+  };
 
   const draft = await requestCompletion(question, systemContext);
   modelCalls += 1;
+  addUsage(aggregateUsage, draft.completion.usageMetadata);
 
   let reviewed = await requestCompletion(
     buildAnswerReviewPrompt(question, draft.answer),
     systemContext
   );
   modelCalls += 1;
+  addUsage(aggregateUsage, reviewed.completion.usageMetadata);
 
   let verification = verifyGeneratedAnswer(reviewed.answer, evidence);
 
@@ -83,6 +106,7 @@ export async function generateVerifiedRepositoryAnswer(
       systemContext
     );
     modelCalls += 1;
+    addUsage(aggregateUsage, reviewed.completion.usageMetadata);
     verification = verifyGeneratedAnswer(reviewed.answer, evidence);
   }
 
@@ -97,5 +121,6 @@ export async function generateVerifiedRepositoryAnswer(
     completion: reviewed.completion,
     verification,
     modelCalls,
+    aggregateUsage,
   };
 }

@@ -6,9 +6,9 @@ The architecture figure is [`figure1_architecture.png`](figure1_architecture.png
 
 ## Data flow
 
-1. **Ingestion:** a public GitHub URL is parsed. Repository metadata and the recursive tree come from `api.github.com`; eligible file contents come from `raw.githubusercontent.com`.
+1. **Ingestion:** a public GitHub URL is parsed. Repository metadata and the Git tree come from `api.github.com`; eligible file contents come from `raw.githubusercontent.com`. If GitHub truncates the first recursive tree response, the analyser recursively expands the affected subtrees instead of accepting a partial repository.
 2. **Analysis:** JavaScript and TypeScript files are checked for imports, exports, functions, components and classes.
-3. **Indexing:** all readable eligible files returned by the GitHub tree are indexed with TF-IDF using smoothed IDF and cosine similarity.
+3. **Indexing:** every readable eligible file discovered from the complete Git tree is indexed with TF-IDF using smoothed IDF and cosine similarity.
 4. **Presentation:** the browser shows the overview, file viewer, search, answers and source coverage.
 5. **Evidence retrieval:** a wider lexical candidate pool is combined with file-path and symbol matches, then expanded through resolved imports and `usedBy` relationships.
 6. **Question answering:** up to eight evidence files are selected, a query-relevant excerpt is taken from each and the evidence is sent to the edge function with the question.
@@ -22,14 +22,16 @@ Current limits:
 
 | Limit | Value |
 | --- | --- |
-| Fixed file-count cap | None |
+| Fixed file-count cap | **None** |
 | File size | 5 MB per file |
 | Fetch timeout | 10 seconds per file |
-| Concurrent fetches | 8 |
+| Concurrent content fetches | 8 |
 
-Installed dependencies, generated dependency manifests, build output, unsupported formats, unsafe paths and oversized files are excluded with a recorded reason. The current artefact no longer stops after fifty eligible files.
+There is no 50-file, 100-file or other arbitrary repository file-count ceiling in the current artefact. All eligible source and configuration files discovered from the Git tree are selected for ingestion.
 
-A remaining limitation is GitHub's recursive tree response. If GitHub reports the tree as truncated, the interface shows that warning and whole-repository coverage cannot be claimed.
+GitHub's recursive Trees API can return a truncated response for a very large tree. The analyser does not use that partial response as the corpus. It fetches the immediate tree and recursively expands affected child tree SHAs until each returned subtree is complete. If GitHub cannot provide a complete non-recursive tree, ingestion fails explicitly rather than silently analysing a known-partial repository.
+
+Installed dependencies, generated dependency manifests, build output, unsupported formats, unsafe paths and files larger than 5 MB are excluded with a recorded reason. These are content-scope filters, not a repository file-count cap.
 
 Only public repositories are supported. There is no authentication path for private repositories.
 
@@ -55,6 +57,8 @@ Current settings:
 | Excerpt size | 2,200 characters per file |
 | Search results shown | 10 |
 | Server context ceiling | 22,000 characters |
+
+The candidate/evidence values above bound what is sent to the language model for one question; they do **not** limit repository ingestion or indexing. The full eligible repository corpus remains searchable and available to retrieval.
 
 This keeps exact identifier matching and reproducibility while improving questions whose answer is distributed across callers, callees and configuration. It still does not solve vocabulary mismatch as fully as a learned semantic retriever could, so embedding-based retrieval remains a planned comparison rather than a current claim.
 
@@ -90,7 +94,7 @@ Main files: `src/components/EvidencePanel.tsx` and `src/components/WorkspaceQAVi
 For each answer, the panel shows:
 
 - retrieved files in rank order;
-- relevance scores;
+- the retrieval reason and hybrid ranking score;
 - line ranges;
 - the excerpts sent to the model;
 - named file paths that were not retrieved;
@@ -98,7 +102,7 @@ For each answer, the panel shows:
 
 The evidence is created before the model response is received. A path invented by the model therefore cannot appear as retrieved evidence.
 
-The panel supports checking; it does not prove that an answer is correct.
+The ranking score combines retrieval signals. It is not an accuracy or correctness probability. The panel supports checking; it does not prove that an answer is correct.
 
 ## Security boundary
 

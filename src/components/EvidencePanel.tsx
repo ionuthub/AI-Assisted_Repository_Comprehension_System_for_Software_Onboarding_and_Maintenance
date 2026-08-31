@@ -9,7 +9,7 @@ export interface RetrievedEvidence {
   totalLines: number;
   omittedLines: number;
   omittedCharacters: number;
-  retrievalReason?: "direct" | "symbol" | "structural";
+  retrievalReason?: "direct" | "symbol" | "structural" | "entry";
 }
 
 export interface UnverifiedMention {
@@ -29,6 +29,7 @@ interface EvidencePanelProps {
 const reasonLabel = (reason?: RetrievedEvidence["retrievalReason"]): string => {
   if (reason === "symbol") return "Symbol match";
   if (reason === "structural") return "Related by imports";
+  if (reason === "entry") return "Likely entry point";
   if (reason === "direct") return "Direct match";
   return "Hybrid match";
 };

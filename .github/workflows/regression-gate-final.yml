@@ -107,6 +107,18 @@ jobs:
                       if key.startswith('tool') or key == 'correct':
                           item.pop(key, None)
               gate['date'] = ''
+              gate['model'] = 'gemini-3.5-flash'
+              gate['generation'] = {
+                  'thinkingLevel': 'low',
+                  'maxOutputTokens': 8192,
+                  'semanticReviewPasses': 1,
+                  'maxEvidenceRepairAttempts': 2,
+              }
+              gate['retrieval'] = {
+                  'mode': 'full-context-when-token-budget-permits',
+                  'evidenceBudgetChars': 1500000,
+                  'maxInputTokens': 850000,
+              }
               gate.pop('capturedAt', None)
               gate.pop('capturedFrom', None)
               gate.pop('capturedRepository', None)
@@ -122,7 +134,7 @@ jobs:
             --truth study/ground-truth.clinic-triage.md \
             --accept-tool-verified \
             --url https://repo-comprehension-system.vercel.app/ \
-            --tool-version 9040ce5
+            --tool-version 4fcb52f
 
       - name: Checkpoint completed clinic evidence
         run: |
@@ -152,7 +164,7 @@ jobs:
             --truth study/ground-truth.warehouse-dispatch.md \
             --accept-tool-verified \
             --url https://repo-comprehension-system.vercel.app/ \
-            --tool-version 9040ce5
+            --tool-version 4fcb52f
 
       - name: Build bound marking sheets
         run: |

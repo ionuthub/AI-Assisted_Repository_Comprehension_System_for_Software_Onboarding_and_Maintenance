@@ -75,6 +75,8 @@ describe('EvidencePanel', () => {
         evidence={[evidence('src/a.ts', 0.84, 'symbol')]}
         unverifiedMentions={[]}
         isLoading={false}
+        indexedFileCount={12}
+        totalFileCount={12}
       />
     );
     expect(screen.getByText('Symbol match')).toBeInTheDocument();

@@ -8,8 +8,7 @@ import {
 } from '../src/lib/generationProtocol';
 import { buildSystemPrompt, clampSystemContext } from '../src/lib/promptBuilder';
 
-// Allowed origins are configured via ALLOWED_ORIGINS (comma-separated); the list below is
-// the fallback for local development plus this project's production Vercel domain.
+// Fallback origins for local development and the production deployment.
 const DEFAULT_ALLOWED_ORIGINS = [
   'http://localhost:8080',
   'http://localhost:5173',
@@ -17,9 +16,7 @@ const DEFAULT_ALLOWED_ORIGINS = [
   'https://repo-comprehension-system.vercel.app',
 ];
 
-// The generation model is pinned here and overridable via GEMINI_MODEL so a Google-side
-// model retirement can be handled with a configuration change rather than a code change.
-// Record the exact value used when reporting results: outputs are model-dependent.
+// GEMINI_MODEL can override the default if the model changes.
 const DEFAULT_GEMINI_MODEL = 'gemini-3.5-flash';
 
 const getGeminiModel = (): string => process.env.GEMINI_MODEL?.trim() || DEFAULT_GEMINI_MODEL;
@@ -38,14 +35,10 @@ const normalizeOrigin = (origin?: string): string | undefined => {
   }
 };
 
-// Membership of ALLOWED_ORIGINS is the only test. A prefix pattern over *.vercel.app was
-// tried and removed: any account can register a project whose subdomain shares the prefix,
-// which would have had the function reflect an attacker-controlled origin. Preview
-// deployments are supported by adding their URL to ALLOWED_ORIGINS for that environment.
+// Only exact origins from the allowlist are accepted.
 const isOriginAllowed = (normalizedOrigin?: string): boolean =>
   Boolean(normalizedOrigin) && getAllowedOrigins().includes(normalizedOrigin as string);
 
-// Security headers
 const getSecurityHeaders = (origin?: string) => {
   const allowedOrigins = getAllowedOrigins();
   const normalizedOrigin = normalizeOrigin(origin);
@@ -89,14 +82,12 @@ export default async function handler(req: Request): Promise<Response> {
     return new Response(JSON.stringify({ error: 'Method not allowed' }), { status: 405, headers: securityHeaders });
   }
 
-  // Browsers always send Origin on a POST, so a request without one is not from the
-  // application. Previously the check was skipped when the header was absent, which left
-  // the endpoint, and the API key it holds, reachable by any non-browser client.
+  // Browser requests must come from an allowed origin.
   if (!isOriginAllowed(normalizeOrigin(origin))) {
     return new Response(JSON.stringify({ error: 'Origin not allowed' }), { status: 403, headers: securityHeaders });
   }
 
-  // Basic IP rate limiting (15 requests per minute)
+  // Optional IP rate limit: 15 requests per minute.
   const ip = req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || 'anonymous';
   if (redis) {
     const rateLimitKey = `ratelimit:${ip}`;
@@ -190,9 +181,7 @@ export default async function handler(req: Request): Promise<Response> {
         });
       }
 
-      // The browser receives newline-delimited structured events rather than undifferentiated
-      // text. The terminal event preserves Gemini's finish reason and usage metadata, so a
-      // token-limited or safety-stopped answer cannot look identical to a completed answer.
+      // Stream structured events so the client can check finish status and usage.
       const encoder = new TextEncoder();
       const decoder = new TextDecoder();
       const { readable, writable } = new TransformStream();

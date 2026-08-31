@@ -14,6 +14,15 @@ export const GENERATION_CONFIG = {
   maxOutputTokens: MODEL_BUDGET.MAX_OUTPUT_TOKENS,
 } as const;
 
+/** Short, bounded backoff inside the overall request deadline. */
+export const MODEL_RETRY_DELAYS_MS = [2_000, 5_000] as const;
+
+export const shouldRetryModelResponse = (status: number, detail: string): boolean => {
+  if (status === 429) return !/monthly spending cap/i.test(detail);
+  return status === 408 || status === 425 || status === 500 || status === 502 ||
+    status === 503 || status === 504;
+};
+
 export interface GenerationCompleteEvent {
   type: "complete";
   finishReason: string;

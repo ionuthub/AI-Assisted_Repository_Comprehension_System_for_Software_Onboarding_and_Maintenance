@@ -115,7 +115,7 @@ jobs:
             --truth study/ground-truth.clinic-triage.md \
             --accept-tool-verified \
             --url https://repo-comprehension-system.vercel.app/ \
-            --tool-version 3554f787
+            --tool-version c96264b
 
       - name: Avoid API rate-window overlap
         run: sleep 65
@@ -128,7 +128,7 @@ jobs:
             --truth study/ground-truth.warehouse-dispatch.md \
             --accept-tool-verified \
             --url https://repo-comprehension-system.vercel.app/ \
-            --tool-version 3554f787
+            --tool-version c96264b
 
       - name: Build bound marking sheets
         run: |

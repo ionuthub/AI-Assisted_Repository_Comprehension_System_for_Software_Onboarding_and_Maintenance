@@ -22,6 +22,11 @@ describe("Gemini stream parsing", () => {
     expect(GENERATION_CONFIG.maxOutputTokens).toBeGreaterThanOrEqual(8_192);
   });
 
+  it("uses low Gemini 3.5 reasoning without a custom sampling temperature", () => {
+    expect(GENERATION_CONFIG.thinkingConfig.thinkingLevel).toBe("low");
+    expect(GENERATION_CONFIG).not.toHaveProperty("temperature");
+  });
+
   it("allows verified generation to outlive the former 90-second abort", () => {
     expect(MODEL_BUDGET.MAX_REQUEST_DURATION_MS).toBe(240_000);
   });

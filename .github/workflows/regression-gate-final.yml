@@ -88,6 +88,41 @@ jobs:
               raise SystemExit('Could not find the legacy answer wait timeout to patch')
           text = text.replace(old_timeout, new_timeout)
 
+          old_model_capture = '''  const finishReason = await answerPanel.getAttribute("data-finish-reason");
+            const promptTokenCount = await answerPanel.getAttribute("data-prompt-token-count");'''
+          new_model_capture = '''  const finishReason = await answerPanel.getAttribute("data-finish-reason");
+            const resolvedModel = await answerPanel.getAttribute("data-model");
+            const promptTokenCount = await answerPanel.getAttribute("data-prompt-token-count");'''
+          if old_model_capture not in text:
+              raise SystemExit('Could not find the generation metadata block to add model provenance')
+          text = text.replace(old_model_capture, new_model_capture)
+
+          old_generation = '''    generation: {
+                status: generationStatus,
+                finishReason,
+                usageMetadata: {'''
+          new_generation = '''    generation: {
+                status: generationStatus,
+                finishReason,
+                model: resolvedModel,
+                usageMetadata: {'''
+          if old_generation not in text:
+              raise SystemExit('Could not find the captured generation block to record the model')
+          text = text.replace(old_generation, new_generation)
+
+          old_gate_model = '''gate.capturedFrom = APP;
+          gate.capturedRepository = REPO;'''
+          new_gate_model = '''const resolvedModels = [...new Set(results.map((result) => result.generation.model))];
+          if (resolvedModels.length !== 1 || !resolvedModels[0]) {
+            throw new Error(`Expected one resolved model across the gate, got ${JSON.stringify(resolvedModels)}`);
+          }
+          gate.model = resolvedModels[0];
+          gate.capturedFrom = APP;
+          gate.capturedRepository = REPO;'''
+          if old_gate_model not in text:
+              raise SystemExit('Could not find the gate provenance block to bind the resolved model')
+          text = text.replace(old_gate_model, new_gate_model)
+
           path.write_text(text)
           PY
 
@@ -107,7 +142,7 @@ jobs:
                       if key.startswith('tool') or key == 'correct':
                           item.pop(key, None)
               gate['date'] = ''
-              gate['model'] = 'gemini-3.5-flash'
+              gate['model'] = 'gemini-3.7-flash'
               gate['generation'] = {
                   'thinkingLevel': 'low',
                   'maxOutputTokens': 8192,
@@ -134,7 +169,7 @@ jobs:
             --truth study/ground-truth.clinic-triage.md \
             --accept-tool-verified \
             --url https://repo-comprehension-system.vercel.app/ \
-            --tool-version 4fcb52f
+            --tool-version b8f9d3c
 
       - name: Checkpoint completed clinic evidence
         run: |
@@ -164,7 +199,7 @@ jobs:
             --truth study/ground-truth.warehouse-dispatch.md \
             --accept-tool-verified \
             --url https://repo-comprehension-system.vercel.app/ \
-            --tool-version 4fcb52f
+            --tool-version b8f9d3c
 
       - name: Build bound marking sheets
         run: |

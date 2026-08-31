@@ -1,5 +1,7 @@
 # Second marking of the accuracy gate
 
+> **Current status.** This file is a historical machine-produced blind second marking of an earlier capture. It is not the source of the final 6/24 gate result and it is not independent human validation. The final reportable result comes from the re-captured gate, the researcher's final verdicts in `marking.clinic-triage.md` and `marking.warehouse-dispatch.md`, and the fail-closed scorer. The researcher later reviewed this machine-produced record as a consistency check; no separate human second marker was used. Statements below about work that "must" be completed describe the status when this record was written.
+
 > **Historical record, not a reportable result.** This second marking was machine-produced, not
 > human. The 6/24 and 5/24 figures below describe the earlier capture; two answers in that run
 > were incomplete generations, and the committed gate files do not carry the verdicts. The gate
@@ -114,7 +116,7 @@ map is not described, but the question asks what decides, not how the handlers a
 are identified. Line references drift by two, which is not a basis for rejection when the
 content is exact.
 
-**warehouse-dispatch Q6**, the dock mutation, D4 for hazardous, D1–D3 by checksum for everything
+**warehouse-dispatch Q6**, the dock mutation, D4 for hazardous, D1-D3 by checksum for everything
 else, and the downstream read. Line references are exact.
 
 **warehouse-dispatch Q7**, the strategy resolution traced through `pricingByType`,

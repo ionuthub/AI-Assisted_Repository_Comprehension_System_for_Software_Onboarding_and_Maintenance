@@ -40,6 +40,9 @@ export const MODEL_BUDGET = {
   MAX_SYSTEM_CONTEXT_CHARS: 1_700_000,
   MAX_REQUEST_BODY_CHARS: 2_500_000,
   MAX_INPUT_TOKENS: 850_000,
-  MAX_OUTPUT_TOKENS: 4_096,
+  // Gemini's candidate budget also covers internal reasoning. The deployed regression gate
+  // exhausted 4,096 tokens while reviewing a cross-file answer before any final answer could
+  // be released, so leave enough headroom for both reasoning and the concise visible response.
+  MAX_OUTPUT_TOKENS: 8_192,
   MAX_VERIFICATION_ATTEMPTS: 2,
 } as const;

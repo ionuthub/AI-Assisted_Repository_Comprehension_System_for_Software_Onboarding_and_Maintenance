@@ -29,12 +29,14 @@ export interface Project {
   files: ProjectFile[];
   /** Coverage of the source files eligible for repository analysis. */
   ingestion?: {
+    /** All files that passed the source/configuration filters; there is no count cap. */
     totalCandidateFiles: number;
-    /** Every blob in the GitHub tree before source filtering. */
+    /** Every blob discovered from the complete Git tree before source filtering. */
     totalRepositoryFiles: number;
     /** Eligible files selected for content fetching before unreadable entries are removed. */
     includedFiles: number;
     filesWithContent: number;
+    /** True only when known tree truncation remains unresolved; successful ingestion is false. */
     treeTruncatedByGitHub: boolean;
     /** Files not indexed, with the actual exclusion reason. */
     excluded: ExcludedFile[];

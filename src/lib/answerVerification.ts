@@ -22,6 +22,30 @@ export function extractEvidencePathsFromContext(systemContext: string): string[]
 }
 
 /**
+ * Resolves a path written naturally in an answer to one canonical evidence path.
+ *
+ * Models often quote an import as `./styles.css`, while the repository evidence is keyed by its
+ * canonical path such as `src/styles.css`. Treat that as grounded only when the suffix identifies
+ * exactly one supplied evidence file. Ambiguous filenames remain rejected rather than guessing.
+ */
+function resolveMentionedPath(mention: string, evidencePaths: string[]): string | null {
+  if (evidencePaths.includes(mention)) return mention;
+
+  const normalized = mention
+    .replace(/\\/g, "/")
+    .replace(/^(?:\.\.\/)+/, "")
+    .replace(/^(?:\.\/)+/, "");
+
+  if (!normalized) return null;
+
+  const matches = evidencePaths.filter(
+    (path) => path === normalized || path.endsWith(`/${normalized}`)
+  );
+
+  return matches.length === 1 ? matches[0] : null;
+}
+
+/**
  * Deterministic release gate for generated repository answers.
  *
  * This does not prove semantic correctness. It blocks obvious grounding failures before a draft
@@ -33,10 +57,20 @@ export function verifyGeneratedAnswer(
 ): AnswerVerificationResult {
   const reasons: string[] = [];
   const trimmed = answer.trim();
-  const evidencePaths = new Set(evidence.map((item) => item.path));
+  const evidencePaths = evidence.map((item) => item.path);
   const mentionedPaths = Array.from(new Set(trimmed.match(MENTIONED_PATH) ?? []));
-  const citedEvidencePaths = mentionedPaths.filter((path) => evidencePaths.has(path));
-  const unverifiedPaths = mentionedPaths.filter((path) => !evidencePaths.has(path));
+  const resolvedMentions = mentionedPaths.map((mention) => ({
+    mention,
+    resolved: resolveMentionedPath(mention, evidencePaths),
+  }));
+  const citedEvidencePaths = Array.from(new Set(
+    resolvedMentions
+      .map(({ resolved }) => resolved)
+      .filter((path): path is string => Boolean(path))
+  ));
+  const unverifiedPaths = resolvedMentions
+    .filter(({ resolved }) => !resolved)
+    .map(({ mention }) => mention);
   const insufficient = saysEvidenceIsInsufficient(trimmed);
 
   if (!trimmed) reasons.push("The generated answer was empty.");

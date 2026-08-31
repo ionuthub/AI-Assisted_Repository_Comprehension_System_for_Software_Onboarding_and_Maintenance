@@ -30,6 +30,60 @@ jobs:
       - name: Install Chromium
         run: npx playwright install --with-deps chromium
 
+      - name: Align gate harness with final Answers UI
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+
+          path = Path('analysis/capture_gate.mjs')
+          text = path.read_text()
+
+          old = '''for (const { id, question } of questions) {
+            process.stdout.write(`Q${id} … `);
+            await page.fill("#workspace-ask", question);
+            await page.press("#workspace-ask", "Enter");
+
+            const answerPanel = page.locator('p:text-is("Your question") + h1 + div:not([aria-busy])').first();'''
+          new = '''for (const { id, question } of questions) {
+            process.stdout.write(`Q${id} … `);
+
+            // The final interface exposes repository Q&A under the Answers workspace tab.
+            // The first question and follow-up questions use separate accessible inputs.
+            let questionInput = page.locator('#repository-question');
+            if ((await questionInput.count()) === 0) {
+              const followUp = page.locator('#repository-question-follow-up');
+              if ((await followUp.count()) === 0) {
+                await page.getByRole('button', { name: 'Answers' }).click();
+                questionInput = page.locator('#repository-question');
+                await questionInput.waitFor();
+              } else {
+                questionInput = followUp;
+              }
+            }
+            await questionInput.fill(question);
+            await questionInput.press('Enter');
+
+            const answerPanel = page.locator('[data-generation-status]').first();'''
+          if old not in text:
+              raise SystemExit('Could not find the legacy Q&A selector block to patch')
+          text = text.replace(old, new)
+
+          old_parser = '''    const text = (await row.innerText()).replace(/\\s+/g, " ").trim();
+              // "1 src/path/file.ts 0.27", rank, path, then the score as rendered.
+              const m = text.match(/^(\\d+)\\s+(\\S+)\\s+([\\d.]+)$/);
+              retrieved.push(m ? { rank: +m[1], path: m[2], score: +m[3] } : { raw: text });'''
+          new_parser = '''    const text = (await row.innerText()).replace(/\\s+/g, " ").trim();
+              // Final UI also renders the retrieval-reason label between path and score.
+              // Parse rank + path + trailing numeric score while allowing that label.
+              const m = text.match(/^(\\d+)\\s+(\\S+).*?([\\d.]+)$/);
+              retrieved.push(m ? { rank: +m[1], path: m[2], score: +m[3] } : { raw: text });'''
+          if old_parser not in text:
+              raise SystemExit('Could not find the legacy evidence-row parser to patch')
+          text = text.replace(old_parser, new_parser)
+
+          path.write_text(text)
+          PY
+
       - name: Prepare clean regression gates
         run: |
           mkdir -p study/regression-final

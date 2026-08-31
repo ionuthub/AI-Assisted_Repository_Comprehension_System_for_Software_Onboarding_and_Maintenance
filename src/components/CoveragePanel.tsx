@@ -4,6 +4,7 @@ import type { ExcludedFile } from "@/types/project";
 
 interface CoveragePanelProps {
   indexedFiles: number;
+  eligibleFiles: number;
   totalRepositoryFiles: number;
   excluded: ExcludedFile[];
   treeTruncated?: boolean;
@@ -23,58 +24,62 @@ function groupByReason(excluded: ExcludedFile[]): { reason: string; paths: strin
 
 export default function CoveragePanel({
   indexedFiles,
+  eligibleFiles,
   totalRepositoryFiles,
   excluded,
   treeTruncated,
 }: CoveragePanelProps) {
   const [openReason, setOpenReason] = useState<string | null>(null);
   const groups = groupByReason(excluded);
-  const ratio = totalRepositoryFiles > 0 ? indexedFiles / totalRepositoryFiles : 0;
+  const ratio = eligibleFiles > 0 ? indexedFiles / eligibleFiles : 0;
   const percent = ratio * 100;
   const percentLabel = percent > 0 && percent < 1 ? "under 1%" : `${Math.round(percent)}%`;
-  const coverageTooLowToRelyOn = totalRepositoryFiles > 0 && ratio < 0.1;
+  const coverageTooLowToRelyOn = eligibleFiles > 0 && ratio < 0.8;
 
   return (
     <section className="rounded-md border border-border bg-card p-5 space-y-4" aria-label="Repository coverage">
       <div className="flex items-baseline justify-between gap-4 flex-wrap">
-        <h2 className="text-section text-foreground">How much of this repository was read</h2>
-        <p className="text-meta text-muted-foreground">Answers can only cite indexed files</p>
+        <h2 className="text-section text-foreground">Repository source coverage</h2>
+        <p className="text-meta text-muted-foreground">Answers can only cite files that were read</p>
       </div>
 
       <div
         className="h-2 rounded-full bg-secondary overflow-hidden"
         role="progressbar"
         aria-valuemin={0}
-        aria-valuemax={totalRepositoryFiles}
+        aria-valuemax={eligibleFiles || 1}
         aria-valuenow={indexedFiles}
-        aria-label={`${indexedFiles} of ${totalRepositoryFiles} files indexed`}
+        aria-label={`${indexedFiles} of ${eligibleFiles} eligible files indexed`}
       >
         <div className="h-full bg-primary" style={{ width: `${Math.max(percent, 1)}%` }} />
       </div>
 
-      <p className="text-ui text-foreground">
-        <span className="font-semibold">
-          {indexedFiles.toLocaleString()} of {totalRepositoryFiles.toLocaleString()} files
-        </span>{" "}
-        indexed ({percentLabel})
-      </p>
+      <div className="space-y-1">
+        <p className="text-ui text-foreground">
+          <span className="font-semibold">
+            {indexedFiles.toLocaleString()} of {eligibleFiles.toLocaleString()} eligible source and configuration files
+          </span>{" "}
+          indexed ({percentLabel})
+        </p>
+        <p className="text-meta text-muted-foreground">
+          The repository contains {totalRepositoryFiles.toLocaleString()} files in total. Dependencies,
+          build output, unsupported formats and oversized files are excluded deliberately.
+        </p>
+      </div>
 
       {coverageTooLowToRelyOn && (
         <div className="flex items-start gap-2 rounded-md border border-warning/60 bg-warning/10 p-3">
           <AlertTriangle className="w-4 h-4 text-warning shrink-0 mt-0.5" aria-hidden="true" />
           <p className="text-ui text-foreground leading-relaxed">
-            <span className="font-semibold">Coverage is too low to rely on.</span> Answers can
-            only draw on the {indexedFiles.toLocaleString()} indexed files, so anything said
-            about the rest of this repository is not supported by evidence. A smaller
-            repository will give more dependable results.
+            <span className="font-semibold">Some eligible source could not be read.</span> Treat
+            repository-wide answers cautiously because they may depend on files outside the indexed set.
           </p>
         </div>
       )}
 
       {treeTruncated && (
         <p className="text-ui text-warning">
-          GitHub truncated the file listing for this repository, so some files are not
-          accounted for below.
+          GitHub truncated the recursive file listing, so the analyser may not have seen every repository path.
         </p>
       )}
 

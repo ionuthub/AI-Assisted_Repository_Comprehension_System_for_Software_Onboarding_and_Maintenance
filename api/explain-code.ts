@@ -6,9 +6,12 @@ import {
   successfulFinishReason,
   type GenerationUsageMetadata,
 } from '../src/lib/generationProtocol';
-import { buildSystemPrompt, clampSystemContext } from '../src/lib/promptBuilder';
+import {
+  buildSystemPrompt,
+  clampSystemContext,
+  systemContextFitsBudget,
+} from '../src/lib/promptBuilder';
 
-// Fallback origins for local development and the production deployment.
 const DEFAULT_ALLOWED_ORIGINS = [
   'http://localhost:8080',
   'http://localhost:5173',
@@ -16,8 +19,8 @@ const DEFAULT_ALLOWED_ORIGINS = [
   'https://repo-comprehension-system.vercel.app',
 ];
 
-// GEMINI_MODEL can override the default if the model changes.
 const DEFAULT_GEMINI_MODEL = 'gemini-3.5-flash';
+const MAX_REQUEST_BODY_CHARS = 100_000;
 
 const getGeminiModel = (): string => process.env.GEMINI_MODEL?.trim() || DEFAULT_GEMINI_MODEL;
 
@@ -35,7 +38,6 @@ const normalizeOrigin = (origin?: string): string | undefined => {
   }
 };
 
-// Only exact origins from the allowlist are accepted.
 const isOriginAllowed = (normalizedOrigin?: string): boolean =>
   Boolean(normalizedOrigin) && getAllowedOrigins().includes(normalizedOrigin as string);
 
@@ -82,12 +84,10 @@ export default async function handler(req: Request): Promise<Response> {
     return new Response(JSON.stringify({ error: 'Method not allowed' }), { status: 405, headers: securityHeaders });
   }
 
-  // Browser requests must come from an allowed origin.
   if (!isOriginAllowed(normalizeOrigin(origin))) {
     return new Response(JSON.stringify({ error: 'Origin not allowed' }), { status: 403, headers: securityHeaders });
   }
 
-  // Optional IP rate limit: 15 requests per minute.
   const ip = req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || 'anonymous';
   if (redis) {
     const rateLimitKey = `ratelimit:${ip}`;
@@ -99,7 +99,25 @@ export default async function handler(req: Request): Promise<Response> {
   }
 
   try {
-    const { messages, systemContext, stream = false } = await req.json() as ExplainCodeRequest;
+    const rawBody = await req.text();
+    if (rawBody.length > MAX_REQUEST_BODY_CHARS) {
+      return new Response(JSON.stringify({ error: 'Request exceeds the Q&A size budget' }), {
+        status: 413,
+        headers: securityHeaders,
+      });
+    }
+
+    let parsed: ExplainCodeRequest;
+    try {
+      parsed = JSON.parse(rawBody) as ExplainCodeRequest;
+    } catch {
+      return new Response(JSON.stringify({ error: 'Request body must be valid JSON' }), {
+        status: 400,
+        headers: securityHeaders,
+      });
+    }
+
+    const { messages, systemContext, stream = false } = parsed;
 
     if (!messages || !Array.isArray(messages) || messages.length === 0) {
       return new Response(JSON.stringify({ error: 'messages must be a non-empty array' }), { status: 400, headers: securityHeaders });
@@ -116,6 +134,12 @@ export default async function handler(req: Request): Promise<Response> {
       }
     }
 
+    if (!systemContextFitsBudget(systemContext)) {
+      return new Response(JSON.stringify({ error: 'Repository context exceeds the server context budget' }), {
+        status: 413,
+        headers: securityHeaders,
+      });
+    }
     const normalizedSystemContext = clampSystemContext(systemContext);
 
     const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
@@ -124,7 +148,6 @@ export default async function handler(req: Request): Promise<Response> {
     }
 
     const systemPrompt = buildSystemPrompt(normalizedSystemContext);
-
     const endpoint = stream ? 'streamGenerateContent' : 'generateContent';
     const url = `https://generativelanguage.googleapis.com/v1beta/models/${getGeminiModel()}:${endpoint}?key=${GEMINI_API_KEY}`;
 
@@ -138,7 +161,7 @@ export default async function handler(req: Request): Promise<Response> {
     };
 
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 60000); // 60s timeout
+    const timeoutId = setTimeout(() => controller.abort(), 60000);
 
     try {
       const response = await fetch(url, {
@@ -181,7 +204,6 @@ export default async function handler(req: Request): Promise<Response> {
         });
       }
 
-      // Stream structured events so the client can check finish status and usage.
       const encoder = new TextEncoder();
       const decoder = new TextDecoder();
       const { readable, writable } = new TransformStream();
@@ -223,15 +245,15 @@ export default async function handler(req: Request): Promise<Response> {
             if (done) break;
 
             buffer += decoder.decode(value, { stream: true });
-            const parsed = extractJsonObjects(buffer);
-            buffer = parsed.rest;
-            await consumeObjects(parsed.objects);
+            const parsedChunk = extractJsonObjects(buffer);
+            buffer = parsedChunk.rest;
+            await consumeObjects(parsedChunk.objects);
           }
 
           buffer += decoder.decode();
-          const parsed = extractJsonObjects(buffer);
-          buffer = parsed.rest;
-          await consumeObjects(parsed.objects);
+          const parsedChunk = extractJsonObjects(buffer);
+          buffer = parsedChunk.rest;
+          await consumeObjects(parsedChunk.objects);
 
           if (buffer.replace(/\s/g, '').replaceAll(',', '').replaceAll('[', '').replaceAll(']', '')) {
             throw new Error('Gemini stream ended with incomplete JSON');
@@ -271,13 +293,14 @@ export default async function handler(req: Request): Promise<Response> {
       });
 
     } catch (e: unknown) {
+      clearTimeout(timeoutId);
       if (e instanceof Error && e.name === 'AbortError') {
         return new Response(JSON.stringify({ error: 'Request timeout' }), { status: 504, headers: securityHeaders });
       }
       throw e;
     }
 
-  } catch (error) {
+  } catch {
     return new Response(JSON.stringify({ error: 'Server Error' }), { status: 500, headers: securityHeaders });
   }
 }

@@ -190,6 +190,7 @@ export default function WorkspaceQAView({
                 className="max-w-[68ch]"
                 data-generation-status={generationStatus}
                 data-finish-reason={completion?.finishReason}
+                data-model={completion?.usageMetadata?.model}
                 data-prompt-token-count={completion?.usageMetadata?.promptTokenCount}
                 data-output-token-count={completion?.usageMetadata?.candidatesTokenCount}
                 data-total-token-count={completion?.usageMetadata?.totalTokenCount}

@@ -26,8 +26,7 @@ const DEFAULT_ALLOWED_ORIGINS = [
 ];
 
 const DEFAULT_GEMINI_MODEL = 'gemini-3.5-flash';
-const MAX_REQUEST_BODY_CHARS = 100_000;
-const REQUEST_TIMEOUT_MS = 58_000;
+const REQUEST_TIMEOUT_MS = 90_000;
 
 const getGeminiModel = (): string => process.env.GEMINI_MODEL?.trim() || DEFAULT_GEMINI_MODEL;
 
@@ -92,7 +91,14 @@ interface AggregateUsage {
   candidatesTokenCount: number;
   totalTokenCount: number;
   modelCalls: number;
+  checkedInputTokens: number;
 }
+
+const toGeminiContents = (messages: Message[]) =>
+  messages.map((message) => ({
+    role: message.role,
+    parts: [{ text: message.content }],
+  }));
 
 const addUsage = (aggregate: AggregateUsage, usage?: GenerationUsageMetadata) => {
   aggregate.promptTokenCount += usage?.promptTokenCount ?? 0;
@@ -100,6 +106,38 @@ const addUsage = (aggregate: AggregateUsage, usage?: GenerationUsageMetadata) =>
   aggregate.totalTokenCount += usage?.totalTokenCount ?? 0;
   aggregate.modelCalls += 1;
 };
+
+async function countInputTokens(
+  messages: Message[],
+  systemPrompt: string,
+  apiKey: string,
+  signal: AbortSignal
+): Promise<number> {
+  const model = getGeminiModel();
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:countTokens?key=${apiKey}`;
+  const response = await fetch(url, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      generateContentRequest: {
+        model: `models/${model}`,
+        contents: toGeminiContents(messages),
+        systemInstruction: { parts: [{ text: systemPrompt }] },
+      },
+    }),
+    signal,
+  });
+
+  if (!response.ok) {
+    throw new Error(`Token count request failed (${response.status}): ${await response.text()}`);
+  }
+
+  const data = await response.json() as { totalTokens?: number };
+  if (!Number.isFinite(data.totalTokens)) {
+    throw new Error('Token count request returned no usable total');
+  }
+  return data.totalTokens as number;
+}
 
 async function callGemini(
   messages: Message[],
@@ -112,10 +150,7 @@ async function callGemini(
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
-      contents: messages.map((message) => ({
-        role: message.role,
-        parts: [{ text: message.content }],
-      })),
+      contents: toGeminiContents(messages),
       systemInstruction: { parts: [{ text: systemPrompt }] },
       generationConfig: GENERATION_CONFIG,
     }),
@@ -163,11 +198,20 @@ async function generateVerifiedAnswer(
   const evidencePaths = extractEvidencePathsFromContext(systemContext);
   const evidence = evidencePaths.map((path) => ({ path }));
   const question = [...messages].reverse().find((message) => message.role === 'user')?.content ?? '';
+  const checkedInputTokens = await countInputTokens(messages, systemPrompt, apiKey, signal);
+
+  if (checkedInputTokens > MODEL_BUDGET.MAX_INPUT_TOKENS) {
+    throw new Error(
+      `INPUT_BUDGET_EXCEEDED:${checkedInputTokens}:${MODEL_BUDGET.MAX_INPUT_TOKENS}`
+    );
+  }
+
   const usage: AggregateUsage = {
     promptTokenCount: 0,
     candidatesTokenCount: 0,
     totalTokenCount: 0,
     modelCalls: 0,
+    checkedInputTokens,
   };
 
   const draft = await callGemini(messages, systemPrompt, apiKey, signal);
@@ -245,7 +289,7 @@ export default async function handler(req: Request): Promise<Response> {
 
   try {
     const rawBody = await req.text();
-    if (rawBody.length > MAX_REQUEST_BODY_CHARS) {
+    if (rawBody.length > MODEL_BUDGET.MAX_REQUEST_BODY_CHARS) {
       return new Response(JSON.stringify({ error: 'Request exceeds the Q&A size budget' }), {
         status: 413,
         headers: securityHeaders,
@@ -323,6 +367,7 @@ export default async function handler(req: Request): Promise<Response> {
         candidatesTokenCount: verified.usage.candidatesTokenCount,
         totalTokenCount: verified.usage.totalTokenCount,
         modelCalls: verified.usage.modelCalls,
+        checkedInputTokens: verified.usage.checkedInputTokens,
         verifiedBeforeRelease: true,
       };
 
@@ -353,8 +398,15 @@ export default async function handler(req: Request): Promise<Response> {
       clearTimeout(timeoutId);
       const isTimeout = error instanceof Error && error.name === 'AbortError';
       const message = error instanceof Error ? error.message : 'Generation failed';
-      return new Response(JSON.stringify({ error: isTimeout ? 'Request timeout' : message }), {
-        status: isTimeout ? 504 : 502,
+      const inputBudgetExceeded = message.startsWith('INPUT_BUDGET_EXCEEDED:');
+      return new Response(JSON.stringify({
+        error: inputBudgetExceeded
+          ? 'Repository context exceeds the model input-token budget'
+          : isTimeout
+            ? 'Request timeout'
+            : message,
+      }), {
+        status: inputBudgetExceeded ? 413 : isTimeout ? 504 : 502,
         headers: { ...securityHeaders, 'Content-Type': 'application/json' },
       });
     }

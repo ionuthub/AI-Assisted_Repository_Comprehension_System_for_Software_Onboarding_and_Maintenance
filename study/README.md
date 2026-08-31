@@ -17,7 +17,7 @@ This folder contains records used for the dissertation evaluation. It is not par
 | `question-scores.json` | Retrieval-score measurements |
 | `gate-runs/` | Repeated gate captures |
 | `gate-screenshots/` | Gate screenshots |
-| `second-marking.md` | Blind second marking, independently checked and confirmed by the researcher |
+| `second-marking.md` | Historical machine-produced blind second-marking record; later researcher review is a consistency check, not a separate human second marking |
 | `suggested-questions-measurement.md` | Suggested-question measurement |
 
 Older audit and remediation notes are in `archive/`.

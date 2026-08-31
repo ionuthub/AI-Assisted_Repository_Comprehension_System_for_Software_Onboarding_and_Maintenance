@@ -107,6 +107,29 @@ const addUsage = (aggregate: AggregateUsage, usage?: GenerationUsageMetadata) =>
   aggregate.modelCalls += 1;
 };
 
+const toUsageMetadata = (usage: AggregateUsage): GenerationUsageMetadata => ({
+  promptTokenCount: usage.promptTokenCount,
+  candidatesTokenCount: usage.candidatesTokenCount,
+  totalTokenCount: usage.totalTokenCount,
+  modelCalls: usage.modelCalls,
+  checkedInputTokens: usage.checkedInputTokens,
+  verifiedBeforeRelease: true,
+});
+
+const classifyGenerationError = (error: unknown) => {
+  const isTimeout = error instanceof Error && error.name === 'AbortError';
+  const message = error instanceof Error ? error.message : 'Generation failed';
+  const inputBudgetExceeded = message.startsWith('INPUT_BUDGET_EXCEEDED:');
+  return {
+    status: inputBudgetExceeded ? 413 : isTimeout ? 504 : 502,
+    message: inputBudgetExceeded
+      ? 'Repository context exceeds the model input-token budget'
+      : isTimeout
+        ? 'Request timeout'
+        : message,
+  };
+};
+
 async function countInputTokens(
   messages: Message[],
   systemPrompt: string,
@@ -252,6 +275,65 @@ async function generateVerifiedAnswer(
   return { answer: reviewed.text, usage };
 }
 
+function streamVerifiedAnswer(
+  messages: Message[],
+  systemContext: string,
+  apiKey: string,
+  abortController: AbortController,
+  timeoutId: ReturnType<typeof setTimeout>,
+  securityHeaders: Record<string, string>
+): Response {
+  const encoder = new TextEncoder();
+  const body = new ReadableStream<Uint8Array>({
+    start(streamController) {
+      // Send one ignorable newline immediately. The client already ignores blank NDJSON lines.
+      // This commits the response before Vercel Edge's initial-response deadline while keeping
+      // every unverified model token private until draft -> review -> evidence verification passes.
+      streamController.enqueue(encoder.encode('\n'));
+
+      void (async () => {
+        try {
+          const verified = await generateVerifiedAnswer(
+            messages,
+            systemContext,
+            apiKey,
+            abortController.signal
+          );
+          clearTimeout(timeoutId);
+          const usageMetadata = toUsageMetadata(verified.usage);
+          streamController.enqueue(encoder.encode(
+            encodeGenerationEvent({ type: 'text', text: verified.answer })
+          ));
+          streamController.enqueue(encoder.encode(
+            encodeGenerationEvent({ type: 'complete', finishReason: 'STOP', usageMetadata })
+          ));
+        } catch (error) {
+          clearTimeout(timeoutId);
+          const failure = classifyGenerationError(error);
+          streamController.enqueue(encoder.encode(
+            encodeGenerationEvent({ type: 'error', error: failure.message })
+          ));
+        } finally {
+          streamController.close();
+        }
+      })();
+    },
+    cancel() {
+      clearTimeout(timeoutId);
+      abortController.abort();
+    },
+  });
+
+  return new Response(body, {
+    status: 200,
+    headers: {
+      ...securityHeaders,
+      'Content-Type': 'application/x-ndjson; charset=utf-8',
+      'Connection': 'keep-alive',
+    },
+  });
+}
+
 export default async function handler(req: Request): Promise<Response> {
   const origin = req.headers.get('origin') || undefined;
   const securityHeaders = getSecurityHeaders(origin);
@@ -353,6 +435,17 @@ export default async function handler(req: Request): Promise<Response> {
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
 
+    if (stream) {
+      return streamVerifiedAnswer(
+        messages,
+        normalizedSystemContext,
+        apiKey,
+        controller,
+        timeoutId,
+        securityHeaders
+      );
+    }
+
     try {
       const verified = await generateVerifiedAnswer(
         messages,
@@ -361,52 +454,21 @@ export default async function handler(req: Request): Promise<Response> {
         controller.signal
       );
       clearTimeout(timeoutId);
+      const usageMetadata = toUsageMetadata(verified.usage);
 
-      const usageMetadata: GenerationUsageMetadata = {
-        promptTokenCount: verified.usage.promptTokenCount,
-        candidatesTokenCount: verified.usage.candidatesTokenCount,
-        totalTokenCount: verified.usage.totalTokenCount,
-        modelCalls: verified.usage.modelCalls,
-        checkedInputTokens: verified.usage.checkedInputTokens,
-        verifiedBeforeRelease: true,
-      };
-
-      if (!stream) {
-        return new Response(JSON.stringify({
-          explanation: verified.answer,
-          finishReason: 'STOP',
-          usageMetadata,
-        }), {
-          status: 200,
-          headers: { ...securityHeaders, 'Content-Type': 'application/json' },
-        });
-      }
-
-      const body =
-        encodeGenerationEvent({ type: 'text', text: verified.answer }) +
-        encodeGenerationEvent({ type: 'complete', finishReason: 'STOP', usageMetadata });
-
-      return new Response(body, {
+      return new Response(JSON.stringify({
+        explanation: verified.answer,
+        finishReason: 'STOP',
+        usageMetadata,
+      }), {
         status: 200,
-        headers: {
-          ...securityHeaders,
-          'Content-Type': 'application/x-ndjson; charset=utf-8',
-          'Connection': 'keep-alive',
-        },
+        headers: { ...securityHeaders, 'Content-Type': 'application/json' },
       });
     } catch (error) {
       clearTimeout(timeoutId);
-      const isTimeout = error instanceof Error && error.name === 'AbortError';
-      const message = error instanceof Error ? error.message : 'Generation failed';
-      const inputBudgetExceeded = message.startsWith('INPUT_BUDGET_EXCEEDED:');
-      return new Response(JSON.stringify({
-        error: inputBudgetExceeded
-          ? 'Repository context exceeds the model input-token budget'
-          : isTimeout
-            ? 'Request timeout'
-            : message,
-      }), {
-        status: inputBudgetExceeded ? 413 : isTimeout ? 504 : 502,
+      const failure = classifyGenerationError(error);
+      return new Response(JSON.stringify({ error: failure.message }), {
+        status: failure.status,
         headers: { ...securityHeaders, 'Content-Type': 'application/json' },
       });
     }

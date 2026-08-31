@@ -85,10 +85,9 @@ const analyses: Record<string, FileAnalysisResult> = {
 };
 
 const options = {
-  candidateFiles: 12,
-  structuralSeeds: 4,
-  maxEvidenceFiles: 8,
-  excerptChars: 1000,
+  evidenceBudgetChars: 20_000,
+  maxExcerptChars: 2_000,
+  minExcerptChars: 200,
 };
 
 describe("retrieveRepositoryEvidence", () => {
@@ -139,13 +138,59 @@ describe("retrieveRepositoryEvidence", () => {
     expect(a).toEqual(b);
   });
 
-  it("never returns more than the configured evidence limit", () => {
-    const index = buildSearchIndex(files);
-    const evidence = retrieveRepositoryEvidence("function", index, files, analyses, {
-      ...options,
-      maxEvidenceFiles: 2,
+  it("uses the context budget instead of a fixed evidence-file count", () => {
+    const manyFiles = Array.from({ length: 18 }, (_, index) =>
+      file(`src/feature/part${index}.ts`, `export const sharedFeature${index} = 'shared feature';`)
+    );
+    const manyAnalyses = Object.fromEntries(
+      manyFiles.map((item) => [item.path, {
+        path: item.path,
+        imports: [],
+        exports: [],
+        functions: [],
+        components: [],
+        classes: [],
+        isApiRoute: false,
+        usedBy: [],
+      } satisfies FileAnalysisResult])
+    );
+    const index = buildSearchIndex(manyFiles);
+    const evidence = retrieveRepositoryEvidence("shared feature", index, manyFiles, manyAnalyses, {
+      evidenceBudgetChars: 20_000,
+      maxExcerptChars: 800,
+      minExcerptChars: 100,
     });
 
-    expect(evidence.length).toBeLessThanOrEqual(2);
+    expect(evidence.length).toBeGreaterThan(8);
+    const consumed = evidence.reduce((sum, item) => sum + item.excerpt.length + 180, 0);
+    expect(consumed).toBeLessThanOrEqual(20_000);
+  });
+
+  it("stops at the evidence budget when excerpts are large", () => {
+    const largeFiles = Array.from({ length: 10 }, (_, index) =>
+      file(`src/large${index}.ts`, `sharedFeature ${"x".repeat(2_000)}`)
+    );
+    const largeAnalyses = Object.fromEntries(
+      largeFiles.map((item) => [item.path, {
+        path: item.path,
+        imports: [],
+        exports: [],
+        functions: [],
+        components: [],
+        classes: [],
+        isApiRoute: false,
+        usedBy: [],
+      } satisfies FileAnalysisResult])
+    );
+    const index = buildSearchIndex(largeFiles);
+    const evidence = retrieveRepositoryEvidence("sharedFeature", index, largeFiles, largeAnalyses, {
+      evidenceBudgetChars: 5_000,
+      maxExcerptChars: 2_000,
+      minExcerptChars: 500,
+    });
+
+    const consumed = evidence.reduce((sum, item) => sum + item.excerpt.length + 180, 0);
+    expect(consumed).toBeLessThanOrEqual(5_000);
+    expect(evidence.length).toBeLessThan(10);
   });
 });

@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   consumeGenerationStream,
+  DEFAULT_GEMINI_MODEL,
   encodeGenerationEvent,
   extractJsonObjects,
   GENERATION_CONFIG,
@@ -18,6 +19,10 @@ const streamOf = (parts: string[]) =>
   });
 
 describe("Gemini stream parsing", () => {
+  it("uses the current GA Flash model for verified repository answers", () => {
+    expect(DEFAULT_GEMINI_MODEL).toBe("gemini-3.7-flash");
+  });
+
   it("keeps enough output headroom for verified cross-file answers", () => {
     expect(GENERATION_CONFIG.maxOutputTokens).toBeGreaterThanOrEqual(8_192);
   });

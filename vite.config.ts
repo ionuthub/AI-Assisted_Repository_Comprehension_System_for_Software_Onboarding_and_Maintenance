@@ -3,14 +3,186 @@ import react from "@vitejs/plugin-react-swc";
 import path from "path";
 import {
   encodeGenerationEvent,
-  extractJsonObjects,
   GENERATION_CONFIG,
   successfulFinishReason,
   type GenerationUsageMetadata,
 } from "./src/lib/generationProtocol";
-import { buildSystemPrompt, clampSystemContext } from "./src/lib/promptBuilder";
+import {
+  buildSystemPrompt,
+  clampSystemContext,
+  systemContextFitsBudget,
+} from "./src/lib/promptBuilder";
+import {
+  buildAnswerRepairPrompt,
+  buildAnswerReviewPrompt,
+  extractEvidencePathsFromContext,
+  verifyGeneratedAnswer,
+} from "./src/lib/answerVerification";
+import { MODEL_BUDGET } from "./src/constants/appConstants";
 
-// https://vitejs.dev/config/
+interface DevMessage {
+  role: 'user' | 'model';
+  content: string;
+}
+
+interface DevGeminiResult {
+  text: string;
+  finishReason: string;
+  usageMetadata?: GenerationUsageMetadata;
+}
+
+const toGeminiContents = (messages: DevMessage[]) =>
+  messages.map((message) => ({
+    role: message.role,
+    parts: [{ text: message.content }],
+  }));
+
+async function countDevInputTokens(
+  messages: DevMessage[],
+  systemPrompt: string,
+  model: string,
+  apiKey: string,
+  signal: AbortSignal
+): Promise<number> {
+  const response = await fetch(
+    `https://generativelanguage.googleapis.com/v1beta/models/${model}:countTokens?key=${apiKey}`,
+    {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        generateContentRequest: {
+          model: `models/${model}`,
+          contents: toGeminiContents(messages),
+          systemInstruction: { parts: [{ text: systemPrompt }] },
+        },
+      }),
+      signal,
+    }
+  );
+
+  if (!response.ok) {
+    throw new Error(`Token count request failed (${response.status}): ${await response.text()}`);
+  }
+  const data = await response.json() as { totalTokens?: number };
+  if (!Number.isFinite(data.totalTokens)) throw new Error('Token count request returned no usable total');
+  return data.totalTokens as number;
+}
+
+async function callDevGemini(
+  messages: DevMessage[],
+  systemPrompt: string,
+  model: string,
+  apiKey: string,
+  signal: AbortSignal
+): Promise<DevGeminiResult> {
+  const response = await fetch(
+    `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`,
+    {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        contents: toGeminiContents(messages),
+        systemInstruction: { parts: [{ text: systemPrompt }] },
+        generationConfig: GENERATION_CONFIG,
+      }),
+      signal,
+    }
+  );
+
+  if (!response.ok) {
+    throw new Error(`Model request failed (${response.status}): ${await response.text()}`);
+  }
+
+  const data = await response.json() as {
+    candidates?: Array<{
+      content?: { parts?: Array<{ text?: string }> };
+      finishReason?: string;
+    }>;
+    usageMetadata?: GenerationUsageMetadata;
+  };
+  const candidate = data.candidates?.[0];
+  const text = candidate?.content?.parts?.map((part) => part.text || '').join('').trim() ?? '';
+  const finishReason = candidate?.finishReason;
+  if (!text || !successfulFinishReason(finishReason)) {
+    throw new Error(text ? `Generation ended before completion (${finishReason ?? 'unknown'})` : 'Generation returned no answer');
+  }
+
+  return { text, finishReason, usageMetadata: data.usageMetadata };
+}
+
+async function generateVerifiedDevAnswer(
+  messages: DevMessage[],
+  systemContext: string,
+  model: string,
+  apiKey: string,
+  signal: AbortSignal
+) {
+  const systemPrompt = buildSystemPrompt(systemContext);
+  const evidence = extractEvidencePathsFromContext(systemContext).map((path) => ({ path }));
+  const question = [...messages].reverse().find((message) => message.role === 'user')?.content ?? '';
+  const checkedInputTokens = await countDevInputTokens(messages, systemPrompt, model, apiKey, signal);
+
+  if (checkedInputTokens > MODEL_BUDGET.MAX_INPUT_TOKENS) {
+    throw new Error(`INPUT_BUDGET_EXCEEDED:${checkedInputTokens}:${MODEL_BUDGET.MAX_INPUT_TOKENS}`);
+  }
+
+  let promptTokenCount = 0;
+  let candidatesTokenCount = 0;
+  let totalTokenCount = 0;
+  let modelCalls = 0;
+  const addUsage = (usage?: GenerationUsageMetadata) => {
+    promptTokenCount += usage?.promptTokenCount ?? 0;
+    candidatesTokenCount += usage?.candidatesTokenCount ?? 0;
+    totalTokenCount += usage?.totalTokenCount ?? 0;
+    modelCalls += 1;
+  };
+
+  const draft = await callDevGemini(messages, systemPrompt, model, apiKey, signal);
+  addUsage(draft.usageMetadata);
+
+  let reviewed = await callDevGemini(
+    [{ role: 'user', content: buildAnswerReviewPrompt(question, draft.text) }],
+    systemPrompt,
+    model,
+    apiKey,
+    signal
+  );
+  addUsage(reviewed.usageMetadata);
+
+  let verification = verifyGeneratedAnswer(reviewed.text, evidence);
+  for (
+    let attempt = 0;
+    !verification.passed && attempt < MODEL_BUDGET.MAX_VERIFICATION_ATTEMPTS;
+    attempt += 1
+  ) {
+    reviewed = await callDevGemini(
+      [{ role: 'user', content: buildAnswerRepairPrompt(question, reviewed.text, verification.reasons) }],
+      systemPrompt,
+      model,
+      apiKey,
+      signal
+    );
+    addUsage(reviewed.usageMetadata);
+    verification = verifyGeneratedAnswer(reviewed.text, evidence);
+  }
+
+  if (!verification.passed) {
+    throw new Error(`Answer withheld by evidence gate: ${verification.reasons.join(' ')}`);
+  }
+
+  return {
+    answer: reviewed.text,
+    usageMetadata: {
+      promptTokenCount,
+      candidatesTokenCount,
+      totalTokenCount,
+      modelCalls,
+      checkedInputTokens,
+      verifiedBeforeRelease: true,
+    } satisfies GenerationUsageMetadata,
+  };
+}
+
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), '');
   return {
@@ -24,7 +196,6 @@ export default defineConfig(({ mode }) => {
         name: 'security-headers',
         configureServer(server) {
           server.middlewares.use((req, res, next) => {
-            // Security headers for development
             res.setHeader('X-Frame-Options', 'DENY');
             res.setHeader('X-Content-Type-Options', 'nosniff');
             res.setHeader('X-XSS-Protection', '1; mode=block');
@@ -50,169 +221,101 @@ export default defineConfig(({ mode }) => {
           server.middlewares.use('/api/explain-code', async (req, res, next) => {
             if (req.method !== 'POST') return next();
 
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), 90_000);
+
             try {
-              const buffers = [];
+              const buffers: Buffer[] = [];
+              let size = 0;
               for await (const chunk of req) {
-                buffers.push(chunk);
-              }
-              const body = JSON.parse(Buffer.concat(buffers).toString());
-              const { messages, systemContext, stream } = body;
-
-              const GEMINI_API_KEY = env.GEMINI_API_KEY || process.env.GEMINI_API_KEY;
-
-              if (!GEMINI_API_KEY) {
-                res.writeHead(500, { 'Content-Type': 'application/json' });
-                res.end(JSON.stringify({ error: 'GEMINI_API_KEY not set in .env check log for setup instructions' }));
-                return;
+                const buffer = Buffer.from(chunk);
+                size += buffer.length;
+                if (size > MODEL_BUDGET.MAX_REQUEST_BODY_CHARS) {
+                  res.writeHead(413, { 'Content-Type': 'application/json' });
+                  res.end(JSON.stringify({ error: 'Request exceeds the Q&A size budget' }));
+                  clearTimeout(timeoutId);
+                  return;
+                }
+                buffers.push(buffer);
               }
 
-              // Same builder as the deployed function, so a pilot session run against
-              // this server exercises the prompt a participant meets in production.
-              const systemPrompt = buildSystemPrompt(clampSystemContext(systemContext));
-
-              const endpoint = stream ? 'streamGenerateContent' : 'generateContent';
-              const GEMINI_MODEL = (env.GEMINI_MODEL || process.env.GEMINI_MODEL || 'gemini-3.5-flash').trim();
-              const url = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:${endpoint}?key=${GEMINI_API_KEY}`;
-
-              const geminiPayload = {
-                contents: messages.map((m: { role: string; content: string }) => ({
-                  role: m.role,
-                  parts: [{ text: m.content }]
-                })),
-                systemInstruction: { parts: [{ text: systemPrompt }] },
-                generationConfig: GENERATION_CONFIG,
+              const body = JSON.parse(Buffer.concat(buffers).toString()) as {
+                messages?: DevMessage[];
+                systemContext?: string;
+                stream?: boolean;
               };
+              const { messages, systemContext, stream = false } = body;
 
-              const apiResponse = await fetch(url, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(geminiPayload)
-              });
-
-              if (!apiResponse.ok) {
-                const errorText = await apiResponse.text();
-                res.writeHead(apiResponse.status, { 'Content-Type': 'application/json' });
-                res.end(errorText);
+              if (!messages?.length) {
+                res.writeHead(400, { 'Content-Type': 'application/json' });
+                res.end(JSON.stringify({ error: 'messages must be a non-empty array' }));
+                clearTimeout(timeoutId);
                 return;
               }
+              if (!systemContextFitsBudget(systemContext)) {
+                res.writeHead(413, { 'Content-Type': 'application/json' });
+                res.end(JSON.stringify({ error: 'Repository context exceeds the server context budget' }));
+                clearTimeout(timeoutId);
+                return;
+              }
+
+              const apiKey = env.GEMINI_API_KEY || process.env.GEMINI_API_KEY;
+              if (!apiKey) {
+                res.writeHead(500, { 'Content-Type': 'application/json' });
+                res.end(JSON.stringify({ error: 'GEMINI_API_KEY not set' }));
+                clearTimeout(timeoutId);
+                return;
+              }
+
+              const model = (env.GEMINI_MODEL || process.env.GEMINI_MODEL || 'gemini-3.5-flash').trim();
+              const verified = await generateVerifiedDevAnswer(
+                messages,
+                clampSystemContext(systemContext),
+                model,
+                apiKey,
+                controller.signal
+              );
+              clearTimeout(timeoutId);
 
               if (!stream) {
-                // State the shape we rely on at the point of parsing; reading
-                // properties off an untyped response is how silent contract
-                // drift gets in.
-                const data = await apiResponse.json() as {
-                  candidates?: Array<{
-                    content?: { parts?: Array<{ text?: string }> };
-                    finishReason?: string;
-                  }>;
-                  usageMetadata?: Record<string, unknown>;
-                };
-                const candidate = data.candidates?.[0];
-                const explanation = candidate?.content?.parts
-                  ?.map((part: { text?: string }) => part.text || '')
-                  .join('');
-                const finishReason = candidate?.finishReason;
-                const usageMetadata = data.usageMetadata;
-                const complete = Boolean(explanation) && successfulFinishReason(finishReason);
-                res.writeHead(complete ? 200 : 502, { 'Content-Type': 'application/json' });
-                res.end(JSON.stringify(
-                  complete
-                    ? { explanation, finishReason, usageMetadata }
-                    : {
-                        error: explanation
-                          ? 'Generation ended before completion'
-                          : 'Generation returned no answer',
-                        finishReason,
-                        usageMetadata,
-                      }
-                ));
+                res.writeHead(200, { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' });
+                res.end(JSON.stringify({
+                  explanation: verified.answer,
+                  finishReason: 'STOP',
+                  usageMetadata: verified.usageMetadata,
+                }));
                 return;
               }
 
               res.writeHead(200, {
                 'Content-Type': 'application/x-ndjson; charset=utf-8',
-                'Cache-Control': 'no-cache',
+                'Cache-Control': 'no-store',
                 'Connection': 'keep-alive',
               });
-
-              let finishReason: string | undefined;
-              let usageMetadata: GenerationUsageMetadata | undefined;
-              const emit = (event: Parameters<typeof encodeGenerationEvent>[0]) =>
-                res.write(encodeGenerationEvent(event));
-
-              try {
-                if (!apiResponse.body) throw new Error('Gemini response body was empty');
-                const reader = apiResponse.body.getReader();
-                const decoder = new TextDecoder();
-                let buffer = '';
-
-                const consumeObjects = (objects: unknown[]) => {
-                  for (const raw of objects) {
-                    const data = raw as {
-                      candidates?: Array<{
-                        content?: { parts?: Array<{ text?: string }> };
-                        finishReason?: string;
-                      }>;
-                      usageMetadata?: GenerationUsageMetadata;
-                    };
-                    const candidate = data.candidates?.[0];
-                    const text = candidate?.content?.parts
-                      ?.map((part) => part.text || '')
-                      .join('');
-                    if (text) emit({ type: 'text', text });
-                    if (candidate?.finishReason) finishReason = candidate.finishReason;
-                    if (data.usageMetadata) usageMetadata = data.usageMetadata;
-                  }
-                };
-
-                while (true) {
-                  const { done, value } = await reader.read();
-                  if (done) break;
-
-                  buffer += decoder.decode(value, { stream: true });
-                  const parsed = extractJsonObjects(buffer);
-                  buffer = parsed.rest;
-                  consumeObjects(parsed.objects);
-                }
-
-                buffer += decoder.decode();
-                const parsed = extractJsonObjects(buffer);
-                buffer = parsed.rest;
-                consumeObjects(parsed.objects);
-                if (buffer.replace(/\s/g, '').replaceAll(',', '').replaceAll('[', '').replaceAll(']', '')) {
-                  throw new Error('Gemini stream ended with incomplete JSON');
-                }
-
-                if (successfulFinishReason(finishReason)) {
-                  emit({ type: 'complete', finishReason, usageMetadata });
-                } else {
-                  emit({
-                    type: 'error',
-                    error: finishReason
-                      ? 'Generation ended before completion'
-                      : 'Generation ended without a finish reason',
-                    finishReason,
-                    usageMetadata,
-                  });
-                }
-              } catch (error) {
-                emit({
-                  type: 'error',
-                  error: error instanceof Error ? error.message : 'Generation stream failed',
-                  finishReason,
-                  usageMetadata,
+              res.write(encodeGenerationEvent({ type: 'text', text: verified.answer }));
+              res.write(encodeGenerationEvent({
+                type: 'complete',
+                finishReason: 'STOP',
+                usageMetadata: verified.usageMetadata,
+              }));
+              res.end();
+            } catch (error) {
+              clearTimeout(timeoutId);
+              const message = error instanceof Error ? error.message : 'Generation failed';
+              const isTimeout = error instanceof Error && error.name === 'AbortError';
+              const inputBudgetExceeded = message.startsWith('INPUT_BUDGET_EXCEEDED:');
+              if (!res.headersSent) {
+                res.writeHead(inputBudgetExceeded ? 413 : isTimeout ? 504 : 502, {
+                  'Content-Type': 'application/json',
                 });
               }
-              res.end();
-
-            } catch (error) {
-              const err = error as Error;
-              console.error('Proxy Error:', err);
-              if (!res.headersSent) {
-                res.writeHead(500, { 'Content-Type': 'application/json' });
-                res.end(JSON.stringify({ error: err.message }));
-              }
-              res.end();
+              res.end(JSON.stringify({
+                error: inputBudgetExceeded
+                  ? 'Repository context exceeds the model input-token budget'
+                  : isTimeout
+                    ? 'Request timeout'
+                    : message,
+              }));
             }
           });
         }
@@ -233,9 +336,6 @@ export default defineConfig(({ mode }) => {
       },
       rollupOptions: {
         output: {
-          // Only the framework is split out. A 'ui' chunk previously force-bundled three
-          // Radix packages that no reachable component imported, shipping 40 kB of code no
-          // user executed; the components that used them have been removed.
           manualChunks: {
             'vendor': ['react', 'react-dom', 'react-router-dom'],
           },

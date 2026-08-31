@@ -117,6 +117,23 @@ jobs:
             --url https://repo-comprehension-system.vercel.app/ \
             --tool-version c68e759
 
+      - name: Checkpoint completed clinic evidence
+        run: |
+          python3 analysis/marking_sheet.py build \
+            study/regression-final/accuracy-gate.clinic-triage.json \
+            study/ground-truth.clinic-triage.md
+          mkdir -p study/regression-final/screenshots
+          cp study/gate-screenshots/clinic-triage-q*.png study/regression-final/screenshots/
+          git checkout -- study/gate-screenshots
+          git config user.name "Ionut Dobrin"
+          git config user.email "48881729+ionuthub@users.noreply.github.com"
+          git add \
+            study/regression-final/accuracy-gate.clinic-triage.json \
+            study/regression-final/marking.clinic-triage.md \
+            study/regression-final/screenshots/clinic-triage-q*.png
+          git commit -m "Checkpoint clinic regression evidence [skip ci]"
+          git push origin HEAD:run/regression-gate-final
+
       - name: Avoid API rate-window overlap
         run: sleep 65
 
@@ -142,7 +159,7 @@ jobs:
       - name: Preserve regression screenshots only
         run: |
           mkdir -p study/regression-final/screenshots
-          cp study/gate-screenshots/clinic-triage-q*.png study/regression-final/screenshots/
+          # Clinic screenshots were already bound and pushed by the checkpoint step.
           cp study/gate-screenshots/warehouse-dispatch-q*.png study/regression-final/screenshots/
           git checkout -- study/gate-screenshots
 

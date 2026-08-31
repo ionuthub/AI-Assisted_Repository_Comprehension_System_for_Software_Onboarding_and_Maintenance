@@ -116,7 +116,7 @@ map is not described, but the question asks what decides, not how the handlers a
 are identified. Line references drift by two, which is not a basis for rejection when the
 content is exact.
 
-**warehouse-dispatch Q6**, the dock mutation, D4 for hazardous, D1-D3 by checksum for everything
+**warehouse-dispatch Q6**, the dock mutation, D4 for hazardous, D1–D3 by checksum for everything
 else, and the downstream read. Line references are exact.
 
 **warehouse-dispatch Q7**, the strategy resolution traced through `pricingByType`,

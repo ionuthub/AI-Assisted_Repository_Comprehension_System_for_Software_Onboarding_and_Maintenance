@@ -1,0 +1,101 @@
+name: Final artefact regression gate
+
+on:
+  push:
+    branches: [ run/regression-gate-final ]
+    paths:
+      - .github/workflows/regression-gate-final.yml
+
+permissions:
+  contents: write
+
+jobs:
+  capture:
+    timeout-minutes: 120
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: run/regression-gate-final
+          fetch-depth: 1
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Install Chromium
+        run: npx playwright install --with-deps chromium
+
+      - name: Prepare clean regression gates
+        run: |
+          mkdir -p study/regression-final
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+
+          for repo in ('clinic-triage', 'warehouse-dispatch'):
+              src = Path(f'study/accuracy-gate.{repo}.json')
+              dst = Path(f'study/regression-final/accuracy-gate.{repo}.json')
+              gate = json.loads(src.read_text())
+              for item in gate['items']:
+                  for key in list(item):
+                      if key.startswith('tool') or key == 'correct':
+                          item.pop(key, None)
+              gate['date'] = ''
+              gate.pop('capturedAt', None)
+              gate.pop('capturedFrom', None)
+              gate.pop('capturedRepository', None)
+              gate.pop('groundTruthProvenance', None)
+              dst.write_text(json.dumps(gate, indent=1, ensure_ascii=False) + '\n')
+          PY
+
+      - name: Capture clinic gate
+        run: |
+          node analysis/capture_gate.mjs \
+            --repo https://github.com/ionuthub/clinic-triage \
+            --gate study/regression-final/accuracy-gate.clinic-triage.json \
+            --truth study/ground-truth.clinic-triage.md \
+            --accept-tool-verified \
+            --url https://repo-comprehension-system.vercel.app/ \
+            --tool-version a6d20b0d
+
+      - name: Avoid API rate-window overlap
+        run: sleep 65
+
+      - name: Capture warehouse gate
+        run: |
+          node analysis/capture_gate.mjs \
+            --repo https://github.com/ionuthub/warehouse-dispatch \
+            --gate study/regression-final/accuracy-gate.warehouse-dispatch.json \
+            --truth study/ground-truth.warehouse-dispatch.md \
+            --accept-tool-verified \
+            --url https://repo-comprehension-system.vercel.app/ \
+            --tool-version a6d20b0d
+
+      - name: Build bound marking sheets
+        run: |
+          python3 analysis/marking_sheet.py build \
+            study/regression-final/accuracy-gate.clinic-triage.json \
+            study/ground-truth.clinic-triage.md
+          python3 analysis/marking_sheet.py build \
+            study/regression-final/accuracy-gate.warehouse-dispatch.json \
+            study/ground-truth.warehouse-dispatch.md
+
+      - name: Preserve regression screenshots only
+        run: |
+          mkdir -p study/regression-final/screenshots
+          cp study/gate-screenshots/clinic-triage-q*.png study/regression-final/screenshots/
+          cp study/gate-screenshots/warehouse-dispatch-q*.png study/regression-final/screenshots/
+          git checkout -- study/gate-screenshots
+
+      - name: Commit regression evidence to run branch
+        run: |
+          git config user.name "Ionut Dobrin"
+          git config user.email "48881729+ionuthub@users.noreply.github.com"
+          git add study/regression-final
+          git commit -m "Capture final artefact regression gate [skip ci]"
+          git push origin HEAD:run/regression-gate-final

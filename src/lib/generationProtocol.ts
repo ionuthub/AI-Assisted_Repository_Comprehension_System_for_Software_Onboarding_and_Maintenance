@@ -9,8 +9,9 @@ export interface GenerationUsageMetadata {
 
 /** Shared by the deployed proxy and local Vite middleware so captures are reproducible. */
 export const GENERATION_CONFIG = {
-  // Repository comprehension is factual retrieval work, not creative writing.
-  temperature: 0.1,
+  // Gemini 3.5 Flash defaults to medium reasoning. Low retains reasoning while reducing the
+  // latency and cost of the full-context draft and independent review passes.
+  thinkingConfig: { thinkingLevel: "low" },
   maxOutputTokens: MODEL_BUDGET.MAX_OUTPUT_TOKENS,
 } as const;
 

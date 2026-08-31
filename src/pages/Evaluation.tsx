@@ -34,22 +34,9 @@ const SUS_QUESTIONS = [
   "I needed to learn a lot of things before I could get going with this system.",
 ];
 
-/**
- * The retention question is a task, not a phase.
- *
- * There was a dedicated "retention" phase here. Once the answer keys began carrying retention as
- * a task with `kind: "retention"`, the phase asked a question the participant had already
- * answered, and asked it wrongly, since it displayed `appliedTask.description` rather than the
- * retention task's own. A participant met the applied task's prompt twice and the retention
- * prompt never, so the retention measure recorded a second attempt at a question they had just
- * completed with the tool in front of them.
- *
- * Retention now flows through the ordinary task list, which already carries `kind` through both
- * the JSON and CSV exports.
- */
+// Retention is a normal task so it is recorded once in the session export.
 type Phase = "setup" | "tasks" | "tlx" | "sus" | "export";
 
-/** Phases the UI can render. A persisted session naming anything else resumes at setup. */
 const PHASES: readonly Phase[] = ["setup", "tasks", "tlx", "sus", "export"];
 const PHASE_LABELS: Record<Phase, string> = {
   setup: "Setup",
@@ -63,26 +50,23 @@ export default function EvaluationPage() {
   const { toast } = useToast();
   const [phase, setPhase] = useState<Phase>("setup");
 
-  // --- session setup ---
+  // Session setup
   const [participantId, setParticipantId] = useState("");
-  // No default. See canBeginTasks: a condition that defaults to one arm runs and exports as that
-  // arm whenever nobody notices, and the mistake leaves no trace in the data.
+  // The observer must choose the condition before tasks can start.
   const [condition, setCondition] = useState<Condition | null>(null);
   const [order, setOrder] = useState<"manual-first" | "tool-first">("manual-first");
   const [repository, setRepository] = useState("");
   const [tasks, setTasks] = useState<StudyTask[]>(tasksFromGroundTruth(DEMO_ANSWER_KEY));
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // --- runtime ---
+  // Runtime state
   const [activeTaskId, setActiveTaskId] = useState<number | null>(null);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
-  // Both instruments start empty. A control resting at a default records a response nobody gave,
-  // and the phase buttons below refuse to advance until every item has actually been answered.
+  // Start questionnaires empty so untouched controls are not recorded as answers.
   const [tlx, setTlx] = useState<TlxRatings>(EMPTY_TLX);
   const [sus, setSus] = useState<Record<number, number | null>>({});
   const [notes, setNotes] = useState("");
 
-  // Restore offer is decided once on mount so it does not reappear after being dismissed.
   const [restorable, setRestorable] = useState<PersistedSession | null>(null);
   const startedAtIso = useMemo(() => new Date().toISOString(), []);
 
@@ -116,8 +100,7 @@ export default function EvaluationPage() {
     if (hasResumableWork(stored)) setRestorable(stored);
   }, []);
 
-  // Persisted on every change rather than at phase boundaries: a session lost between
-  // boundaries is exactly the case worth protecting against.
+  // Save each change so a refresh does not lose participant data.
   useEffect(() => {
     saveSession({
       phase, participantId, condition, order, repository, tasks, activeTaskId,
@@ -127,16 +110,14 @@ export default function EvaluationPage() {
       tlx, sus, notes]);
 
   const restoreSession = (stored: PersistedSession) => {
-    // A session saved during the removed retention phase would otherwise restore to a phase
-    // nothing renders, leaving the observer on a blank page mid-session.
+    // Unknown phases from older sessions restart at setup.
     setPhase(PHASES.includes(stored.phase as Phase) ? (stored.phase as Phase) : "setup");
     setParticipantId(stored.participantId);
     setCondition(stored.condition);
     setOrder(stored.order);
     setRepository(stored.repository);
     setTasks(stored.tasks);
-    // The timer is not resumed: elapsed time is derived from the recorded timestamps, and
-    // restarting it would attribute the interruption to the participant.
+    // Do not restart an interrupted task timer when restoring a session.
     setActiveTaskId(null);
     setTlx(stored.tlx);
     setSus(stored.sus);
@@ -157,9 +138,7 @@ export default function EvaluationPage() {
     setTasks((prev) =>
       prev.map((t) => {
         if (t.id !== id) return t;
-        // Derive the duration from the two timestamps rather than the interval tick count:
-        // browsers throttle timers in background tabs, which would under-report task time,
-        // the study's primary dependent variable, by an amount correlated with condition.
+        // Timestamps are safer than interval ticks because background tabs can throttle timers.
         const elapsedSeconds = t.startTimeIso
           ? Math.max(0, Math.round((Date.parse(completionTimeIso) - Date.parse(t.startTimeIso)) / 1000))
           : t.elapsedSeconds;
@@ -191,14 +170,10 @@ export default function EvaluationPage() {
 
   const exportJson = () => {
     const session = buildSession();
-    // No `retention` block: the retention answer is the `kind: "retention"` task inside
-    // `session.tasks`, with its own prompt, timing, answer and confidence. A separate block
-    // would restate one task's fields at the top level and invite an analysis that counted the
-    // retention answer twice, or read the block and ignored the task.
+    // Retention already lives in session.tasks, so it is not duplicated at the top level.
     const payload = {
       session,
-      // Null rather than a computed figure when the instrument is incomplete. A score derived from
-      // partial responses is not a weaker measurement of the same thing, it is a different one.
+      // Incomplete questionnaires export a null score.
       scores: { sus: susScore(sus), tlxRaw: tlxScore(tlx) },
       instrumentsComplete: { sus: susComplete, tlx: tlxComplete },
       pilotMetrics: readMetrics(),
@@ -289,15 +264,7 @@ export default function EvaluationPage() {
           </div>
         )}
 
-        {/*
-          Which condition is running, on screen for the whole session.
-          A within-subjects design depends on the manual half actually being manual. Nothing else in
-          the interface said which half was in progress, so a participant could drift into the tool
-          during a manual task and the observer could lose track of which half they were in, and
-          neither slip leaves a trace in the export, which records the condition the observer set at
-          setup regardless of what happened. The manual wording is an instruction, not a label,
-          because it is the case where behaviour has to change.
-        */}
+        {/* Keep the active condition visible throughout the session. */}
         {phase !== "setup" && (
           <div
             role="status"
@@ -567,15 +534,7 @@ export default function EvaluationPage() {
                     <div className="flex items-center gap-2 font-medium">
                       <AlertTriangle className="w-4 h-4" />Tool answer shown to participant:
                     </div>
-                    {/*
-                      Rendered by the same component as the workspace Answers tab, so a pre-recorded
-                      seeded answer is laid out exactly as a live one. It was previously a single
-                      italic run with newlines collapsed and markdown left as literal characters,
-                      which made the one known-wrong answer in the session the one that looked
-                      unlike all the others. A participant flagging it might then be reporting that
-                      it looked odd rather than that they checked it, and the export cannot tell
-                      those apart.
-                    */}
+                    {/* Use the live answer renderer so the seeded answer does not look different. */}
                     <div className="max-w-[68ch]"><AnswerBody content={t.seededAnswerShown ?? ""} /></div>
                     <div className="flex gap-2 items-center">
                       <span>Participant flagged this answer as incorrect?</span>
@@ -592,16 +551,16 @@ export default function EvaluationPage() {
                 )}
                 {t.status === "running" && (
                   <div className="space-y-3">
-                    <Textarea value={t.answer} onChange={(e) => setTaskField(t.id, "answer", e.target.value)} placeholder="Participant's answer…" />
+                    <Textarea value={t.answer} onChange={(e) => setTaskField(t.id, "answer", e.target.value)} placeholder="Participant's answer..." />
                     <Button onClick={() => completeTask(t.id)}><CheckCircle className="w-4 h-4 mr-2" />Complete task</Button>
                   </div>
                 )}
                 {t.status === "completed" && (
                   <div className="space-y-2">
-                    <p className="text-sm"><span className="font-medium">Answer: </span>{t.answer || "—"}</p>
+                    <p className="text-sm"><span className="font-medium">Answer: </span>{t.answer || "not recorded"}</p>
                     <div className="flex items-center gap-3">
                       <Label className="text-sm" htmlFor={`confidence-${t.id}`}>
-                        Confidence in this answer (1–5)
+                        Confidence in this answer (1-5)
                       </Label>
                       <Slider
                         id={`confidence-${t.id}`}
@@ -617,14 +576,7 @@ export default function EvaluationPage() {
                       </Badge>
                     </div>
 
-                    {/*
-                      Locating tasks are binary; applied and retention tasks are 0-2. That split is
-                      the marking rubric in the protocol and the answer keys, which award 1 for the
-                      correct insertion point and 1 for at least two further affected areas. The
-                      runner used to offer Correct/Incorrect for every kind, so an answer worth 1 of
-                      2 had to be forced into one or the other and half the rubric could not be
-                      recorded at all.
-                    */}
+                    {/* Locating tasks are binary; applied and retention tasks use the 0-2 rubric. */}
                     {t.kind === "locating" ? (
                       <div className="flex items-center gap-2 text-sm">
                         <span>Scored against answer key:</span>
@@ -636,7 +588,7 @@ export default function EvaluationPage() {
                       </div>
                     ) : (
                       <div className="flex items-center gap-2 text-sm flex-wrap">
-                        <span>Rubric score (0–2):</span>
+                        <span>Rubric score (0-2):</span>
                         {[0, 1, 2].map((p) => (
                           <Button
                             key={p}
@@ -657,7 +609,7 @@ export default function EvaluationPage() {
                     )}
 
                     <p className="text-meta text-muted-foreground">
-                      Score: {taskScore(t) ?? "—"} / {taskMaxScore(t.kind)}
+                      Score: {taskScore(t) ?? "not marked"} / {taskMaxScore(t.kind)}
                     </p>
                   </div>
                 )}
@@ -671,7 +623,7 @@ export default function EvaluationPage() {
 
         {phase === "tlx" && (
           <Card><CardContent className="pt-6 space-y-5">
-            <h2 className="text-panel font-semibold">NASA-TLX workload (0–100)</h2>
+            <h2 className="text-panel font-semibold">NASA-TLX workload (0-100)</h2>
             <p className="text-meta text-muted-foreground">
               Click or drag every scale, including any the participant leaves at the middle. A scale
               that is never touched is exported as unrecorded, not as 50.
@@ -744,7 +696,7 @@ export default function EvaluationPage() {
               <span>NASA-TLX (raw): <Badge variant={tlxComplete ? "default" : "destructive"}>{tlxScore(tlx) ?? "incomplete"}</Badge></span>
             </div>
 
-            {/* Marking is the observer's, and an unmarked task is easy to miss on a long list. */}
+            {/* Warn before export if the observer missed a mark or confidence rating. */}
             {tasks.some((t) => taskScore(t) === null || t.confidence === null) && (
               <div className="flex items-start gap-2 rounded-md border border-warning/60 bg-warning/10 p-3">
                 <AlertTriangle className="w-4 h-4 text-warning shrink-0 mt-0.5" aria-hidden="true" />
@@ -766,7 +718,7 @@ export default function EvaluationPage() {
             </p>
             <div>
               <Label htmlFor="notes">Observer notes</Label>
-              <Textarea id="notes" value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="Think-aloud observations, incidents, deviations…" />
+              <Textarea id="notes" value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="Think-aloud observations, incidents, deviations..." />
             </div>
             <div className="flex gap-2">
               <Button onClick={exportJson}><Download className="w-4 h-4 mr-2" />Export JSON</Button>

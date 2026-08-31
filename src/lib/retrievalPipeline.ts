@@ -16,7 +16,7 @@ export interface RepositoryEvidence {
   totalLines: number;
   omittedLines: number;
   omittedCharacters: number;
-  reason: "direct" | "symbol" | "structural";
+  reason: "direct" | "symbol" | "structural" | "entry";
 }
 
 export interface RetrievalOptions {
@@ -31,6 +31,18 @@ interface RankedCandidate {
   score: number;
   reason: RepositoryEvidence["reason"];
 }
+
+const ENTRY_INTENT_TERMS = new Set([
+  "start",
+  "entry",
+  "entrypoint",
+  "execution",
+  "boot",
+  "bootstrap",
+  "launch",
+  "initialise",
+  "initialize",
+]);
 
 const overlapRatio = (queryTokens: Set<string>, values: string[]): number => {
   if (queryTokens.size === 0 || values.length === 0) return 0;
@@ -66,12 +78,43 @@ const addCandidate = (
   }
 };
 
+const resolvedNeighbours = (analysis?: FileAnalysisResult): string[] => {
+  if (!analysis) return [];
+  return [
+    ...analysis.usedBy,
+    ...analysis.imports
+      .map((item) => item.resolvedPath)
+      .filter((path): path is string => Boolean(path)),
+  ];
+};
+
+const entryPointScore = (path: string, analysis?: FileAnalysisResult): number => {
+  const filename = path.split("/").pop()?.toLowerCase() ?? "";
+  let score = 0;
+
+  if (/^(main|index|server|bootstrap|cli)\.(tsx?|jsx?|py|go|rb|java|cs|php)$/.test(filename)) {
+    score = 0.82;
+  } else if (/^app\.(tsx?|jsx?|py|go|rb|java|cs|php)$/.test(filename)) {
+    score = 0.68;
+  } else if (filename === "package.json") {
+    score = 0.64;
+  }
+
+  // A named entry file with no in-repository callers but with outgoing imports is especially
+  // likely to be a root rather than a utility barrel that merely happens to be named index.
+  if (score > 0 && analysis && analysis.usedBy.length === 0 && resolvedNeighbours(analysis).length > 0) {
+    score += 0.08;
+  }
+
+  return Math.min(score, 1);
+};
+
 /**
- * Builds a wider evidence set for the current artefact.
+ * Builds the evidence set for the current artefact.
  *
- * Direct lexical matches are supplemented with symbol/path matches and resolved import
- * neighbours. This keeps exact identifier search while improving questions whose answer is
- * spread across callers, callees and configuration files.
+ * Retrieval combines lexical rank, path/symbol matches, entry-point intent and import/caller
+ * relationships. The graph expansion runs to two hops so a question about a behaviour can
+ * reach the configuration and store/controller on either side of a directly matched helper.
  */
 export function retrieveRepositoryEvidence(
   query: string,
@@ -88,7 +131,12 @@ export function retrieveRepositoryEvidence(
   for (const result of direct) {
     const pathBoost = overlapRatio(queryTokens, [result.path]) * 0.18;
     const symbolBoost = overlapRatio(queryTokens, symbolValues(analyses[result.path])) * 0.28;
-    addCandidate(candidates, result.path, result.score + pathBoost + symbolBoost, symbolBoost > 0 ? "symbol" : "direct");
+    addCandidate(
+      candidates,
+      result.path,
+      result.score + pathBoost + symbolBoost,
+      symbolBoost > 0 ? "symbol" : "direct"
+    );
   }
 
   // A named symbol can be important even when the containing file ranks weakly as a whole.
@@ -101,27 +149,44 @@ export function retrieveRepositoryEvidence(
     }
   }
 
+  // Questions such as "Where does execution start?" often share no vocabulary with the
+  // actual main/index/bootstrap file. Use conventional entry names plus graph-root evidence
+  // only when the question itself expresses entry/execution intent.
+  const asksForEntryPoint = [...queryTokens].some((token) => ENTRY_INTENT_TERMS.has(token));
+  if (asksForEntryPoint) {
+    for (const file of files) {
+      const score = entryPointScore(file.path, analyses[file.path]);
+      if (score > 0) addCandidate(candidates, file.path, score, "entry");
+    }
+  }
+
   const structuralSeeds = [...candidates.values()]
     .sort((a, b) => b.score - a.score || a.path.localeCompare(b.path))
     .slice(0, options.structuralSeeds);
 
   for (const seed of structuralSeeds) {
-    const analysis = analyses[seed.path];
-    if (!analysis) continue;
+    let frontier = [seed.path];
+    const visited = new Set<string>(frontier);
 
-    const neighbours = new Set<string>([
-      ...analysis.usedBy,
-      ...analysis.imports.map((item) => item.resolvedPath).filter((path): path is string => Boolean(path)),
-    ]);
+    for (let depth = 1; depth <= 2 && frontier.length > 0; depth += 1) {
+      const nextFrontier: string[] = [];
+      const depthScore = seed.score * (depth === 1 ? 0.72 : 0.48);
 
-    for (const neighbour of neighbours) {
-      if (!fileByPath.has(neighbour)) continue;
-      addCandidate(candidates, neighbour, seed.score * 0.72, "structural");
+      for (const currentPath of frontier) {
+        for (const neighbour of resolvedNeighbours(analyses[currentPath])) {
+          if (!fileByPath.has(neighbour) || visited.has(neighbour)) continue;
+          visited.add(neighbour);
+          nextFrontier.push(neighbour);
+          addCandidate(candidates, neighbour, depthScore, "structural");
+        }
+      }
+
+      frontier = nextFrontier;
     }
   }
 
-  // If lexical retrieval is sparse, add well-connected files so broad architecture questions
-  // still receive repository-level context rather than an empty prompt.
+  // If retrieval is still sparse, add well-connected files so a broad architecture question
+  // receives repository-level context instead of an empty prompt.
   if (candidates.size < Math.min(4, options.maxEvidenceFiles)) {
     const connected = Object.values(analyses)
       .filter((analysis) => fileByPath.has(analysis.path))

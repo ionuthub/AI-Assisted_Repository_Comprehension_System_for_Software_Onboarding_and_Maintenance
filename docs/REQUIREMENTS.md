@@ -2,7 +2,7 @@
 
 This file summarises the requirements used for the frozen study build. Historical requirement outcomes are kept unchanged because they describe the artefact that produced the participant and accuracy-gate evidence.
 
-The current post-study artefact has since removed the fixed 50-file cap and widened answer retrieval from three files to a 24-file candidate pool with up to eight evidence files plus symbol and import-graph expansion. See [`ARCHITECTURE.md`](ARCHITECTURE.md) for the current implementation.
+The current post-study artefact has since removed the fixed 50-file cap entirely. There is no replacement 100-file or other repository file-count ceiling: every eligible file discovered from the Git tree is selected for ingestion. If GitHub truncates the initial recursive tree response, the current implementation expands the affected subtrees instead of accepting known-partial coverage. Answer retrieval has also widened from three files to a 24-file candidate pool with up to eight evidence files plus symbol and import-graph expansion. See [`ARCHITECTURE.md`](ARCHITECTURE.md) for the current implementation.
 
 ## Functional requirements
 

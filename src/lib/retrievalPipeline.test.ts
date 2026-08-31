@@ -13,16 +13,38 @@ const file = (path: string, content: string): ProjectFile => ({
 });
 
 const files = [
-  file("src/routes/register.ts", "export function registerUser() { return createUser(); }"),
-  file("src/services/users.ts", "export function createUser() { return saveUser(); }"),
-  file("src/store/users.ts", "export function saveUser() { return database.insert(); }"),
+  file("src/main.tsx", "createRoot(root).render(App);"),
+  file("src/App.tsx", "export function App() { return null; }"),
+  file("src/routes/register.ts", "export function registerUser() { return createAccount(); }"),
+  file("src/services/accounts.ts", "export function createAccount() { return persistRecord(); }"),
+  file("src/store/database.ts", "export function persistRecord() { return database.insert(); }"),
   file("src/config/roles.ts", "export const defaultRole = 'member';"),
 ];
 
 const analyses: Record<string, FileAnalysisResult> = {
+  "src/main.tsx": {
+    path: "src/main.tsx",
+    imports: [{ name: "App", source: "./App", resolvedPath: "src/App.tsx" }],
+    exports: [],
+    functions: [],
+    components: [],
+    classes: [],
+    isApiRoute: false,
+    usedBy: [],
+  },
+  "src/App.tsx": {
+    path: "src/App.tsx",
+    imports: [],
+    exports: ["App"],
+    functions: [{ name: "App", isAsync: false, parameters: [] }],
+    components: ["App"],
+    classes: [],
+    isApiRoute: false,
+    usedBy: ["src/main.tsx"],
+  },
   "src/routes/register.ts": {
     path: "src/routes/register.ts",
-    imports: [{ name: "createUser", source: "../services/users", resolvedPath: "src/services/users.ts" }],
+    imports: [{ name: "createAccount", source: "../services/accounts", resolvedPath: "src/services/accounts.ts" }],
     exports: ["registerUser"],
     functions: [{ name: "registerUser", isAsync: false, parameters: [] }],
     components: [],
@@ -30,25 +52,25 @@ const analyses: Record<string, FileAnalysisResult> = {
     isApiRoute: true,
     usedBy: [],
   },
-  "src/services/users.ts": {
-    path: "src/services/users.ts",
-    imports: [{ name: "saveUser", source: "../store/users", resolvedPath: "src/store/users.ts" }],
-    exports: ["createUser"],
-    functions: [{ name: "createUser", isAsync: false, parameters: [] }],
+  "src/services/accounts.ts": {
+    path: "src/services/accounts.ts",
+    imports: [{ name: "persistRecord", source: "../store/database", resolvedPath: "src/store/database.ts" }],
+    exports: ["createAccount"],
+    functions: [{ name: "createAccount", isAsync: false, parameters: [] }],
     components: [],
     classes: [],
     isApiRoute: false,
     usedBy: ["src/routes/register.ts"],
   },
-  "src/store/users.ts": {
-    path: "src/store/users.ts",
+  "src/store/database.ts": {
+    path: "src/store/database.ts",
     imports: [],
-    exports: ["saveUser"],
-    functions: [{ name: "saveUser", isAsync: false, parameters: [] }],
+    exports: ["persistRecord"],
+    functions: [{ name: "persistRecord", isAsync: false, parameters: [] }],
     components: [],
     classes: [],
     isApiRoute: false,
-    usedBy: ["src/services/users.ts"],
+    usedBy: ["src/services/accounts.ts"],
   },
   "src/config/roles.ts": {
     path: "src/config/roles.ts",
@@ -65,7 +87,7 @@ const analyses: Record<string, FileAnalysisResult> = {
 const options = {
   candidateFiles: 12,
   structuralSeeds: 4,
-  maxEvidenceFiles: 6,
+  maxEvidenceFiles: 8,
   excerptChars: 1000,
 };
 
@@ -76,7 +98,14 @@ describe("retrieveRepositoryEvidence", () => {
     const paths = evidence.map((item) => item.path);
 
     expect(paths).toContain("src/routes/register.ts");
-    expect(paths).toContain("src/services/users.ts");
+    expect(paths).toContain("src/services/accounts.ts");
+  });
+
+  it("expands to a second import hop for multi-file behaviour", () => {
+    const index = buildSearchIndex(files);
+    const evidence = retrieveRepositoryEvidence("registerUser", index, files, analyses, options);
+
+    expect(evidence.map((item) => item.path)).toContain("src/store/database.ts");
   });
 
   it("finds a file from a matching exported symbol", () => {
@@ -87,17 +116,32 @@ describe("retrieveRepositoryEvidence", () => {
     expect(evidence[0].reason).toBe("symbol");
   });
 
+  it("retrieves a conventional graph-root entry file when the question has no lexical overlap", () => {
+    const index = buildSearchIndex(files);
+    const evidence = retrieveRepositoryEvidence(
+      "Where does execution start in this project?",
+      index,
+      files,
+      analyses,
+      options
+    );
+
+    expect(evidence[0].path).toBe("src/main.tsx");
+    expect(evidence[0].reason).toBe("entry");
+    expect(evidence.map((item) => item.path)).toContain("src/App.tsx");
+  });
+
   it("returns deterministic evidence for the same repository and query", () => {
     const index = buildSearchIndex(files);
-    const a = retrieveRepositoryEvidence("create user", index, files, analyses, options);
-    const b = retrieveRepositoryEvidence("create user", index, files, analyses, options);
+    const a = retrieveRepositoryEvidence("create account", index, files, analyses, options);
+    const b = retrieveRepositoryEvidence("create account", index, files, analyses, options);
 
     expect(a).toEqual(b);
   });
 
   it("never returns more than the configured evidence limit", () => {
     const index = buildSearchIndex(files);
-    const evidence = retrieveRepositoryEvidence("user", index, files, analyses, {
+    const evidence = retrieveRepositoryEvidence("function", index, files, analyses, {
       ...options,
       maxEvidenceFiles: 2,
     });

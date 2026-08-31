@@ -1,6 +1,9 @@
-import type { RetrievedEvidence } from "@/components/EvidencePanel";
-
 const MENTIONED_PATH = /(?:[\w.-]+\/)*[\w.-]+\.(?:tsx|jsx|json|java|ts|js|css|md|py|go|rb|yml|yaml)\b/g;
+const EVIDENCE_HEADING = /^--- File: (.+?) \(lines \d+-\d+ of \d+\) ---$/gm;
+
+export interface EvidencePathLike {
+  path: string;
+}
 
 export interface AnswerVerificationResult {
   passed: boolean;
@@ -14,6 +17,10 @@ const saysEvidenceIsInsufficient = (answer: string): boolean =>
     answer
   );
 
+export function extractEvidencePathsFromContext(systemContext: string): string[] {
+  return Array.from(systemContext.matchAll(EVIDENCE_HEADING), (match) => match[1]);
+}
+
 /**
  * Deterministic release gate for generated repository answers.
  *
@@ -22,7 +29,7 @@ const saysEvidenceIsInsufficient = (answer: string): boolean =>
  */
 export function verifyGeneratedAnswer(
   answer: string,
-  evidence: RetrievedEvidence[]
+  evidence: EvidencePathLike[]
 ): AnswerVerificationResult {
   const reasons: string[] = [];
   const trimmed = answer.trim();

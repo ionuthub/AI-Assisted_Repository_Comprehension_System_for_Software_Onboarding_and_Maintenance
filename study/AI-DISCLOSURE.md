@@ -30,7 +30,7 @@ The application, tests and analysis tooling were developed with AI assistance. G
 
 The accuracy-gate reference answers were AI-assisted and checked with tools against the study repositories. They are described as **tool-verified**. The researcher made the final binary gate verdicts.
 
-The blind second marking was machine-produced and independently checked and confirmed by the researcher.
+The historical blind second marking was machine-produced and later reviewed by the researcher as a consistency check. It was not a separate human second marking and is not the source of the final 6/24 gate result.
 
 ## Participant study
 

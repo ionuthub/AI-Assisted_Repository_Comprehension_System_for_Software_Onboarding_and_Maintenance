@@ -6,7 +6,8 @@
 - **Lexical retrieval:** TF-IDF can miss code when the question and source use different terms.
 - **Regex analysis:** structural analysis targets common JavaScript and TypeScript syntax, not every language or syntax form.
 - **Indexed-file ranking:** files outside the ingestion limit cannot appear in, or contribute to, the dependency ranking.
-- **Accessibility:** accessibility features are present, but no formal WCAG audit was completed.
+- **Desktop scope:** the current artefact is designed for desktop and laptop browsers. Narrow-window stacking is a defensive layout behaviour, not a supported mobile or tablet experience.
+- **Accessibility:** keyboard focus, contrast, reduced-motion handling and automated accessibility smoke tests are present, but no complete manual screen-reader or WCAG conformance audit was completed. Full WCAG 2.2 AA conformance is therefore not claimed.
 - **Rate limiting:** the 15-requests-per-minute server limit works only when Upstash Redis is configured.
 - **Type safety:** `strictNullChecks` is disabled, so some guarantees rely on tests rather than the compiler.
 

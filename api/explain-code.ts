@@ -2,6 +2,8 @@ import { Redis } from '@upstash/redis';
 import {
   encodeGenerationEvent,
   GENERATION_CONFIG,
+  MODEL_RETRY_DELAYS_MS,
+  shouldRetryModelResponse,
   successfulFinishReason,
   type GenerationUsageMetadata,
 } from '../src/lib/generationProtocol';
@@ -129,6 +131,55 @@ const classifyGenerationError = (error: unknown) => {
   };
 };
 
+const waitForRetry = (delayMs: number, signal: AbortSignal): Promise<void> =>
+  new Promise((resolve, reject) => {
+    if (signal.aborted) {
+      reject(new DOMException('The operation was aborted', 'AbortError'));
+      return;
+    }
+
+    const timeoutId = setTimeout(() => {
+      signal.removeEventListener('abort', onAbort);
+      resolve();
+    }, delayMs);
+    const onAbort = () => {
+      clearTimeout(timeoutId);
+      reject(new DOMException('The operation was aborted', 'AbortError'));
+    };
+    signal.addEventListener('abort', onAbort, { once: true });
+  });
+
+async function fetchGeminiWithRetry(
+  url: string,
+  init: RequestInit,
+  signal: AbortSignal,
+  operation: string
+): Promise<Response> {
+  for (let attempt = 0; attempt <= MODEL_RETRY_DELAYS_MS.length; attempt += 1) {
+    let response: Response;
+    try {
+      response = await fetch(url, { ...init, signal });
+    } catch (error) {
+      if (signal.aborted || attempt === MODEL_RETRY_DELAYS_MS.length) throw error;
+      await waitForRetry(MODEL_RETRY_DELAYS_MS[attempt], signal);
+      continue;
+    }
+
+    if (response.ok) return response;
+
+    const detail = await response.text();
+    if (
+      attempt === MODEL_RETRY_DELAYS_MS.length ||
+      !shouldRetryModelResponse(response.status, detail)
+    ) {
+      throw new Error(`${operation} failed (${response.status}): ${detail}`);
+    }
+    await waitForRetry(MODEL_RETRY_DELAYS_MS[attempt], signal);
+  }
+
+  throw new Error(`${operation} failed after retry exhaustion`);
+}
+
 async function countInputTokens(
   messages: Message[],
   systemPrompt: string,
@@ -137,7 +188,7 @@ async function countInputTokens(
 ): Promise<number> {
   const model = getGeminiModel();
   const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:countTokens?key=${apiKey}`;
-  const response = await fetch(url, {
+  const response = await fetchGeminiWithRetry(url, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
@@ -147,12 +198,7 @@ async function countInputTokens(
         systemInstruction: { parts: [{ text: systemPrompt }] },
       },
     }),
-    signal,
-  });
-
-  if (!response.ok) {
-    throw new Error(`Token count request failed (${response.status}): ${await response.text()}`);
-  }
+  }, signal, 'Token count request');
 
   const data = await response.json() as { totalTokens?: number };
   if (!Number.isFinite(data.totalTokens)) {
@@ -168,7 +214,7 @@ async function callGemini(
   signal: AbortSignal
 ): Promise<GeminiResult> {
   const url = `https://generativelanguage.googleapis.com/v1beta/models/${getGeminiModel()}:generateContent?key=${apiKey}`;
-  const response = await fetch(url, {
+  const response = await fetchGeminiWithRetry(url, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
@@ -176,12 +222,7 @@ async function callGemini(
       systemInstruction: { parts: [{ text: systemPrompt }] },
       generationConfig: GENERATION_CONFIG,
     }),
-    signal,
-  });
-
-  if (!response.ok) {
-    throw new Error(`Model request failed (${response.status}): ${await response.text()}`);
-  }
+  }, signal, 'Model request');
 
   const data = await response.json() as {
     candidates?: Array<{

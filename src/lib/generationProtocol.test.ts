@@ -4,6 +4,7 @@ import {
   encodeGenerationEvent,
   extractJsonObjects,
   GENERATION_CONFIG,
+  shouldRetryModelResponse,
 } from "./generationProtocol";
 import { MODEL_BUDGET } from "../constants/appConstants";
 
@@ -23,6 +24,13 @@ describe("Gemini stream parsing", () => {
 
   it("allows verified generation to outlive the former 90-second abort", () => {
     expect(MODEL_BUDGET.MAX_REQUEST_DURATION_MS).toBe(240_000);
+  });
+
+  it("retries temporary provider failures but not a monthly spending cap", () => {
+    expect(shouldRetryModelResponse(503, "high demand")).toBe(true);
+    expect(shouldRetryModelResponse(429, "rate limit exceeded")).toBe(true);
+    expect(shouldRetryModelResponse(429, "project exceeded its monthly spending cap")).toBe(false);
+    expect(shouldRetryModelResponse(400, "invalid request")).toBe(false);
   });
 
   it("extracts complete objects while retaining an incomplete final object", () => {

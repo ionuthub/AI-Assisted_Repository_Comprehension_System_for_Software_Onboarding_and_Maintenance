@@ -34,8 +34,14 @@ interface GitHubRepoResponse {
 
 interface GitHubTreeItem {
   path: string;
-  type: "tree" | "blob";
+  type: "tree" | "blob" | "commit";
+  sha?: string;
   size?: number;
+}
+
+interface GitHubTreePayload {
+  tree: GitHubTreeItem[];
+  truncated?: boolean;
 }
 
 const CODE_FILE_PATTERN = /\.(js|ts|tsx|jsx|py|rs|rb|go|java|cs|php|swift|kt|m|c|cpp|h|hs|scala|sql|md|json|yml|yaml|html|css)$/i;
@@ -79,6 +85,85 @@ const handleGitHubError = async (response: Response) => {
   }
   const text = await response.text();
   throw new Error(text || "GitHub API request failed");
+};
+
+const fetchTree = async (
+  owner: string,
+  repo: string,
+  treeish: string,
+  headers: HeadersInit,
+  recursive: boolean
+): Promise<GitHubTreePayload> => {
+  const suffix = recursive ? "?recursive=1" : "";
+  const response = await fetch(
+    `${GITHUB_API}/repos/${owner}/${repo}/git/trees/${encodeURIComponent(treeish)}${suffix}`,
+    { headers }
+  );
+  await handleGitHubError(response);
+  return (await response.json()) as GitHubTreePayload;
+};
+
+const prefixTreeItems = (items: GitHubTreeItem[], prefix: string): GitHubTreeItem[] =>
+  items.map((item) => ({
+    ...item,
+    path: prefix ? `${prefix}/${item.path}` : item.path,
+  }));
+
+/**
+ * GitHub caps a recursive tree response by entry count/response size. A truncated response
+ * must never become the repository corpus: doing so recreates an implicit file limit even
+ * though the application no longer has one.
+ *
+ * When a recursive response is truncated, split that tree at its immediate children and
+ * recursively expand each subtree. Most large repositories therefore need only a few extra
+ * API calls; a subtree is split again only if GitHub also truncates that subtree recursively.
+ */
+const expandTreeWithoutCountLimit = async (
+  owner: string,
+  repo: string,
+  treeish: string,
+  headers: HeadersInit,
+  prefix = "",
+  initialRecursivePayload?: GitHubTreePayload
+): Promise<GitHubTreeItem[]> => {
+  const recursivePayload =
+    initialRecursivePayload ?? (await fetchTree(owner, repo, treeish, headers, true));
+
+  if (!recursivePayload.truncated) {
+    return prefixTreeItems(recursivePayload.tree, prefix);
+  }
+
+  const immediatePayload = await fetchTree(owner, repo, treeish, headers, false);
+  if (immediatePayload.truncated) {
+    throw new Error(
+      `GitHub could not return a complete file listing for ${prefix || "the repository root"}.`
+    );
+  }
+
+  const complete: GitHubTreeItem[] = [];
+  for (const item of immediatePayload.tree) {
+    const fullPath = prefix ? `${prefix}/${item.path}` : item.path;
+
+    if (item.type !== "tree") {
+      complete.push({ ...item, path: fullPath });
+      continue;
+    }
+
+    if (!item.sha) {
+      throw new Error(`GitHub tree entry is missing a SHA for ${fullPath}.`);
+    }
+
+    const descendants = await expandTreeWithoutCountLimit(
+      owner,
+      repo,
+      item.sha,
+      headers,
+      fullPath
+    );
+    complete.push(...descendants);
+  }
+
+  return complete;
 };
 
 const buildProjectSummary = (repo: GitHubRepoResponse): ProjectSummary => ({
@@ -192,10 +277,15 @@ export const fetchRepositoryProject = async (
   const repoData = (await repoResponse.json()) as GitHubRepoResponse;
 
   onProgress?.({ phase: "tree", completed: 0, total: 0 });
-  const treeResponse = await fetch(`${GITHUB_API}/repos/${owner}/${repo}/git/trees/${repoData.default_branch}?recursive=1`, { headers });
-  await handleGitHubError(treeResponse);
-  const treePayload = await treeResponse.json();
-  const tree = treePayload.tree as GitHubTreeItem[];
+  const initialTree = await fetchTree(owner, repo, repoData.default_branch, headers, true);
+  const tree = await expandTreeWithoutCountLimit(
+    owner,
+    repo,
+    repoData.default_branch,
+    headers,
+    "",
+    initialTree
+  );
 
   const { included, excluded, totalCandidates } = partitionTreeFiles(tree);
   const selected = buildProjectFiles(included);
@@ -217,7 +307,10 @@ export const fetchRepositoryProject = async (
       totalRepositoryFiles: tree.filter((item) => item.type === "blob").length,
       includedFiles: files.length,
       filesWithContent: readableFiles.length,
-      treeTruncatedByGitHub: Boolean(treePayload.truncated),
+      // If GitHub's first recursive response was truncated, expansion above either recovers
+      // the complete tree or throws. A successful project therefore never silently reports
+      // a known-truncated repository as fully analysed.
+      treeTruncatedByGitHub: false,
       excluded: [...excluded, ...unreadable],
     },
   };

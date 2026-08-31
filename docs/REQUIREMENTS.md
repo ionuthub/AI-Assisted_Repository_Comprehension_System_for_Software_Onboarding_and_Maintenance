@@ -1,6 +1,8 @@
 # Requirements
 
-This file summarises the requirements used for the frozen study build.
+This file summarises the requirements used for the frozen study build. Historical requirement outcomes are kept unchanged because they describe the artefact that produced the participant and accuracy-gate evidence.
+
+The current post-study artefact has since removed the fixed 50-file cap and widened answer retrieval from three files to a 24-file candidate pool with up to eight evidence files plus symbol and import-graph expansion. See [`ARCHITECTURE.md`](ARCHITECTURE.md) for the current implementation.
 
 ## Functional requirements
 
@@ -19,19 +21,19 @@ This file summarises the requirements used for the frozen study build.
 | FR11 | Support the controlled evaluation session | Met | `Evaluation.tsx`, `evaluation/session.ts` |
 | FR12 | Export study data as JSON and CSV | Met | `evaluation/session.ts` |
 
-Important details:
+Important details for the frozen study build:
 
-- FR4 ranks only indexed files. Files outside the 50-file limit do not contribute.
-- FR5 is lexical TF-IDF search, not neural semantic search.
-- FR7 evidence is created from the retrieved excerpts before generation.
-- FR12 records retention as a task, not as a separate export block.
+- FR4 ranked only indexed files. Files outside the 50-file limit did not contribute.
+- FR5 used lexical TF-IDF search, not neural semantic search.
+- FR7 evidence was created from the retrieved excerpts before generation.
+- FR12 recorded retention as a task, not as a separate export block.
 
 ## Non-functional requirements
 
 | ID | Requirement | Status | Evidence |
 | --- | --- | --- | --- |
 | NFR1 | Run in a current desktop browser with ES2020 build target | Met | `tsconfig.app.json`, Vercel deployment |
-| NFR2 | Limit ingestion to 50 files, 5 MB each, 10-second timeout and 6 concurrent fetches | Met | `src/lib/github.ts` |
+| NFR2 | Limit ingestion to 50 files, 5 MB each, 10-second timeout and 6 concurrent fetches | Met in frozen build | Frozen `src/lib/github.ts` |
 | NFR3 | Return the same retrieval results for the same query and index | Met and measured | `semanticSearch.ts`, `analysis/compare_runs.py` |
 | NFR4 | Record indexing and Q&A timing | Measured, no target set | `evaluation/metrics.ts` |
 | NFR5 | Keep the model API key server-side | Met | `api/explain-code.ts` |

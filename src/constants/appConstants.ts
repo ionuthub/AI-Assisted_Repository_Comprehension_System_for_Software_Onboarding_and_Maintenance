@@ -12,23 +12,30 @@ export type TabMode = typeof TAB_MODES[keyof typeof TAB_MODES];
 /**
  * Retrieval settings for the current post-study artefact.
  *
- * The frozen participant build used three files with 2,500-character excerpts. The final
- * artefact has no fixed evidence-file count. It ranks the full indexed repository, expands
- * structural neighbours, then includes as many useful excerpts as fit the evidence budget.
+ * The frozen participant build used three files with 2,500-character excerpts. The current
+ * artefact ranks the full indexed repository and spends a context budget on relevant evidence.
+ * The RAG_* aliases remain temporarily so existing callers compile while the retrieval function
+ * ignores the old file-count caps.
  */
 export const RETRIEVAL = {
   EVIDENCE_BUDGET_CHARS: 60_000,
   MAX_EXCERPT_CHARS: 6_000,
   MIN_EXCERPT_CHARS: 800,
   SEARCH_RESULT_LIMIT: 20,
+
+  // Compatibility aliases. File-count values are not enforced by the current retrieval path.
+  RAG_TOP_K: Number.MAX_SAFE_INTEGER,
+  RAG_CANDIDATE_FILES: Number.MAX_SAFE_INTEGER,
+  RAG_STRUCTURAL_SEEDS: Number.MAX_SAFE_INTEGER,
+  RAG_CONTEXT_CHARS: 6_000,
 } as const;
 
 /**
  * Conservative request budgeting for repository Q&A.
  *
- * The application budgets by characters because the browser does not own the model tokenizer.
- * Four characters per token is used only as a planning estimate. The server remains the final
- * authority and rejects oversized context rather than silently dropping repository evidence.
+ * The browser budgets by characters because it does not own the model tokenizer. Returned model
+ * usage metadata is recorded so real token use can be measured. The server rejects oversized
+ * context instead of silently trimming repository evidence.
  */
 export const MODEL_BUDGET = {
   ESTIMATED_CHARS_PER_TOKEN: 4,

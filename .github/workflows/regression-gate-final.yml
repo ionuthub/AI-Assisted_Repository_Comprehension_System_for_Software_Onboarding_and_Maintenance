@@ -82,6 +82,12 @@ jobs:
               raise SystemExit('Could not find the legacy evidence-row parser to patch')
           text = text.replace(old_parser, new_parser)
 
+          old_timeout = 'await answerPanel.waitFor({ timeout: 180_000 });'
+          new_timeout = 'await answerPanel.waitFor({ timeout: 300_000 });'
+          if old_timeout not in text:
+              raise SystemExit('Could not find the legacy answer wait timeout to patch')
+          text = text.replace(old_timeout, new_timeout)
+
           path.write_text(text)
           PY
 

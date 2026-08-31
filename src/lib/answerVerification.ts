@@ -1,6 +1,6 @@
 import type { RetrievedEvidence } from "@/components/EvidencePanel";
 
-const MENTIONED_PATH = /(?:[\w-]+\/)+[\w.-]+\.(?:tsx|jsx|json|java|ts|js|css|md|py|go|rb)\b/g;
+const MENTIONED_PATH = /(?:[\w.-]+\/)*[\w.-]+\.(?:tsx|jsx|json|java|ts|js|css|md|py|go|rb|yml|yaml)\b/g;
 
 export interface AnswerVerificationResult {
   passed: boolean;
@@ -17,10 +17,8 @@ const saysEvidenceIsInsufficient = (answer: string): boolean =>
 /**
  * Deterministic release gate for generated repository answers.
  *
- * This does not prove semantic correctness. It prevents a draft from being shown when the
- * generation is empty, claims repository knowledge without retrieved evidence, fails to cite
- * any retrieved file, or names repository paths that were not part of the evidence supplied to
- * the model. The UI should describe a passing result as evidence-checked, not "correct".
+ * This does not prove semantic correctness. It blocks obvious grounding failures before a draft
+ * reaches the user. A second model pass checks semantics, then this gate checks the revised text.
  */
 export function verifyGeneratedAnswer(
   answer: string,
@@ -54,4 +52,41 @@ export function verifyGeneratedAnswer(
     citedEvidencePaths,
     unverifiedPaths,
   };
+}
+
+export function buildAnswerReviewPrompt(question: string, draft: string): string {
+  return [
+    "Review the draft answer against the repository evidence in Project Context before it is released to the user.",
+    "Return only the corrected final answer, with no review notes or preamble.",
+    "Requirements:",
+    "- answer the user's exact question rather than giving a generic repository summary",
+    "- support every repository-specific claim with the supplied evidence",
+    "- cite the exact repository file paths used",
+    "- include important cross-file behaviour when the evidence shows it",
+    "- distinguish direct evidence from inference",
+    "- remove or correct any unsupported claim from the draft",
+    "- if the evidence is insufficient, say that plainly instead of guessing",
+    "",
+    `Question: ${question}`,
+    "",
+    "Draft answer:",
+    draft,
+  ].join("\n");
+}
+
+export function buildAnswerRepairPrompt(
+  question: string,
+  reviewedAnswer: string,
+  reasons: string[]
+): string {
+  return [
+    "The evidence release gate rejected the reviewed answer. Repair it using only Project Context.",
+    "Return only the final answer.",
+    `Question: ${question}`,
+    "Gate findings:",
+    ...reasons.map((reason) => `- ${reason}`),
+    "",
+    "Rejected answer:",
+    reviewedAnswer,
+  ].join("\n");
 }

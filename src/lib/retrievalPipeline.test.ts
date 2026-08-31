@@ -130,6 +130,15 @@ describe("retrieveRepositoryEvidence", () => {
     expect(evidence.map((item) => item.path)).toContain("src/App.tsx");
   });
 
+  it("includes the complete readable repository when it fits the context budget", () => {
+    const index = buildSearchIndex(files);
+    const evidence = retrieveRepositoryEvidence("registerUser", index, files, analyses, options);
+
+    expect(evidence).toHaveLength(files.length);
+    expect(new Set(evidence.map((item) => item.path))).toEqual(new Set(files.map((item) => item.path)));
+    expect(evidence.every((item) => item.omittedCharacters === 0)).toBe(true);
+  });
+
   it("returns deterministic evidence for the same repository and query", () => {
     const index = buildSearchIndex(files);
     const a = retrieveRepositoryEvidence("create account", index, files, analyses, options);

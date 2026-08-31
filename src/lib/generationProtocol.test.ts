@@ -5,6 +5,7 @@ import {
   extractJsonObjects,
   GENERATION_CONFIG,
 } from "./generationProtocol";
+import { MODEL_BUDGET } from "../constants/appConstants";
 
 const streamOf = (parts: string[]) =>
   new ReadableStream<Uint8Array>({
@@ -18,6 +19,10 @@ const streamOf = (parts: string[]) =>
 describe("Gemini stream parsing", () => {
   it("keeps enough output headroom for verified cross-file answers", () => {
     expect(GENERATION_CONFIG.maxOutputTokens).toBeGreaterThanOrEqual(8_192);
+  });
+
+  it("allows verified generation to outlive the former 90-second abort", () => {
+    expect(MODEL_BUDGET.MAX_REQUEST_DURATION_MS).toBe(240_000);
   });
 
   it("extracts complete objects while retaining an incomplete final object", () => {

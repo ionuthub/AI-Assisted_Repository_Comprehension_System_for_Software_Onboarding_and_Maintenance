@@ -1,7 +1,6 @@
 import { Redis } from '@upstash/redis';
 import {
   encodeGenerationEvent,
-  extractJsonObjects,
   GENERATION_CONFIG,
   successfulFinishReason,
   type GenerationUsageMetadata,
@@ -11,6 +10,13 @@ import {
   clampSystemContext,
   systemContextFitsBudget,
 } from '../src/lib/promptBuilder';
+import {
+  buildAnswerRepairPrompt,
+  buildAnswerReviewPrompt,
+  extractEvidencePathsFromContext,
+  verifyGeneratedAnswer,
+} from '../src/lib/answerVerification';
+import { MODEL_BUDGET } from '../src/constants/appConstants';
 
 const DEFAULT_ALLOWED_ORIGINS = [
   'http://localhost:8080',
@@ -21,6 +27,7 @@ const DEFAULT_ALLOWED_ORIGINS = [
 
 const DEFAULT_GEMINI_MODEL = 'gemini-3.5-flash';
 const MAX_REQUEST_BODY_CHARS = 100_000;
+const REQUEST_TIMEOUT_MS = 58_000;
 
 const getGeminiModel = (): string => process.env.GEMINI_MODEL?.trim() || DEFAULT_GEMINI_MODEL;
 
@@ -51,6 +58,8 @@ const getSecurityHeaders = (origin?: string) => {
     'Access-Control-Allow-Methods': 'POST, OPTIONS',
     'Access-Control-Allow-Headers': 'Content-Type, Authorization',
     'Vary': 'Origin',
+    'X-Content-Type-Options': 'nosniff',
+    'Cache-Control': 'no-store',
   };
 };
 
@@ -72,6 +81,133 @@ interface ExplainCodeRequest {
   stream?: boolean;
 }
 
+interface GeminiResult {
+  text: string;
+  finishReason: string;
+  usageMetadata?: GenerationUsageMetadata;
+}
+
+interface AggregateUsage {
+  promptTokenCount: number;
+  candidatesTokenCount: number;
+  totalTokenCount: number;
+  modelCalls: number;
+}
+
+const addUsage = (aggregate: AggregateUsage, usage?: GenerationUsageMetadata) => {
+  aggregate.promptTokenCount += usage?.promptTokenCount ?? 0;
+  aggregate.candidatesTokenCount += usage?.candidatesTokenCount ?? 0;
+  aggregate.totalTokenCount += usage?.totalTokenCount ?? 0;
+  aggregate.modelCalls += 1;
+};
+
+async function callGemini(
+  messages: Message[],
+  systemPrompt: string,
+  apiKey: string,
+  signal: AbortSignal
+): Promise<GeminiResult> {
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/${getGeminiModel()}:generateContent?key=${apiKey}`;
+  const response = await fetch(url, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      contents: messages.map((message) => ({
+        role: message.role,
+        parts: [{ text: message.content }],
+      })),
+      systemInstruction: { parts: [{ text: systemPrompt }] },
+      generationConfig: GENERATION_CONFIG,
+    }),
+    signal,
+  });
+
+  if (!response.ok) {
+    throw new Error(`Model request failed (${response.status}): ${await response.text()}`);
+  }
+
+  const data = await response.json() as {
+    candidates?: Array<{
+      content?: { parts?: Array<{ text?: string }> };
+      finishReason?: string;
+    }>;
+    usageMetadata?: GenerationUsageMetadata;
+  };
+
+  const candidate = data.candidates?.[0];
+  const text = candidate?.content?.parts?.map((part) => part.text || '').join('').trim() ?? '';
+  const finishReason = candidate?.finishReason;
+
+  if (!text || !successfulFinishReason(finishReason)) {
+    throw new Error(
+      text
+        ? `Generation ended before completion (${finishReason ?? 'unknown'})`
+        : 'Generation returned no answer'
+    );
+  }
+
+  return {
+    text,
+    finishReason,
+    usageMetadata: data.usageMetadata,
+  };
+}
+
+async function generateVerifiedAnswer(
+  messages: Message[],
+  systemContext: string,
+  apiKey: string,
+  signal: AbortSignal
+): Promise<{ answer: string; usage: AggregateUsage }> {
+  const systemPrompt = buildSystemPrompt(systemContext);
+  const evidencePaths = extractEvidencePathsFromContext(systemContext);
+  const evidence = evidencePaths.map((path) => ({ path }));
+  const question = [...messages].reverse().find((message) => message.role === 'user')?.content ?? '';
+  const usage: AggregateUsage = {
+    promptTokenCount: 0,
+    candidatesTokenCount: 0,
+    totalTokenCount: 0,
+    modelCalls: 0,
+  };
+
+  const draft = await callGemini(messages, systemPrompt, apiKey, signal);
+  addUsage(usage, draft.usageMetadata);
+
+  let reviewed = await callGemini(
+    [{ role: 'user', content: buildAnswerReviewPrompt(question, draft.text) }],
+    systemPrompt,
+    apiKey,
+    signal
+  );
+  addUsage(usage, reviewed.usageMetadata);
+
+  let verification = verifyGeneratedAnswer(reviewed.text, evidence);
+
+  for (
+    let attempt = 0;
+    !verification.passed && attempt < MODEL_BUDGET.MAX_VERIFICATION_ATTEMPTS;
+    attempt += 1
+  ) {
+    reviewed = await callGemini(
+      [{
+        role: 'user',
+        content: buildAnswerRepairPrompt(question, reviewed.text, verification.reasons),
+      }],
+      systemPrompt,
+      apiKey,
+      signal
+    );
+    addUsage(usage, reviewed.usageMetadata);
+    verification = verifyGeneratedAnswer(reviewed.text, evidence);
+  }
+
+  if (!verification.passed) {
+    throw new Error(`Answer withheld by evidence gate: ${verification.reasons.join(' ')}`);
+  }
+
+  return { answer: reviewed.text, usage };
+}
+
 export default async function handler(req: Request): Promise<Response> {
   const origin = req.headers.get('origin') || undefined;
   const securityHeaders = getSecurityHeaders(origin);
@@ -81,11 +217,17 @@ export default async function handler(req: Request): Promise<Response> {
   }
 
   if (req.method !== 'POST') {
-    return new Response(JSON.stringify({ error: 'Method not allowed' }), { status: 405, headers: securityHeaders });
+    return new Response(JSON.stringify({ error: 'Method not allowed' }), {
+      status: 405,
+      headers: securityHeaders,
+    });
   }
 
   if (!isOriginAllowed(normalizeOrigin(origin))) {
-    return new Response(JSON.stringify({ error: 'Origin not allowed' }), { status: 403, headers: securityHeaders });
+    return new Response(JSON.stringify({ error: 'Origin not allowed' }), {
+      status: 403,
+      headers: securityHeaders,
+    });
   }
 
   const ip = req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || 'anonymous';
@@ -94,7 +236,10 @@ export default async function handler(req: Request): Promise<Response> {
     const count = await redis.incr(rateLimitKey);
     if (count === 1) await redis.expire(rateLimitKey, 60);
     if (count > 15) {
-      return new Response(JSON.stringify({ error: 'Too many requests' }), { status: 429, headers: securityHeaders });
+      return new Response(JSON.stringify({ error: 'Too many requests' }), {
+        status: 429,
+        headers: securityHeaders,
+      });
     }
   }
 
@@ -118,19 +263,30 @@ export default async function handler(req: Request): Promise<Response> {
     }
 
     const { messages, systemContext, stream = false } = parsed;
-
     if (!messages || !Array.isArray(messages) || messages.length === 0) {
-      return new Response(JSON.stringify({ error: 'messages must be a non-empty array' }), { status: 400, headers: securityHeaders });
+      return new Response(JSON.stringify({ error: 'messages must be a non-empty array' }), {
+        status: 400,
+        headers: securityHeaders,
+      });
     }
     if (messages.length > 25) {
-      return new Response(JSON.stringify({ error: 'Too many messages in a single request' }), { status: 400, headers: securityHeaders });
+      return new Response(JSON.stringify({ error: 'Too many messages in a single request' }), {
+        status: 400,
+        headers: securityHeaders,
+      });
     }
     for (const message of messages) {
       if (!message || (message.role !== 'user' && message.role !== 'model') || typeof message.content !== 'string') {
-        return new Response(JSON.stringify({ error: 'Invalid message format' }), { status: 400, headers: securityHeaders });
+        return new Response(JSON.stringify({ error: 'Invalid message format' }), {
+          status: 400,
+          headers: securityHeaders,
+        });
       }
-      if (message.content.length > 10000) {
-        return new Response(JSON.stringify({ error: 'Message content exceeds 10,000 characters' }), { status: 400, headers: securityHeaders });
+      if (message.content.length > 10_000) {
+        return new Response(JSON.stringify({ error: 'Message content exceeds 10,000 characters' }), {
+          status: 400,
+          headers: securityHeaders,
+        });
       }
     }
 
@@ -142,166 +298,71 @@ export default async function handler(req: Request): Promise<Response> {
     }
     const normalizedSystemContext = clampSystemContext(systemContext);
 
-    const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
-    if (!GEMINI_API_KEY) {
-      return new Response(JSON.stringify({ error: 'Key not set' }), { status: 500, headers: securityHeaders });
+    const apiKey = process.env.GEMINI_API_KEY;
+    if (!apiKey) {
+      return new Response(JSON.stringify({ error: 'Key not set' }), {
+        status: 500,
+        headers: securityHeaders,
+      });
     }
 
-    const systemPrompt = buildSystemPrompt(normalizedSystemContext);
-    const endpoint = stream ? 'streamGenerateContent' : 'generateContent';
-    const url = `https://generativelanguage.googleapis.com/v1beta/models/${getGeminiModel()}:${endpoint}?key=${GEMINI_API_KEY}`;
-
-    const geminiPayload = {
-      contents: messages.map((m: Message) => ({
-        role: m.role,
-        parts: [{ text: m.content }]
-      })),
-      systemInstruction: { parts: [{ text: systemPrompt }] },
-      generationConfig: GENERATION_CONFIG,
-    };
-
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 60000);
+    const timeoutId = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
 
     try {
-      const response = await fetch(url, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(geminiPayload),
-        signal: controller.signal
-      });
+      const verified = await generateVerifiedAnswer(
+        messages,
+        normalizedSystemContext,
+        apiKey,
+        controller.signal
+      );
       clearTimeout(timeoutId);
 
-      if (!response.ok) {
-        return new Response(await response.text(), { status: response.status, headers: securityHeaders });
-      }
+      const usageMetadata: GenerationUsageMetadata = {
+        promptTokenCount: verified.usage.promptTokenCount,
+        candidatesTokenCount: verified.usage.candidatesTokenCount,
+        totalTokenCount: verified.usage.totalTokenCount,
+        modelCalls: verified.usage.modelCalls,
+        verifiedBeforeRelease: true,
+      };
 
       if (!stream) {
-        const data = await response.json();
-        const candidate = data.candidates?.[0];
-        const explanation = candidate?.content?.parts
-          ?.map((part: { text?: string }) => part.text || '')
-          .join('');
-        const finishReason = candidate?.finishReason;
-        const usageMetadata = data.usageMetadata;
-
-        if (!explanation || !successfulFinishReason(finishReason)) {
-          return new Response(
-            JSON.stringify({
-              error: explanation
-                ? 'Generation ended before completion'
-                : 'Generation returned no answer',
-              finishReason,
-              usageMetadata,
-            }),
-            { status: 502, headers: { ...securityHeaders, 'Content-Type': 'application/json' } }
-          );
-        }
-
-        return new Response(JSON.stringify({ explanation, finishReason, usageMetadata }), {
+        return new Response(JSON.stringify({
+          explanation: verified.answer,
+          finishReason: 'STOP',
+          usageMetadata,
+        }), {
           status: 200,
           headers: { ...securityHeaders, 'Content-Type': 'application/json' },
         });
       }
 
-      const encoder = new TextEncoder();
-      const decoder = new TextDecoder();
-      const { readable, writable } = new TransformStream();
-      const writer = writable.getWriter();
+      const body =
+        encodeGenerationEvent({ type: 'text', text: verified.answer }) +
+        encodeGenerationEvent({ type: 'complete', finishReason: 'STOP', usageMetadata });
 
-      (async () => {
-        const reader = response.body?.getReader();
-        let buffer = '';
-        let finishReason: string | undefined;
-        let usageMetadata: GenerationUsageMetadata | undefined;
-
-        const emit = (event: Parameters<typeof encodeGenerationEvent>[0]) =>
-          writer.write(encoder.encode(encodeGenerationEvent(event)));
-
-        const consumeObjects = async (objects: unknown[]) => {
-          for (const raw of objects) {
-            const data = raw as {
-              candidates?: Array<{
-                content?: { parts?: Array<{ text?: string }> };
-                finishReason?: string;
-              }>;
-              usageMetadata?: GenerationUsageMetadata;
-            };
-            const candidate = data.candidates?.[0];
-            const text = candidate?.content?.parts
-              ?.map((part) => part.text || '')
-              .join('');
-            if (text) await emit({ type: 'text', text });
-            if (candidate?.finishReason) finishReason = candidate.finishReason;
-            if (data.usageMetadata) usageMetadata = data.usageMetadata;
-          }
-        };
-
-        try {
-          if (!reader) throw new Error('Gemini response body was empty');
-
-          while (true) {
-            const { done, value } = await reader.read();
-            if (done) break;
-
-            buffer += decoder.decode(value, { stream: true });
-            const parsedChunk = extractJsonObjects(buffer);
-            buffer = parsedChunk.rest;
-            await consumeObjects(parsedChunk.objects);
-          }
-
-          buffer += decoder.decode();
-          const parsedChunk = extractJsonObjects(buffer);
-          buffer = parsedChunk.rest;
-          await consumeObjects(parsedChunk.objects);
-
-          if (buffer.replace(/\s/g, '').replaceAll(',', '').replaceAll('[', '').replaceAll(']', '')) {
-            throw new Error('Gemini stream ended with incomplete JSON');
-          }
-
-          if (!successfulFinishReason(finishReason)) {
-            await emit({
-              type: 'error',
-              error: finishReason
-                ? 'Generation ended before completion'
-                : 'Generation ended without a finish reason',
-              finishReason,
-              usageMetadata,
-            });
-          } else {
-            await emit({ type: 'complete', finishReason, usageMetadata });
-          }
-        } catch (error) {
-          await emit({
-            type: 'error',
-            error: error instanceof Error ? error.message : 'Generation stream failed',
-            finishReason,
-            usageMetadata,
-          }).catch(() => undefined);
-        } finally {
-          await writer.close().catch(() => undefined);
-        }
-      })();
-
-      return new Response(readable, {
+      return new Response(body, {
+        status: 200,
         headers: {
           ...securityHeaders,
           'Content-Type': 'application/x-ndjson; charset=utf-8',
-          'Cache-Control': 'no-cache',
           'Connection': 'keep-alive',
         },
       });
-
-    } catch (e: unknown) {
+    } catch (error) {
       clearTimeout(timeoutId);
-      if (e instanceof Error && e.name === 'AbortError') {
-        return new Response(JSON.stringify({ error: 'Request timeout' }), { status: 504, headers: securityHeaders });
-      }
-      throw e;
+      const isTimeout = error instanceof Error && error.name === 'AbortError';
+      const message = error instanceof Error ? error.message : 'Generation failed';
+      return new Response(JSON.stringify({ error: isTimeout ? 'Request timeout' : message }), {
+        status: isTimeout ? 504 : 502,
+        headers: { ...securityHeaders, 'Content-Type': 'application/json' },
+      });
     }
-
   } catch {
-    return new Response(JSON.stringify({ error: 'Server Error' }), { status: 500, headers: securityHeaders });
+    return new Response(JSON.stringify({ error: 'Server Error' }), {
+      status: 500,
+      headers: securityHeaders,
+    });
   }
 }
 

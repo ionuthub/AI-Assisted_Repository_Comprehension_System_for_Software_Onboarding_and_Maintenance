@@ -1,4 +1,4 @@
-import { MODEL_BUDGET } from "@/constants/appConstants";
+import { MODEL_BUDGET } from "../constants/appConstants";
 
 /** Shared request budget for local and deployed generation paths. */
 export const MAX_SYSTEM_CONTEXT_CHARS = MODEL_BUDGET.MAX_SYSTEM_CONTEXT_CHARS;
@@ -22,7 +22,7 @@ export const buildSystemPrompt = (systemContext: string): string => {
     "Your job is to help a developer build an accurate mental model of an unfamiliar repository faster than manual browsing.\n" +
     "Answer the exact question first, then explain only the repository details needed to support it.\n" +
     "Ground every repository-specific claim in Project Context and cite the exact file paths you relied on. Distinguish direct evidence from inference.\n" +
-    "For cross-file behaviour, trace the relevant control/data flow across the supplied evidence rather than describing one file in isolation.\n" +
+    "For cross-file behaviour, trace the relevant control or data flow across the supplied evidence rather than describing one file in isolation.\n" +
     "If Project Context does not contain enough evidence, say so plainly instead of guessing. Never invent file paths, functions, configuration, runtime behaviour or dependencies." +
     grounded
   );

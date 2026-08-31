@@ -8,7 +8,7 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import Layout from "./components/layout/Layout";
 import { Skeleton } from "./components/ui/skeleton";
 
-// Lazy load pages for optimized bundle size
+// Load pages only when they are needed.
 const Index = lazy(() => import("./pages/Index"));
 const Evaluation = lazy(() => import("./pages/Evaluation"));
 const NotFound = lazy(() => import("./pages/NotFound"));

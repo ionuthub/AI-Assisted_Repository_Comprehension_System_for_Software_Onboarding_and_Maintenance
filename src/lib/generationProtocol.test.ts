@@ -3,6 +3,7 @@ import {
   consumeGenerationStream,
   encodeGenerationEvent,
   extractJsonObjects,
+  GENERATION_CONFIG,
 } from "./generationProtocol";
 
 const streamOf = (parts: string[]) =>
@@ -15,6 +16,10 @@ const streamOf = (parts: string[]) =>
   });
 
 describe("Gemini stream parsing", () => {
+  it("keeps enough output headroom for verified cross-file answers", () => {
+    expect(GENERATION_CONFIG.maxOutputTokens).toBeGreaterThanOrEqual(8_192);
+  });
+
   it("extracts complete objects while retaining an incomplete final object", () => {
     const parsed = extractJsonObjects(
       '[{"candidates":[{"content":{"parts":[{"text":"a { brace"}]}}]}, {"candidate'

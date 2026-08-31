@@ -1,5 +1,6 @@
 import { Redis } from '@upstash/redis';
 import {
+  DEFAULT_GEMINI_MODEL,
   encodeGenerationEvent,
   GENERATION_CONFIG,
   MODEL_RETRY_DELAYS_MS,
@@ -26,8 +27,6 @@ const DEFAULT_ALLOWED_ORIGINS = [
   'http://localhost:3000',
   'https://repo-comprehension-system.vercel.app',
 ];
-
-const DEFAULT_GEMINI_MODEL = 'gemini-3.5-flash';
 
 const getGeminiModel = (): string => process.env.GEMINI_MODEL?.trim() || DEFAULT_GEMINI_MODEL;
 
@@ -109,6 +108,7 @@ const addUsage = (aggregate: AggregateUsage, usage?: GenerationUsageMetadata) =>
 };
 
 const toUsageMetadata = (usage: AggregateUsage): GenerationUsageMetadata => ({
+  model: getGeminiModel(),
   promptTokenCount: usage.promptTokenCount,
   candidatesTokenCount: usage.candidatesTokenCount,
   totalTokenCount: usage.totalTokenCount,

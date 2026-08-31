@@ -1,3 +1,5 @@
+import { MODEL_BUDGET } from "@/constants/appConstants";
+
 export interface GenerationUsageMetadata {
   promptTokenCount?: number;
   candidatesTokenCount?: number;
@@ -7,8 +9,10 @@ export interface GenerationUsageMetadata {
 
 /** Shared by the deployed proxy and local Vite middleware so captures are reproducible. */
 export const GENERATION_CONFIG = {
-  temperature: 0.7,
-  maxOutputTokens: 4096,
+  // Repository comprehension is factual retrieval work, not creative writing. A low
+  // temperature reduces unnecessary variation while still allowing concise synthesis.
+  temperature: 0.1,
+  maxOutputTokens: MODEL_BUDGET.MAX_OUTPUT_TOKENS,
 } as const;
 
 export interface GenerationCompleteEvent {
@@ -134,10 +138,6 @@ export async function consumeGenerationStream(
   buffer += decoder.decode();
   consumeLine(buffer);
 
-  // `completion` is assigned inside the consumeLine closure, which TypeScript's
-  // control-flow analysis cannot see, after the loop it still narrows the
-  // variable to null, then to never. Reading it into a freshly typed local
-  // restores the correct type without changing runtime behaviour.
   const finished = completion as GenerationCompleteEvent | null;
   if (!finished) throw new Error("Generation stream ended without a completion event");
   if (!successfulFinishReason(finished.finishReason)) {

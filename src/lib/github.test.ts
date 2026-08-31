@@ -1,7 +1,8 @@
 import { afterEach, describe, it, expect, vi } from 'vitest';
 import { fetchRepositoryProject, partitionTreeFiles } from './github';
 
-const blob = (path: string, size = 100) => ({ path, type: 'blob' as const, size });
+const blob = (path: string, size = 100, sha?: string) => ({ path, type: 'blob' as const, size, sha });
+const tree = (path: string, sha: string) => ({ path, type: 'tree' as const, sha });
 
 afterEach(() => {
   vi.restoreAllMocks();
@@ -16,7 +17,7 @@ describe('partitionTreeFiles', () => {
 
   it('ignores directory entries', () => {
     const { included } = partitionTreeFiles([
-      { path: 'src', type: 'tree' },
+      tree('src', 'src-tree'),
       blob('src/app.ts'),
     ]);
     expect(included).toHaveLength(1);
@@ -34,11 +35,11 @@ describe('partitionTreeFiles', () => {
   });
 
   it('does not impose a fixed file-count cap', () => {
-    const files = Array.from({ length: 120 }, (_, i) => blob(`src/file${i}.ts`));
+    const files = Array.from({ length: 1000 }, (_, i) => blob(`src/file${i}.ts`));
     const { included, excluded, totalCandidates } = partitionTreeFiles(files);
 
-    expect(included).toHaveLength(120);
-    expect(totalCandidates).toBe(120);
+    expect(included).toHaveLength(1000);
+    expect(totalCandidates).toBe(1000);
     expect(excluded).toHaveLength(0);
   });
 
@@ -61,12 +62,12 @@ describe('partitionTreeFiles', () => {
 
 describe('partitionTreeFiles, vendored directories', () => {
   it('excludes node_modules so only project files are analysed', () => {
-    const tree = [
+    const repositoryTree = [
       ...Array.from({ length: 60 }, (_, i) => blob(`node_modules/pkg${i}/index.js`)),
       blob('src/index.ts'),
       blob('src/app.ts'),
     ];
-    const { included, excluded } = partitionTreeFiles(tree);
+    const { included, excluded } = partitionTreeFiles(repositoryTree);
 
     expect(included.map((f) => f.path)).toEqual(['src/index.ts', 'src/app.ts']);
     expect(excluded.filter((e) => e.reason === 'In node_modules')).toHaveLength(60);
@@ -91,7 +92,7 @@ describe('fetchRepositoryProject', () => {
           default_branch: 'main',
         }), { status: 200 });
       }
-      if (url.includes('/git/trees/main')) {
+      if (url.endsWith('/git/trees/main?recursive=1')) {
         return new Response(JSON.stringify({
           tree: [blob('src/app.ts'), blob('src/unreadable.ts')],
           truncated: false,
@@ -115,5 +116,66 @@ describe('fetchRepositoryProject', () => {
       path: 'src/unreadable.ts',
       reason: 'Could not be read',
     });
+  });
+
+  it('recovers a complete repository tree when GitHub truncates the recursive response', async () => {
+    vi.spyOn(globalThis, 'fetch').mockImplementation(async (input) => {
+      const url = String(input);
+
+      if (url.endsWith('/repos/example/project')) {
+        return new Response(JSON.stringify({
+          name: 'project',
+          owner: { login: 'example' },
+          description: null,
+          language: 'TypeScript',
+          default_branch: 'main',
+        }), { status: 200 });
+      }
+
+      if (url.endsWith('/git/trees/main?recursive=1')) {
+        return new Response(JSON.stringify({
+          tree: [blob('README.md')],
+          truncated: true,
+        }), { status: 200 });
+      }
+
+      if (url.endsWith('/git/trees/main')) {
+        return new Response(JSON.stringify({
+          tree: [blob('README.md'), tree('src', 'src-sha')],
+          truncated: false,
+        }), { status: 200 });
+      }
+
+      if (url.endsWith('/git/trees/src-sha?recursive=1')) {
+        return new Response(JSON.stringify({
+          tree: [blob('app.ts'), blob('deep/config.ts')],
+          truncated: false,
+        }), { status: 200 });
+      }
+
+      if (url.endsWith('/README.md')) {
+        return new Response('# Project', { status: 200 });
+      }
+      if (url.endsWith('/src/app.ts')) {
+        return new Response('export const app = true;', { status: 200 });
+      }
+      if (url.endsWith('/src/deep/config.ts')) {
+        return new Response('export const config = true;', { status: 200 });
+      }
+
+      throw new Error(`Unexpected URL ${url}`);
+    });
+
+    const project = await fetchRepositoryProject('https://github.com/example/project');
+
+    expect(project.files.map((file) => file.path)).toEqual([
+      'README.md',
+      'src/app.ts',
+      'src/deep/config.ts',
+    ]);
+    expect(project.ingestion?.totalRepositoryFiles).toBe(3);
+    expect(project.ingestion?.totalCandidateFiles).toBe(3);
+    expect(project.ingestion?.filesWithContent).toBe(3);
+    expect(project.ingestion?.treeTruncatedByGitHub).toBe(false);
   });
 });

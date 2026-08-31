@@ -33,13 +33,13 @@ describe('partitionTreeFiles', () => {
     expect(excluded[0].reason).toMatch(/Larger than/);
   });
 
-  it('records files beyond the analysis cap with a reason, and caps the included set', () => {
-    const files = Array.from({ length: 60 }, (_, i) => blob(`src/file${i}.ts`));
+  it('does not impose a fixed file-count cap', () => {
+    const files = Array.from({ length: 120 }, (_, i) => blob(`src/file${i}.ts`));
     const { included, excluded, totalCandidates } = partitionTreeFiles(files);
-    expect(included).toHaveLength(50);
-    expect(totalCandidates).toBe(60);
-    expect(excluded).toHaveLength(10);
-    expect(excluded.every((e) => /Over the 50-file limit/.test(e.reason))).toBe(true);
+
+    expect(included).toHaveLength(120);
+    expect(totalCandidates).toBe(120);
+    expect(excluded).toHaveLength(0);
   });
 
   it('rejects traversal paths rather than indexing them', () => {
@@ -48,7 +48,7 @@ describe('partitionTreeFiles', () => {
     expect(excluded).toEqual([{ path: '../secrets.ts', reason: 'Unsafe path' }]);
   });
 
-  it('counts candidates before the cap, not after', () => {
+  it('counts all eligible candidates after filtering', () => {
     const files = [...Array.from({ length: 55 }, (_, i) => blob(`src/f${i}.ts`)), blob('a.png')];
     const { totalCandidates } = partitionTreeFiles(files);
     expect(totalCandidates).toBe(55);
@@ -60,9 +60,7 @@ describe('partitionTreeFiles', () => {
 });
 
 describe('partitionTreeFiles, vendored directories', () => {
-  it('excludes node_modules so the file budget is spent on the project itself', () => {
-    // Reproduces the observed failure: a repository with committed dependencies filled all
-    // 50 slots with vendored files, and the model reported the entry point as absent.
+  it('excludes node_modules so only project files are analysed', () => {
     const tree = [
       ...Array.from({ length: 60 }, (_, i) => blob(`node_modules/pkg${i}/index.js`)),
       blob('src/index.ts'),

@@ -6,7 +6,7 @@ The tool helps users understand unfamiliar JavaScript and TypeScript repositorie
 
 ## Scope
 
-The evaluated scope is initial repository comprehension. Long-term maintenance and code changes are outside the study.
+The evaluated scope is initial repository comprehension on desktop and laptop browsers. Mobile and tablet use, long-term maintenance and code changes are outside the study.
 
 ## Main folders
 

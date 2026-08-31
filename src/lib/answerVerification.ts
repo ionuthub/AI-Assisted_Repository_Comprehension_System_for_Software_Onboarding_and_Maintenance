@@ -42,11 +42,11 @@ export function verifyGeneratedAnswer(
   if (!trimmed) reasons.push("The generated answer was empty.");
 
   if (evidence.length === 0 && !insufficient) {
-    reasons.push("The answer describes repository behaviour without retrieved evidence.");
+    reasons.push("The answer describes repository behaviour without repository evidence.");
   }
 
   if (evidence.length > 0 && !insufficient && citedEvidencePaths.length === 0) {
-    reasons.push("The answer did not cite any of the retrieved repository files.");
+    reasons.push("The answer did not cite any repository file supplied as evidence.");
   }
 
   if (unverifiedPaths.length > 0) {
@@ -63,16 +63,16 @@ export function verifyGeneratedAnswer(
 
 export function buildAnswerReviewPrompt(question: string, draft: string): string {
   return [
-    "Review the draft answer against the repository evidence in Project Context before it is released to the user.",
-    "Return only the corrected final answer, with no review notes or preamble.",
+    "Independently re-solve the repository question from Project Context, then use that result to review the draft before it is released.",
+    "Do not assume the draft is correct. Return only the corrected final answer, with no review notes or preamble.",
     "Requirements:",
-    "- answer the user's exact question rather than giving a generic repository summary",
-    "- support every repository-specific claim with the supplied evidence",
-    "- cite the exact repository file paths used",
-    "- include important cross-file behaviour when the evidence shows it",
+    "- answer the user's exact question first",
+    "- inspect the full relevant execution or data path, including definitions, callers, configuration and consumers when they affect the answer",
+    "- check whether apparent configuration fields or helper functions are actually used before describing them as live behaviour",
+    "- support every repository-specific claim with Project Context and cite the exact repository file paths used",
     "- distinguish direct evidence from inference",
-    "- remove or correct any unsupported claim from the draft",
-    "- if the evidence is insufficient, say that plainly instead of guessing",
+    "- remove misleading simplifications, unsupported claims and invented paths",
+    "- if Project Context is insufficient, say that plainly instead of guessing",
     "",
     `Question: ${question}`,
     "",
@@ -87,7 +87,7 @@ export function buildAnswerRepairPrompt(
   reasons: string[]
 ): string {
   return [
-    "The evidence release gate rejected the reviewed answer. Repair it using only Project Context.",
+    "The evidence release gate rejected the reviewed answer. Re-solve the question from Project Context and repair the answer.",
     "Return only the final answer.",
     `Question: ${question}`,
     "Gate findings:",

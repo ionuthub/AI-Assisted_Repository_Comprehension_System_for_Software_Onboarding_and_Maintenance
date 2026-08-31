@@ -1,29 +1,29 @@
-/**
- * Shared system-prompt builder used by local and deployed generation paths.
- */
+import { MODEL_BUDGET } from "@/constants/appConstants";
 
-/**
- * Hard cap on retrieved repository context. The final artefact uses a wider evidence set
- * than the frozen study build, so the cap is raised with the retrieval budget rather than
- * silently trimming evidence already shown in the interface.
- */
-export const MAX_SYSTEM_CONTEXT_CHARS = 22000;
+/** Shared request budget for local and deployed generation paths. */
+export const MAX_SYSTEM_CONTEXT_CHARS = MODEL_BUDGET.MAX_SYSTEM_CONTEXT_CHARS;
 
 /** Generous allowance for a file heading and line-range metadata. */
-export const PER_FILE_OVERHEAD_CHARS = 160;
+export const PER_FILE_OVERHEAD_CHARS = 180;
 
-/** Allowance for the retrieval framing text. */
-export const FRAMING_OVERHEAD_CHARS = 400;
+/** Allowance for retrieval framing and grounding instructions. */
+export const FRAMING_OVERHEAD_CHARS = 800;
 
 export const clampSystemContext = (systemContext: unknown): string =>
   typeof systemContext === "string" ? systemContext.slice(0, MAX_SYSTEM_CONTEXT_CHARS) : "";
 
+export const systemContextFitsBudget = (systemContext: unknown): boolean =>
+  typeof systemContext !== "string" || systemContext.length <= MAX_SYSTEM_CONTEXT_CHARS;
+
 export const buildSystemPrompt = (systemContext: string): string => {
   const grounded = systemContext ? `\nProject Context:\n${systemContext}` : "";
   return (
-    "You are a repository comprehension assistant. You help developers understand an unfamiliar codebase.\n" +
-    "Respond as an experienced engineer to an experienced engineer: precise and technical, covering structure, control flow, trade-offs and likely maintenance impact when the evidence supports it.\n" +
-    "Ground every claim in the provided repository context and cite the file paths you relied on. Distinguish direct evidence from inference. If the context does not contain enough evidence, say so plainly rather than guessing, and never invent file paths, functions or behaviour." +
+    "You are a repository comprehension assistant for public JavaScript and TypeScript repositories.\n" +
+    "Your job is to help a developer build an accurate mental model of an unfamiliar repository faster than manual browsing.\n" +
+    "Answer the exact question first, then explain only the repository details needed to support it.\n" +
+    "Ground every repository-specific claim in Project Context and cite the exact file paths you relied on. Distinguish direct evidence from inference.\n" +
+    "For cross-file behaviour, trace the relevant control/data flow across the supplied evidence rather than describing one file in isolation.\n" +
+    "If Project Context does not contain enough evidence, say so plainly instead of guessing. Never invent file paths, functions, configuration, runtime behaviour or dependencies." +
     grounded
   );
 };

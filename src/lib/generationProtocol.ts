@@ -1,4 +1,4 @@
-import { MODEL_BUDGET } from "@/constants/appConstants";
+import { MODEL_BUDGET } from "../constants/appConstants";
 
 export interface GenerationUsageMetadata {
   promptTokenCount?: number;
@@ -9,8 +9,7 @@ export interface GenerationUsageMetadata {
 
 /** Shared by the deployed proxy and local Vite middleware so captures are reproducible. */
 export const GENERATION_CONFIG = {
-  // Repository comprehension is factual retrieval work, not creative writing. A low
-  // temperature reduces unnecessary variation while still allowing concise synthesis.
+  // Repository comprehension is factual retrieval work, not creative writing.
   temperature: 0.1,
   maxOutputTokens: MODEL_BUDGET.MAX_OUTPUT_TOKENS,
 } as const;
@@ -50,10 +49,7 @@ export const parseGenerationEvent = (line: string): GenerationStreamEvent => {
   throw new Error("Invalid generation stream event");
 };
 
-/**
- * Extracts complete top-level JSON objects from Gemini's streamed JSON array.
- * Braces inside strings are ignored; an incomplete final object remains buffered.
- */
+/** Extract complete top-level JSON objects from Gemini's streamed JSON array. */
 export function extractJsonObjects(buffer: string): { objects: unknown[]; rest: string } {
   const objects: unknown[] = [];
   let remaining = buffer;

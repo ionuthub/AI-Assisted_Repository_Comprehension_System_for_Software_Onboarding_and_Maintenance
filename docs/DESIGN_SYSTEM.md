@@ -156,11 +156,13 @@ Once a session begins, the active condition remains visible throughout the task 
 
 These interface safeguards complement, rather than replace, the underlying study controls. They do not alter the task model, timing, scoring, questionnaire calculations or JSON/CSV export structure. The polished Evaluation presentation was applied after participant data collection and is documented as current-interface evidence rather than as the exact participant-study screen.
 
-## Responsive behaviour
+## Supported viewport and responsive scope
 
-Desktop Code view uses three columns: explorer, editor and file insights. On smaller screens these regions stack vertically instead of compressing the editor between fixed-width sidebars. Search and Answers remain single-task full-width views.
+The current artefact is designed for **desktop and laptop use only**. The primary workspace depends on desktop-style navigation, a project explorer, a source editor and a file-insights panel, and no mobile-specific interaction model was designed or evaluated.
 
-The start and analysing screens stay in a centred readable column. Overview reduces padding on smaller screens while preserving the same content hierarchy.
+The Code workspace uses three columns on its intended desktop layout. At narrower browser widths, some regions can stack to prevent severe compression, but this is a defensive layout safeguard rather than a supported mobile experience. The project does not claim mobile or tablet usability, touch-first navigation, or mobile accessibility validation.
+
+Search and Answers remain single-task views, while the start and analysing screens use a centred readable column. These adaptations improve resilience when a desktop window is resized, but they should not be interpreted as full responsive-mobile support. A dedicated mobile/tablet experience is future work if the product scope expands beyond desktop repository analysis.
 
 ## Evidence and trust states
 
@@ -175,7 +177,7 @@ Green evidence styling means only that files were retrieved and supplied to the 
 
 ## Accessibility rules
 
-The interface is designed against WCAG 2.2 AA criteria, but it is not described as formally WCAG-certified because no complete manual screen-reader audit has been performed.
+The supported desktop/laptop interface is designed against WCAG 2.2 AA criteria, but it is not described as formally WCAG-certified because no complete manual screen-reader audit has been performed. Mobile and tablet accessibility were outside the supported interface scope and were not evaluated.
 
 Implemented safeguards include:
 

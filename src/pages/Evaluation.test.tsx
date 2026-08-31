@@ -2,9 +2,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 
-// `download` is the only side effect of exporting, so it is the seam the export payload can be
-// read through. Everything else in the module, scoring, CSV, the task model, stays real, so
-// what fails these tests is a change to the payload shape rather than a change to a stub.
+// Keep the real session logic and mock only the download side effect.
 vi.mock('@/lib/evaluation/session', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@/lib/evaluation/session')>()),
   download: vi.fn(),
@@ -14,10 +12,7 @@ import EvaluationPage from './Evaluation';
 import AnswerBody from '@/components/AnswerBody';
 import { download, type GroundTruthFile } from '@/lib/evaluation/session';
 
-/**
- * A seeded answer with the structure a real one has: headings, bullets, blank lines and inline
- * markdown the renderer deliberately leaves alone.
- */
+// Example seeded answer with the same structure as a live answer.
 const SEEDED_ANSWER = [
   'Based on the provided codebase, eligibility is evaluated by calling `checkEligibility`.',
   '',
@@ -29,11 +24,7 @@ const SEEDED_ANSWER = [
   '* `src/triage/validation.ts` (lines 11-13)',
 ].join('\n');
 
-/**
- * The layout of the committed answer keys: two locating tasks (the second being the seeded
- * over-trust probe), one applied, one retention. Kept in step with
- * study/answer-key.clinic-triage.json so these tests exercise the shape a session actually runs.
- */
+// Mirrors the four-task shape used by the study answer keys.
 const ANSWER_KEY: GroundTruthFile = {
   repository: 'clinic-triage',
   tasks: [
@@ -94,34 +85,23 @@ type ExportedPayload = {
   instrumentsComplete: { sus: boolean; tlx: boolean };
 };
 
-/** Fills in the setup phase and hands over to the task list. */
 const beginSession = async (
   user: ReturnType<typeof userEvent.setup>,
   condition: 'Manual' | 'Tool' = 'Tool'
 ) => {
   render(<EvaluationPage />);
   await user.type(screen.getByLabelText('Participant ID'), 'P01');
-  // The condition has no default and must be chosen before the session can start.
   await user.click(screen.getByRole('button', { name: condition }));
 
   const fileInput = document.querySelector('input[type="file"]') as HTMLInputElement;
   await user.upload(fileInput, keyFile());
 
-  // The import is asynchronous (FileReader). Until it lands, the demo set is still loaded and
-  // canBeginTasks keeps the button disabled, which is the condition worth waiting on, because
-  // the demo set also has four tasks, so the "4 tasks loaded" count would not prove anything.
+  // Wait for FileReader to replace the demo task set.
   const begin = screen.getByRole('button', { name: 'Begin tasks' });
   await waitFor(() => expect(begin).toBeEnabled());
   await user.click(begin);
 };
 
-/**
- * Completes every task in order.
- *
- * Only one task may run at a time and a completed task's Start button is removed, so the first
- * remaining Start is always the next idle task and the running task owns the only answer box on
- * screen. That is why this needs no per-card DOM traversal.
- */
 const completeAllTasks = async (
   user: ReturnType<typeof userEvent.setup>,
   { withAnswers = true } = {}
@@ -130,7 +110,7 @@ const completeAllTasks = async (
     await user.click(screen.getAllByRole('button', { name: 'Start' })[0]);
     if (withAnswers) {
       await user.type(
-        screen.getByPlaceholderText("Participant's answer…"),
+        screen.getByPlaceholderText("Participant's answer..."),
         `answer for ${task.kind}`
       );
     }
@@ -138,13 +118,6 @@ const completeAllTasks = async (
   }
 };
 
-/**
- * Answers both questionnaires.
- *
- * TLX is driven by keyboard rather than by pointer: a Radix slider thumb responds to arrow keys
- * in jsdom, and the point of the change under test is that a slider sitting at its default
- * records nothing until it is actually operated.
- */
 const completeInstruments = async (user: ReturnType<typeof userEvent.setup>) => {
   await user.click(screen.getByRole('button', { name: /Continue to NASA-TLX/ }));
   for (const thumb of screen.getAllByRole('slider')) {
@@ -152,14 +125,12 @@ const completeInstruments = async (user: ReturnType<typeof userEvent.setup>) => 
     await user.keyboard('{ArrowRight}');
   }
   await user.click(screen.getByRole('button', { name: /Continue to SUS/ }));
-  // One "3" button per SUS item; only the SUS phase is rendered, so there are exactly ten.
   for (const button of screen.getAllByRole('button', { name: '3' })) {
     await user.click(button);
   }
   await user.click(screen.getByRole('button', { name: /Review and export/ }));
 };
 
-/** Runs a whole session and returns the parsed JSON payload handed to `download`. */
 const runSessionToExport = async (
   opts: { markTasks?: boolean } = {}
 ): Promise<ExportedPayload> => {
@@ -175,12 +146,10 @@ const runSessionToExport = async (
   return JSON.parse(call[1]) as ExportedPayload;
 };
 
-/** Marks every completed task: Correct for locating, 2 points for applied and retention. */
 const markAllTasks = async (user: ReturnType<typeof userEvent.setup>) => {
   for (const button of screen.getAllByRole('button', { name: 'Correct' })) {
     await user.click(button);
   }
-  // The rubric buttons are labelled 0, 1 and 2; one set per applied or retention task.
   for (const button of screen.getAllByRole('button', { name: '2' })) {
     await user.click(button);
   }
@@ -195,9 +164,6 @@ describe('Evaluation session after the retention phase was removed', () => {
   it('exports no retention key', async () => {
     const payload = await runSessionToExport();
 
-    // The payload used to carry a top-level `retention` block alongside the tasks. It restated
-    // one task's fields at the top level, and, because it read `appliedTask`, it restated the
-    // wrong task's question. An analysis reading both would count retention twice.
     expect(payload).not.toHaveProperty('retention');
     expect(Object.keys(payload)).not.toContain('retention');
   });
@@ -208,9 +174,6 @@ describe('Evaluation session after the retention phase was removed', () => {
     const retention = payload.session.tasks.filter((t) => t.kind === 'retention');
     expect(retention).toHaveLength(1);
     expect(retention[0].id).toBe(4);
-    // Its own answer, not the applied task's. The defect being fixed was that the phase rendered
-    // appliedTask.description, so the participant answered the applied question twice and the
-    // retention question never.
     expect(retention[0].answer).toBe('answer for retention');
   });
 
@@ -237,8 +200,6 @@ describe('Unrecorded responses are exported as unrecorded, not as defaults', () 
     await completeAllTasks(user);
     await user.click(screen.getByRole('button', { name: /Continue to NASA-TLX/ }));
 
-    // Every subscale started at 50, so an untouched instrument used to export as a complete
-    // response reading exactly 50 six times over.
     expect(screen.getAllByText('not recorded')).toHaveLength(6);
     const advance = screen.getByRole('button', { name: /Continue to SUS/ });
     expect(advance).toBeDisabled();
@@ -249,7 +210,6 @@ describe('Unrecorded responses are exported as unrecorded, not as defaults', () 
       thumb.focus();
       await user.keyboard('{ArrowRight}');
     }
-    // Five of six is still not a TLX score.
     expect(screen.getByRole('button', { name: /Continue to SUS/ })).toBeDisabled();
 
     thumbs[5].focus();
@@ -274,7 +234,6 @@ describe('Unrecorded responses are exported as unrecorded, not as defaults', () 
 
     const threes = screen.getAllByRole('button', { name: '3' });
     for (const button of threes.slice(0, 9)) await user.click(button);
-    // Nine of ten scored 50 under the old `?? 3` substitution. It must not score at all.
     expect(screen.getByRole('button', { name: /Review and export/ })).toBeDisabled();
 
     await user.click(threes[9]);
@@ -289,7 +248,6 @@ describe('Unrecorded responses are exported as unrecorded, not as defaults', () 
       expect(task.isCorrect).toBeNull();
       expect(task.points).toBeNull();
     }
-    // The instruments were completed, so their scores are real.
     expect(payload.instrumentsComplete).toEqual({ sus: true, tlx: true });
     expect(payload.scores.sus).not.toBeNull();
     expect(payload.scores.tlxRaw).not.toBeNull();
@@ -307,7 +265,6 @@ describe('Rubric scoring: binary for locating, 0-2 for applied and retention', (
     await beginSession(user);
     await completeAllTasks(user);
 
-    // Two locating tasks in the key, and one applied plus one retention.
     expect(screen.getAllByRole('button', { name: 'Correct' })).toHaveLength(2);
     expect(screen.getAllByRole('button', { name: 'Incorrect' })).toHaveLength(2);
     expect(screen.getAllByRole('button', { name: '0' })).toHaveLength(2);
@@ -321,8 +278,6 @@ describe('Rubric scoring: binary for locating, 0-2 for applied and retention', (
     expect(byId[1].isCorrect).toBe(true);
     expect(byId[1].points).toBeNull();
     expect(byId[2].isCorrect).toBe(true);
-
-    // A half-credit answer had to be forced to Correct or Incorrect before this existed.
     expect(byId[3].kind).toBe('applied');
     expect(byId[3].points).toBe(2);
     expect(byId[4].kind).toBe('retention');
@@ -337,8 +292,6 @@ describe('The seeded answer is laid out like a live one', () => {
   });
 
   it('renders the seeded answer through the same component as the workspace Answers tab', async () => {
-    // The markup the workspace produces for this exact string, captured before the runner is
-    // rendered so the two do not share a container.
     const live = render(<AnswerBody content={SEEDED_ANSWER} />);
     const expectedMarkup = live.container.innerHTML;
     live.unmount();
@@ -347,14 +300,10 @@ describe('The seeded answer is laid out like a live one', () => {
 
     const user = userEvent.setup();
     await beginSession(user, 'Tool');
-    // The probe panel appears once its task is under way.
     await user.click(screen.getAllByRole('button', { name: 'Start' })[0]);
     await user.click(screen.getByRole('button', { name: 'Complete task' }));
     await user.click(screen.getAllByRole('button', { name: 'Start' })[0]);
 
-    // Byte-for-byte the same markup. If the two ever diverge, the one known-wrong answer in the
-    // session becomes the one that looks different, and a participant may flag it for how it
-    // looks rather than for what it claims.
     expect(document.body.innerHTML).toContain(expectedMarkup);
   });
 
@@ -365,9 +314,7 @@ describe('The seeded answer is laid out like a live one', () => {
     await user.click(screen.getByRole('button', { name: 'Complete task' }));
     await user.click(screen.getAllByRole('button', { name: 'Start' })[0]);
 
-    // The old markup was <p class="italic">{seededAnswerShown}</p>: one node, newlines collapsed.
     expect(document.querySelector('p.italic')).toBeNull();
-    // The seeded answer has multiple lines, so it must produce multiple blocks.
     expect(document.querySelectorAll('p.text-body').length).toBeGreaterThan(1);
   });
 });
@@ -386,8 +333,6 @@ describe('The running condition is on screen', () => {
     const fileInput = document.querySelector('input[type="file"]') as HTMLInputElement;
     await user.upload(fileInput, keyFile());
 
-    // Everything else is in place, so only the unchosen condition is holding the session back.
-    // It used to default to Tool, which ran a manual half as a tool session and left no trace.
     const begin = screen.getByRole('button', { name: 'Begin tasks' });
     await waitFor(() => expect(screen.getByText('Required')).toBeInTheDocument());
     expect(begin).toBeDisabled();
@@ -404,7 +349,6 @@ describe('The running condition is on screen', () => {
     expect(screen.queryByRole('status')).toBeNull();
 
     await user.type(screen.getByLabelText('Participant ID'), 'P01');
-    // Manual is the half where behaviour has to change, so its wording is an instruction.
     await user.click(screen.getByRole('button', { name: 'Manual' }));
     const fileInput = document.querySelector('input[type="file"]') as HTMLInputElement;
     await user.upload(fileInput, keyFile());

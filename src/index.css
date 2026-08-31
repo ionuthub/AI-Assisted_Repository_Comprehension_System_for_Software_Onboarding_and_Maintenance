@@ -68,8 +68,7 @@
     margin: 0;
   }
 
-  /* Every native interactive element receives the same keyboard-visible focus treatment,
-     including raw buttons and disclosure summaries that do not use the shared components. */
+  /* Shared keyboard focus style for interactive controls. */
   a:focus-visible,
   button:focus-visible,
   summary:focus-visible,

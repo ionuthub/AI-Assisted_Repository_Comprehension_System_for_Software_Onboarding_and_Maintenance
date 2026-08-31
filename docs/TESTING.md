@@ -24,13 +24,28 @@ The four Playwright tests cover the main controls, malformed repository URLs, ev
 
 CI now runs on Node 20. An earlier Node 18 workflow prevented the test runner from reporting in CI for about five weeks, although local checks continued.
 
+### Current post-study regression status
+
+The current artefact is reported separately from the frozen evaluated build. On 31 August 2026 the final consistency-cleanup branch passed CI with:
+
+| Check | Result |
+| --- | --- |
+| TypeScript | Clean |
+| ESLint | 0 errors, 4 warnings |
+| Unit tests | 144 passed across 14 files |
+| Playwright | 21 passed |
+
+These current-main checks verify later interface, accessibility and cleanup changes. They do not replace the 139-unit/4-end-to-end figures above, which remain the evidence for the frozen evaluated artefact.
+
+`npm ci` also reported dependency advisories during this run. Those advisories require separate production/development dependency triage and are not treated as a failed functional test.
+
 ## Answer-reliability gate
 
 The gate used 24 questions, 12 for each study repository.
 
 **Result: 6 of 24 answers passed against the tool-verified reference standard.**
 
-The reference answers were AI-assisted and checked against the complete study repositories. The researcher made the final binary gate decisions. A blind machine-produced second marking was independently checked and confirmed by the researcher and is treated as a consistency check, not independent human ground truth.
+The reference answers were AI-assisted and checked against the complete study repositories. The researcher made the final binary gate decisions. A historical blind second marking was machine-produced and later reviewed by the researcher as a consistency check. It was not a separate human second marking and is not the source of the final 6/24 result.
 
 Gate captures are stored in `study/accuracy-gate.*.json`, with supporting runs and screenshots under `study/gate-runs/` and `study/gate-screenshots/`.
 

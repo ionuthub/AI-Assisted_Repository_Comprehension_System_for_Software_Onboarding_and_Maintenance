@@ -8,11 +8,7 @@ interface FileInsightsPanelProps {
   onAsk: (question: string) => void;
 }
 
-/**
- * Describes the selected file from static analysis alone.
- * Everything here is derived from parsed repository data; the AI question composer below
- * deliberately states that related indexed files may still be retrieved as evidence.
- */
+// File facts come from static analysis. Questions may retrieve related indexed files.
 export default function FileInsightsPanel({ path, analysis, onFileSelect, onAsk }: FileInsightsPanelProps) {
   const [question, setQuestion] = useState("");
 

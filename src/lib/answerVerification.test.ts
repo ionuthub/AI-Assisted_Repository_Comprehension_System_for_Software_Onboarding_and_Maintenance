@@ -50,6 +50,36 @@ describe("verifyGeneratedAnswer", () => {
     expect(result.citedEvidencePaths).toContain("package.json");
   });
 
+  it("resolves an unambiguous relative import to its canonical evidence path", () => {
+    const withStyles = [
+      ...evidence,
+      { ...evidence[0], path: "src/styles.css" },
+    ];
+    const result = verifyGeneratedAnswer(
+      "The entry module imports `./styles.css` before rendering the application from `src/main.tsx`.",
+      withStyles
+    );
+
+    expect(result.passed).toBe(true);
+    expect(result.citedEvidencePaths).toContain("src/styles.css");
+    expect(result.unverifiedPaths).toEqual([]);
+  });
+
+  it("rejects an ambiguous bare or relative filename rather than guessing", () => {
+    const ambiguous = [
+      ...evidence,
+      { ...evidence[0], path: "src/styles.css" },
+      { ...evidence[0], path: "src/admin/styles.css" },
+    ];
+    const result = verifyGeneratedAnswer(
+      "The page styling comes from `./styles.css`, while execution starts in `src/main.tsx`.",
+      ambiguous
+    );
+
+    expect(result.passed).toBe(false);
+    expect(result.unverifiedPaths).toEqual(["./styles.css"]);
+  });
+
   it("rejects paths that were not supplied to the model", () => {
     const result = verifyGeneratedAnswer(
       "Execution starts in `src/server.ts`.",

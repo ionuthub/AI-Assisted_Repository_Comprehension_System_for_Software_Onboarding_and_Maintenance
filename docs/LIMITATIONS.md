@@ -2,10 +2,10 @@
 
 ## Artefact
 
-- **50-file limit:** larger repositories are only partly analysed.
-- **Lexical retrieval:** TF-IDF can miss code when the question and source use different terms.
-- **Regex analysis:** structural analysis targets common JavaScript and TypeScript syntax, not every language or syntax form.
-- **Indexed-file ranking:** files outside the ingestion limit cannot appear in, or contribute to, the dependency ranking.
+- **GitHub tree completeness:** the current artefact no longer has a fixed file-count cap, but GitHub can truncate very large recursive tree responses. When that happens the interface warns that whole-repository coverage cannot be established.
+- **Per-file size:** files larger than 5 MB are skipped.
+- **Retrieval remains partly lexical:** the current answer pipeline uses a wider TF-IDF candidate pool plus file-path, symbol and import-graph signals. It still does not use learned embeddings, so vocabulary mismatch can remain a failure mode.
+- **Regex analysis:** structural analysis targets common JavaScript and TypeScript syntax, not every language or syntax form. Import-graph expansion is only as complete as this analysis.
 - **Desktop scope:** the current artefact is designed for desktop and laptop browsers. Narrow-window stacking is a defensive layout behaviour, not a supported mobile or tablet experience.
 - **Accessibility:** keyboard focus, contrast, reduced-motion handling and automated accessibility smoke tests are present, but no complete manual screen-reader or WCAG conformance audit was completed. Full WCAG 2.2 AA conformance is therefore not claimed.
 - **Rate limiting:** the 15-requests-per-minute server limit works only when Upstash Redis is configured.
@@ -13,6 +13,8 @@
 - **Dependency advisories:** the current clean install reports npm audit advisories. Production and development dependency exposure still needs to be triaged separately before making a stronger dependency-security claim.
 
 ## Evidence
+
+The participant study and original accuracy gate used the frozen 50-file, three-evidence-file configuration. Those historical results are not replaced by later post-study engineering changes.
 
 The reference answers were AI-assisted and checked with tools against the study repositories. They are described as **tool-verified**, not independently established by a separate human reference author. The researcher made the final binary gate verdicts.
 

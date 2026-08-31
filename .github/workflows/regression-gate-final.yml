@@ -1,6 +1,7 @@
 name: Final artefact regression gate
 
 on:
+  workflow_dispatch:
   push:
     branches: [ run/regression-gate-final ]
     paths:

@@ -58,7 +58,7 @@ test.describe('accessibility design-system smoke checks', () => {
     await page.goto('/');
 
     const heading = page.getByRole('heading', { level: 1, name: 'Analyse a repository' });
-    const helper = page.getByText(/Search and questions work across most source and configuration files/);
+    const helper = page.getByText(/All eligible source and configuration files returned by GitHub are indexed/);
     const input = page.getByLabel('Repository URL');
 
     await expect(heading).toBeVisible();

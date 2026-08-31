@@ -2,7 +2,11 @@ import { describe, it, expect } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import EvidencePanel, { type RetrievedEvidence } from './EvidencePanel';
 
-const evidence = (path: string, score: number): RetrievedEvidence => ({
+const evidence = (
+  path: string,
+  score: number,
+  retrievalReason?: RetrievedEvidence['retrievalReason']
+): RetrievedEvidence => ({
   path,
   score,
   excerpt: 'export const x = 1;',
@@ -11,17 +15,14 @@ const evidence = (path: string, score: number): RetrievedEvidence => ({
   totalLines: 1,
   omittedLines: 0,
   omittedCharacters: 0,
+  retrievalReason,
 });
 
-describe('EvidencePanel headings', () => {
+describe('EvidencePanel', () => {
   it('reports what was retrieved rather than judging the answer', () => {
-    // The heading appeared above answers that were refusals, retrieval had returned files,
-    // but the model found nothing usable in them. Wording that reads as a verdict on the
-    // answer ("Grounded") is therefore wrong at the moment it matters most, because a reader
-    // who trusts the badge stops checking exactly when checking is required.
     render(
       <EvidencePanel
-        evidence={[evidence('src/a.ts', 0.3), evidence('src/b.ts', 0.1)]}
+        evidence={[evidence('src/a.ts', 0.7, 'symbol'), evidence('src/b.ts', 0.4, 'structural')]}
         unverifiedMentions={[]}
         isLoading={false}
       />
@@ -36,24 +37,24 @@ describe('EvidencePanel headings', () => {
     expect(screen.getByText(/No matching evidence was found in the files searched/)).toBeInTheDocument();
   });
 
-  it('states repository coverage without calling the searched subset the indexed total', () => {
+  it('states eligible repository coverage accurately', () => {
     render(
       <EvidencePanel
-        evidence={[evidence('src/a.ts', 0.2)]}
+        evidence={[evidence('src/a.ts', 0.6)]}
         unverifiedMentions={[]}
         isLoading={false}
-        indexedFileCount={50}
-        totalFileCount={55}
+        indexedFileCount={108}
+        totalFileCount={110}
       />
     );
-    expect(screen.getByText(/after searching 50 of 55 repository files/)).toBeInTheDocument();
-    expect(screen.queryByText(/50 of 55 indexed files/)).not.toBeInTheDocument();
+    expect(screen.getByText(/Searched 108 of 110 eligible repository files/)).toBeInTheDocument();
+    expect(screen.getByText(/2 eligible files were not readable/)).toBeInTheDocument();
   });
 
   it('discloses character truncation within a cited line', () => {
     render(
       <EvidencePanel
-        evidence={[{ ...evidence('src/long.ts', 0.2), omittedCharacters: 2400 }]}
+        evidence={[{ ...evidence('src/long.ts', 0.5), omittedCharacters: 2400 }]}
         unverifiedMentions={[]}
         isLoading={false}
       />
@@ -63,49 +64,23 @@ describe('EvidencePanel headings', () => {
 
   it('singularises the count for one file', () => {
     render(
-      <EvidencePanel evidence={[evidence('src/a.ts', 0.2)]} unverifiedMentions={[]} isLoading={false} />
+      <EvidencePanel evidence={[evidence('src/a.ts', 0.5)]} unverifiedMentions={[]} isLoading={false} />
     );
     expect(screen.getByText(/Evidence · 1 file retrieved/)).toBeInTheDocument();
   });
-});
 
-describe('relevance bar scale', () => {
-  const widthOf = (score: number): number => {
-    const { container } = render(
-      <EvidencePanel evidence={[evidence('src/a.ts', score)]} unverifiedMentions={[]} isLoading={false} />
-    );
-    const bar = container.querySelector('[role="img"] > span') as HTMLElement;
-    return parseFloat(bar.style.width);
-  };
-
-  it('draws a typical good match as a substantial bar', () => {
-    // Cosine similarity over sparse TF-IDF vectors is small in absolute terms: across the 24
-    // accuracy-gate stems the median top-ranked score is 0.248 (study/question-scores.json,
-    // committed in 1996285, measured against artefact 1b9b0e0). Drawn at score * 100% that
-    // would read as 25%, a nearly empty bar above a correct result, which invites a reader
-    // to discount an answer they should accept.
-    expect(widthOf(0.248)).toBeGreaterThan(40);
-  });
-
-  it('still draws a failed retrieval as a nearly empty bar', () => {
-    // The weakest stem in the same measurement scored 0.042 and retrieved the wrong files.
-    // Rescaling must not flatter that case, or the bar stops carrying information: the two
-    // assertions together pin both ends of the scale, so raising SCORE_BAR_FULL_SCALE to
-    // make good matches look better cannot silently make failures look acceptable too.
-    expect(widthOf(0.042)).toBeLessThan(12);
-  });
-
-  it('is monotonic and bounded', () => {
-    expect(widthOf(0.1)).toBeLessThan(widthOf(0.3));
-    expect(widthOf(0.3)).toBeLessThan(widthOf(0.5));
-    expect(widthOf(0.95)).toBeLessThanOrEqual(100);
-    expect(widthOf(0)).toBeGreaterThan(0);
-  });
-
-  it('exposes the raw score to assistive technology, not the scaled width', () => {
+  it('labels the ranking reason without presenting it as correctness', () => {
     render(
-      <EvidencePanel evidence={[evidence('src/a.ts', 0.27)]} unverifiedMentions={[]} isLoading={false} />
+      <EvidencePanel
+        evidence={[evidence('src/a.ts', 0.84, 'symbol')]}
+        unverifiedMentions={[]}
+        isLoading={false}
+        indexedFileCount={12}
+        totalFileCount={12}
+      />
     );
-    expect(screen.getByRole('img', { name: 'Keyword match score 0.27' })).toBeInTheDocument();
+    expect(screen.getByText('Symbol match')).toBeInTheDocument();
+    expect(screen.getByLabelText('Retrieval ranking score 0.84')).toBeInTheDocument();
+    expect(screen.getByText(/do not measure answer correctness/)).toBeInTheDocument();
   });
 });

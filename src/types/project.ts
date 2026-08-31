@@ -27,25 +27,18 @@ export interface Project {
   id?: string;
   summary: ProjectSummary;
   files: ProjectFile[];
-  /**
-   * Ingestion coverage. `files` contains only readable files and is capped, so these record
-   * both how many candidates were selected and how much of the repository the analysis
-   * actually saw. Retrieval quality is bounded by this, and any result reported from a
-   * session should state it rather than imply whole-repository coverage.
-   */
+  /** Coverage of the source files eligible for repository analysis. */
   ingestion?: {
+    /** All files that passed the source/configuration filters; there is no count cap. */
     totalCandidateFiles: number;
-    /** Every blob the repository contains, before any filter. */
+    /** Every blob discovered from the complete Git tree before source filtering. */
     totalRepositoryFiles: number;
-    /** Files selected for content fetching before unreadable entries are removed. */
+    /** Eligible files selected for content fetching before unreadable entries are removed. */
     includedFiles: number;
     filesWithContent: number;
+    /** True only when known tree truncation remains unresolved; successful ingestion is false. */
     treeTruncatedByGitHub: boolean;
-    /**
-     * Files present in the repository but not indexed, with the reason the filter gave.
-     * Retained so the interface can state why coverage is partial, and so a path the model
-     * names can be reported as excluded rather than merely absent.
-     */
+    /** Files not indexed, with the actual exclusion reason. */
     excluded: ExcludedFile[];
   };
 }

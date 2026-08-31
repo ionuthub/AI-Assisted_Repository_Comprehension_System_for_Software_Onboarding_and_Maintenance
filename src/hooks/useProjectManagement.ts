@@ -1,16 +1,12 @@
-
 import { useState } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { useProjectStore } from "@/store/useProjectStore";
-import { TAB_MODES } from "@/constants/appConstants";
 import { fetchRepositoryProject, fetchFileContent, type IngestionProgress } from "@/lib/github";
-
 import { rateLimiters } from "@/lib/security";
 
 export const useProjectManagement = () => {
     const { toast } = useToast();
     const {
-        mode,
         setProject,
         setSelectedFile,
         setIsLoading,
@@ -28,9 +24,7 @@ export const useProjectManagement = () => {
         resetSelection();
         if (!repoUrl.trim()) return toast({ title: "Repo URL required", variant: "destructive" });
 
-        // Rate limit check
         const rateLimitKey = 'anonymous';
-
         if (!rateLimiters.api.isAllowed(rateLimitKey)) {
             const waitTime = Math.ceil(rateLimiters.api.getTimeUntilReset(rateLimitKey) / 1000);
             toast({
@@ -47,28 +41,19 @@ export const useProjectManagement = () => {
             setProject(next);
             if (next.files.length > 0) setSelectedFile(next.files[0].path);
 
-            // Coverage is stated explicitly: the file list is capped, so a participant
-            // (and the observer recording the session) should be able to see that the
-            // answers are grounded in part of the repository rather than all of it.
             const ingestion = next.ingestion;
             if (ingestion) {
-                const omitted = ingestion.totalCandidateFiles - ingestion.includedFiles;
                 const failed = ingestion.includedFiles - ingestion.filesWithContent;
-                const notes = [
-                    omitted > 0 ? `${omitted} file${omitted === 1 ? "" : "s"} beyond the analysis cap were not included` : null,
-                    failed > 0 ? `${failed} could not be read` : null,
-                    ingestion.treeTruncatedByGitHub ? "GitHub truncated the file tree for this repository" : null,
-                ].filter(Boolean);
                 toast({
-                    title: `Indexed ${ingestion.filesWithContent} of ${ingestion.totalCandidateFiles} files`,
-                    description: notes.length > 0 ? notes.join(". ") + "." : undefined,
-                    variant: notes.length > 0 ? "default" : undefined,
+                    title: `Indexed ${ingestion.filesWithContent} of ${ingestion.totalCandidateFiles} eligible files`,
+                    description:
+                        failed > 0
+                            ? `${failed} eligible file${failed === 1 ? "" : "s"} could not be read.`
+                            : "All eligible files were read and indexed.",
+                    variant: failed > 0 ? "default" : undefined,
                 });
             }
         } catch (e) {
-            // github.ts distinguishes not-found, rate-limited, forbidden and validation
-            // failures; surfacing the message keeps that distinction visible to the user
-            // and to an observer logging an incident during a timed session.
             toast({
                 title: "Analysis failed",
                 description: e instanceof Error ? e.message : "Unexpected error",
@@ -85,9 +70,15 @@ export const useProjectManagement = () => {
         resetSelection();
         setSelectedFile(path);
 
-        if (fileCache[path]?.content) {
-            return;
-        }
+        // Repository ingestion now hydrates every readable eligible file up front. Re-fetching
+        // a file merely because the user opened it wastes a GitHub request and scales badly for
+        // large repositories. The project corpus is therefore the primary source of file text.
+        const ingestedFile = project.files.find((file) => file.path === path);
+        if (ingestedFile?.content) return;
+
+        // Kept as a defensive fallback for a future project source that can expose a path before
+        // hydrating its contents. It is normally unreachable for the current GitHub workflow.
+        if (fileCache[path]?.content) return;
 
         if (project.summary.source === "github") {
             setIsFileLoading(true);

@@ -27,8 +27,8 @@ describe("Gemini stream parsing", () => {
     expect(GENERATION_CONFIG.maxOutputTokens).toBeGreaterThanOrEqual(8_192);
   });
 
-  it("uses low Gemini 3.5 reasoning without a custom sampling temperature", () => {
-    expect(GENERATION_CONFIG.thinkingConfig.thinkingLevel).toBe("low");
+  it("uses medium reasoning for the single exhaustive pass without a custom temperature", () => {
+    expect(GENERATION_CONFIG.thinkingConfig.thinkingLevel).toBe("medium");
     expect(GENERATION_CONFIG).not.toHaveProperty("temperature");
   });
 

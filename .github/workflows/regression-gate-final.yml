@@ -25,6 +25,464 @@ jobs:
           node-version: 20
           cache: npm
 
+      - name: Verify deployed audited generation
+        timeout-minutes: 6
+        run: |
+          context=
+        run: npm ci
+
+      - name: Install Chromium
+        run: npx playwright install --with-deps chromium
+
+      - name: Align gate harness with final Answers UI
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+
+          path = Path('analysis/capture_gate.mjs')
+          text = path.read_text()
+
+          old = '''for (const { id, question } of questions) {
+            process.stdout.write(`Q${id} … `);
+            await page.fill("#workspace-ask", question);
+            await page.press("#workspace-ask", "Enter");
+
+            const answerPanel = page.locator('p:text-is("Your question") + h1 + div:not([aria-busy])').first();'''
+          new = '''for (const { id, question } of questions) {
+            process.stdout.write(`Q${id} … `);
+
+            // The final interface exposes repository Q&A under the Answers workspace tab.
+            // The first question and follow-up questions use separate accessible inputs.
+            let questionInput = page.locator('#repository-question');
+            if ((await questionInput.count()) === 0) {
+              const followUp = page.locator('#repository-question-follow-up');
+              if ((await followUp.count()) === 0) {
+                await page.getByRole('button', { name: 'Answers' }).click();
+                questionInput = page.locator('#repository-question');
+                await questionInput.waitFor();
+              } else {
+                questionInput = followUp;
+              }
+            }
+            await questionInput.fill(question);
+            await questionInput.press('Enter');
+
+            const answerPanel = page.locator('[data-generation-status]').first();'''
+          if old not in text:
+              raise SystemExit('Could not find the legacy Q&A selector block to patch')
+          text = text.replace(old, new)
+
+          old_parser = '''    const text = (await row.innerText()).replace(/\\s+/g, " ").trim();
+              // "1 src/path/file.ts 0.27", rank, path, then the score as rendered.
+              const m = text.match(/^(\\d+)\\s+(\\S+)\\s+([\\d.]+)$/);
+              retrieved.push(m ? { rank: +m[1], path: m[2], score: +m[3] } : { raw: text });'''
+          new_parser = '''    const text = (await row.innerText()).replace(/\\s+/g, " ").trim();
+              // Final UI also renders the retrieval-reason label between path and score.
+              // Parse rank + path + trailing numeric score while allowing that label.
+              const m = text.match(/^(\\d+)\\s+(\\S+).*?([\\d.]+)$/);
+              retrieved.push(m ? { rank: +m[1], path: m[2], score: +m[3] } : { raw: text });'''
+          if old_parser not in text:
+              raise SystemExit('Could not find the legacy evidence-row parser to patch')
+          text = text.replace(old_parser, new_parser)
+
+          old_timeout = 'await answerPanel.waitFor({ timeout: 180_000 });'
+          new_timeout = 'await answerPanel.waitFor({ timeout: 300_000 });'
+          if old_timeout not in text:
+              raise SystemExit('Could not find the legacy answer wait timeout to patch')
+          text = text.replace(old_timeout, new_timeout)
+
+          old_model_capture = '''  const finishReason = await answerPanel.getAttribute("data-finish-reason");
+            const promptTokenCount = await answerPanel.getAttribute("data-prompt-token-count");'''
+          new_model_capture = '''  const finishReason = await answerPanel.getAttribute("data-finish-reason");
+            const resolvedModel = await answerPanel.getAttribute("data-model");
+            const promptTokenCount = await answerPanel.getAttribute("data-prompt-token-count");'''
+          if old_model_capture not in text:
+              raise SystemExit('Could not find the generation metadata block to add model provenance')
+          text = text.replace(old_model_capture, new_model_capture)
+
+          old_generation = '''    generation: {
+                status: generationStatus,
+                finishReason,
+                usageMetadata: {'''
+          new_generation = '''    generation: {
+                status: generationStatus,
+                finishReason,
+                model: resolvedModel,
+                usageMetadata: {'''
+          if old_generation not in text:
+              raise SystemExit('Could not find the captured generation block to record the model')
+          text = text.replace(old_generation, new_generation)
+
+          old_gate_model = '''gate.capturedFrom = APP;
+          gate.capturedRepository = REPO;'''
+          new_gate_model = '''const resolvedModels = [...new Set(
+            gate.items.map((item) => item.toolGeneration?.model).filter(Boolean)
+          )];
+          if (resolvedModels.length !== 1 || !resolvedModels[0]) {
+            throw new Error(`Expected one resolved model across the gate, got ${JSON.stringify(resolvedModels)}`);
+          }
+          gate.model = resolvedModels[0];
+          gate.capturedFrom = APP;
+          gate.capturedRepository = REPO;'''
+          if old_gate_model not in text:
+              raise SystemExit('Could not find the gate provenance block to bind the resolved model')
+          text = text.replace(old_gate_model, new_gate_model)
+
+          old_questions = '''const questions = gate.items.map((item) => ({ id: item.id, question: item.question }));'''
+          new_questions = '''const questions = gate.items
+            .filter((item) => !item.toolAnswer)
+            .map((item) => ({ id: item.id, question: item.question }));'''
+          if old_questions not in text:
+              raise SystemExit('Could not find the question list to add partial-run resume support')
+          text = text.replace(old_questions, new_questions)
+
+          retry_old = '''for (const { id, question } of questions) {
+            process.stdout.write(`Q${id} … `);
+
+            // The final interface exposes repository Q&A under the Answers workspace tab.
+            // The first question and follow-up questions use separate accessible inputs.
+            let questionInput = page.locator('#repository-question');
+            if ((await questionInput.count()) === 0) {
+              const followUp = page.locator('#repository-question-follow-up');
+              if ((await followUp.count()) === 0) {
+                await page.getByRole('button', { name: 'Answers' }).click();
+                questionInput = page.locator('#repository-question');
+                await questionInput.waitFor();
+              } else {
+                questionInput = followUp;
+              }
+            }
+            await questionInput.fill(question);
+            await questionInput.press('Enter');
+
+            const answerPanel = page.locator('[data-generation-status]').first();
+            await answerPanel.waitFor({ timeout: 300_000 });
+            const generationStatus = await answerPanel.getAttribute("data-generation-status");
+            const finishReason = await answerPanel.getAttribute("data-finish-reason");
+            const resolvedModel = await answerPanel.getAttribute("data-model");
+            const promptTokenCount = await answerPanel.getAttribute("data-prompt-token-count");
+            const outputTokenCount = await answerPanel.getAttribute("data-output-token-count");
+            const totalTokenCount = await answerPanel.getAttribute("data-total-token-count");
+            if (generationStatus !== "complete" || finishReason !== "STOP") {
+              const visible = (await answerPanel.innerText()).replace(/\\s+/g, " ").trim().slice(0, 240);
+              throw new Error(
+                `Q${id} generation incomplete: status=${generationStatus ?? "missing"}, ` +
+                  `finishReason=${finishReason ?? "missing"}, answer=${JSON.stringify(visible)}`
+              );
+            }'''
+          retry_new = '''for (const { id, question } of questions) {
+            process.stdout.write(`Q${id} … `);
+
+            // A provider capacity spike must not discard earlier completed questions. Retry only
+            // incomplete/error responses; a completed answer is never re-rolled for its content.
+            const maxGenerationAttempts = 5;
+            let generationAttempts = 0;
+            let answerPanel;
+            let generationStatus;
+            let finishReason;
+            let resolvedModel;
+            let promptTokenCount;
+            let outputTokenCount;
+            let totalTokenCount;
+
+            for (let attempt = 1; attempt <= maxGenerationAttempts; attempt += 1) {
+              generationAttempts = attempt;
+
+              // The final interface exposes repository Q&A under the Answers workspace tab.
+              // The first question and follow-up questions use separate accessible inputs.
+              let questionInput = page.locator('#repository-question');
+              if ((await questionInput.count()) === 0) {
+                const followUp = page.locator('#repository-question-follow-up');
+                if ((await followUp.count()) === 0) {
+                  await page.getByRole('button', { name: 'Answers' }).click();
+                  questionInput = page.locator('#repository-question');
+                  await questionInput.waitFor();
+                } else {
+                  questionInput = followUp;
+                }
+              }
+              await questionInput.fill(question);
+              await questionInput.press('Enter');
+
+              answerPanel = page.locator('[data-generation-status]').first();
+              let visible = '';
+              try {
+                await answerPanel.waitFor({ timeout: 300_000 });
+                generationStatus = await answerPanel.getAttribute("data-generation-status");
+                finishReason = await answerPanel.getAttribute("data-finish-reason");
+                resolvedModel = await answerPanel.getAttribute("data-model");
+                promptTokenCount = await answerPanel.getAttribute("data-prompt-token-count");
+                outputTokenCount = await answerPanel.getAttribute("data-output-token-count");
+                totalTokenCount = await answerPanel.getAttribute("data-total-token-count");
+                visible = (await answerPanel.innerText()).replace(/\\s+/g, " ").trim().slice(0, 240);
+              } catch (error) {
+                visible = String(error).replace(/\\s+/g, " ").slice(0, 240);
+              }
+
+              if (generationStatus === "complete" && finishReason === "STOP") break;
+
+              const transient = /(?:\\b429\\b|\\b503\\b|high demand|UNAVAILABLE|request timeout|Timeout)/i.test(visible);
+              if (!transient || attempt === maxGenerationAttempts) {
+                throw new Error(
+                  `Q${id} generation incomplete after ${attempt} attempt(s): ` +
+                    `status=${generationStatus ?? "missing"}, ` +
+                    `finishReason=${finishReason ?? "missing"}, answer=${JSON.stringify(visible)}`
+                );
+              }
+
+              const delaySeconds = Math.min(60 * 2 ** (attempt - 1), 360);
+              console.log(`transient generation failure on attempt ${attempt}; retrying in ${delaySeconds}s`);
+              await page.keyboard.press("Escape");
+              await page.waitForTimeout(delaySeconds * 1000);
+            }'''
+          if retry_old not in text:
+              raise SystemExit('Could not find the patched generation block to add transient retries')
+          text = text.replace(retry_old, retry_new)
+
+          old_attempts = '''    generation: {
+                status: generationStatus,
+                finishReason,
+                model: resolvedModel,
+                usageMetadata: {'''
+          new_attempts = '''    generation: {
+                status: generationStatus,
+                finishReason,
+                model: resolvedModel,
+                attempts: generationAttempts,
+                capturedAt: new Date().toISOString(),
+                usageMetadata: {'''
+          if old_attempts not in text:
+              raise SystemExit('Could not find the generation record to add attempt provenance')
+          text = text.replace(old_attempts, new_attempts)
+
+          partial_old = '''  });
+            console.log(`${evidence.retrieved.length} files, ${answer.length} chars`);'''
+          partial_new = '''  });
+
+            // Persist every completed question immediately. A later 503 can then end this job
+            // without destroying evidence already captured from the deployed application.
+            const captured = results.at(-1);
+            const gateItem = gate.items.find((item) => item.id === captured.id);
+            gateItem.toolAnswer = captured.answer;
+            gateItem.toolEvidence = captured.retrieved;
+            gateItem.toolEvidenceHeading = captured.heading;
+            gateItem.toolUnverifiedMentions = captured.unverified;
+            gateItem.toolCoverage = captured.coverage;
+            gateItem.toolScreenshot = captured.screenshot;
+            gateItem.toolScreenshotComplete = captured.screenshotComplete;
+            gateItem.toolGeneration = captured.generation;
+            gateItem.correct = null;
+            gate.model = resolvedModel;
+            gate.capturedAt = captured.generation.capturedAt;
+            writeFileSync(GATE, JSON.stringify(gate, null, 1) + "\\n");
+
+            console.log(`${evidence.retrieved.length} files, ${answer.length} chars`);'''
+          if partial_old not in text:
+              raise SystemExit('Could not find the result boundary to add per-question persistence')
+          text = text.replace(partial_old, partial_new)
+
+          path.write_text(text)
+          PY
+
+      - name: Prepare clean regression gates
+        run: |
+          mkdir -p study/regression-final
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+
+          app = 'https://repo-comprehension-system.vercel.app/'
+          tool_version = '1a9aa97'
+          model = 'gemini-3.6-flash'
+          repositories = {
+              'clinic-triage': 'https://github.com/ionuthub/clinic-triage',
+              'warehouse-dispatch': 'https://github.com/ionuthub/warehouse-dispatch',
+          }
+          generation = {
+              'thinkingLevel': 'medium',
+              'maxOutputTokens': 8192,
+              'semanticReviewPasses': 1,
+              'semanticAuditThinkingLevel': 'low',
+              'semanticAuditContractRevision': 2,
+              'semanticAuditChecklist': True,
+              'maxEvidenceRepairAttempts': 2,
+          }
+
+          for repo, repository_url in repositories.items():
+              src = Path(f'study/accuracy-gate.{repo}.json')
+              dst = Path(f'study/regression-final/accuracy-gate.{repo}.json')
+              existing = json.loads(dst.read_text()) if dst.exists() else None
+              resumable = bool(
+                  existing
+                  and existing.get('toolVersion') == tool_version
+                  and existing.get('model') == model
+                  and existing.get('generation') == generation
+                  and existing.get('capturedFrom') == app
+                  and existing.get('capturedRepository') == repository_url
+              )
+              completed = {}
+              if resumable:
+                  for item in existing.get('items', []):
+                      answer_generation = item.get('toolGeneration', {})
+                      if (
+                          item.get('toolAnswer')
+                          and answer_generation.get('status') == 'complete'
+                          and answer_generation.get('finishReason') == 'STOP'
+                          and answer_generation.get('model') == model
+                      ):
+                          completed[item['id']] = {
+                              key: value for key, value in item.items() if key.startswith('tool')
+                          }
+
+              gate = json.loads(src.read_text())
+              for item in gate['items']:
+                  for key in list(item):
+                      if key.startswith('tool') or key == 'correct':
+                          item.pop(key, None)
+                  item.update(completed.get(item['id'], {}))
+              gate['date'] = ''
+              gate['model'] = model
+              gate['generation'] = generation
+              gate['retrieval'] = {
+                  'mode': 'full-context-when-token-budget-permits',
+                  'evidenceBudgetChars': 1500000,
+                  'maxInputTokens': 850000,
+              }
+              gate['toolVersion'] = tool_version
+              gate['capturedFrom'] = app
+              gate['capturedRepository'] = repository_url
+              if completed and existing.get('capturedAt'):
+                  gate['capturedAt'] = existing['capturedAt']
+              else:
+                  gate.pop('capturedAt', None)
+              gate.pop('groundTruthProvenance', None)
+
+              screenshots = Path('study/regression-final/screenshots')
+              if screenshots.exists():
+                  keep = {
+                      Path(item['toolScreenshot']).name
+                      for item in completed.values()
+                      if item.get('toolScreenshot')
+                  }
+                  for screenshot in screenshots.glob(f'{repo}-q*.png'):
+                      if screenshot.name not in keep:
+                          screenshot.unlink()
+
+              dst.write_text(json.dumps(gate, indent=1, ensure_ascii=False) + '\n')
+              print(f'{repo}: resuming {len(completed)} completed question(s)')
+          PY
+
+      - name: Capture clinic gate
+        run: |
+          node analysis/capture_gate.mjs \
+            --repo https://github.com/ionuthub/clinic-triage \
+            --gate study/regression-final/accuracy-gate.clinic-triage.json \
+            --truth study/ground-truth.clinic-triage.md \
+            --accept-tool-verified \
+            --url https://repo-comprehension-system.vercel.app/ \
+            --tool-version 1a9aa97
+
+      - name: Checkpoint partial clinic evidence after capture failure
+        if: ${{ failure() }}
+        run: |
+          mkdir -p study/regression-final/screenshots
+          shopt -s nullglob
+          screenshots=(study/gate-screenshots/clinic-triage-q*.png)
+          if (( ${#screenshots[@]} )); then
+            cp "${screenshots[@]}" study/regression-final/screenshots/
+          fi
+          git checkout -- study/gate-screenshots
+          git config user.name "Ionut Dobrin"
+          git config user.email "48881729+ionuthub@users.noreply.github.com"
+          git add \
+            study/regression-final/accuracy-gate.clinic-triage.json \
+            study/regression-final/screenshots
+          if ! git diff --cached --quiet; then
+            git commit -m "Checkpoint partial clinic regression evidence [skip ci]"
+            git push origin HEAD:run/regression-gate-final
+          fi
+
+      - name: Checkpoint completed clinic evidence
+        run: |
+          python3 analysis/marking_sheet.py build \
+            study/regression-final/accuracy-gate.clinic-triage.json \
+            study/ground-truth.clinic-triage.md
+          mkdir -p study/regression-final/screenshots
+          cp study/gate-screenshots/clinic-triage-q*.png study/regression-final/screenshots/
+          git checkout -- study/gate-screenshots
+          git config user.name "Ionut Dobrin"
+          git config user.email "48881729+ionuthub@users.noreply.github.com"
+          git add \
+            study/regression-final/accuracy-gate.clinic-triage.json \
+            study/regression-final/marking.clinic-triage.md \
+            study/regression-final/screenshots/clinic-triage-q*.png
+          git commit -m "Checkpoint clinic regression evidence [skip ci]"
+          git push origin HEAD:run/regression-gate-final
+
+      - name: Avoid API rate-window overlap
+        run: sleep 65
+
+      - name: Capture warehouse gate
+        run: |
+          node analysis/capture_gate.mjs \
+            --repo https://github.com/ionuthub/warehouse-dispatch \
+            --gate study/regression-final/accuracy-gate.warehouse-dispatch.json \
+            --truth study/ground-truth.warehouse-dispatch.md \
+            --accept-tool-verified \
+            --url https://repo-comprehension-system.vercel.app/ \
+            --tool-version 1a9aa97
+
+      - name: Build bound marking sheets
+        run: |
+          python3 analysis/marking_sheet.py build \
+            study/regression-final/accuracy-gate.clinic-triage.json \
+            study/ground-truth.clinic-triage.md
+          python3 analysis/marking_sheet.py build \
+            study/regression-final/accuracy-gate.warehouse-dispatch.json \
+            study/ground-truth.warehouse-dispatch.md
+
+      - name: Preserve regression screenshots only
+        run: |
+          mkdir -p study/regression-final/screenshots
+          # Clinic screenshots were already bound and pushed by the checkpoint step.
+          cp study/gate-screenshots/warehouse-dispatch-q*.png study/regression-final/screenshots/
+          git checkout -- study/gate-screenshots
+
+      - name: Commit regression evidence to run branch
+        run: |
+          git config user.name "Ionut Dobrin"
+          git config user.email "48881729+ionuthub@users.noreply.github.com"
+          git add study/regression-final
+          git commit -m "Capture final artefact regression gate [skip ci]"
+          git push origin HEAD:run/regression-gate-final
+Use the repository evidence below to answer the question. Cite exact files.\n\n--- File: index.js (lines 1-5 of 5) ---\nexport function double(value) {\n  return value * 2;\n}\n'
+          response="$(
+            jq -n --arg context "$context" '{
+              messages: [{role: "user", content: "What does index.js export, and what does it do?"}],
+              systemContext: $context,
+              stream: true
+            }' |
+              curl --fail-with-body --silent --show-error --no-buffer --max-time 300 \
+                -X POST \
+                -H 'Origin: https://repo-comprehension-system.vercel.app' \
+                -H 'Content-Type: application/json' \
+                --data-binary @- \
+                'https://repo-comprehension-system.vercel.app/api/explain-code'
+          )"
+          terminal="$(
+            printf '%s\n' "$response" |
+              jq -c 'select(.type == "complete" or .type == "error")' |
+              tail -1
+          )"
+          printf '%s\n' "$terminal"
+          printf '%s\n' "$terminal" | jq -e '
+            .type == "complete" and
+            .finishReason == "STOP" and
+            .usageMetadata.model == "gemini-3.6-flash" and
+            .usageMetadata.modelCalls == 2 and
+            .usageMetadata.verifiedBeforeRelease == true
+          '
+
       - name: Install dependencies
         run: npm ci
 

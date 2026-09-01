@@ -144,9 +144,9 @@ jobs:
               gate['date'] = ''
               gate['model'] = 'gemini-3.7-flash'
               gate['generation'] = {
-                  'thinkingLevel': 'low',
+                  'thinkingLevel': 'medium',
                   'maxOutputTokens': 8192,
-                  'semanticReviewPasses': 1,
+                  'semanticReviewPasses': 0,
                   'semanticAuditChecklist': True,
                   'maxEvidenceRepairAttempts': 2,
               }
@@ -170,7 +170,7 @@ jobs:
             --truth study/ground-truth.clinic-triage.md \
             --accept-tool-verified \
             --url https://repo-comprehension-system.vercel.app/ \
-            --tool-version 1a8b964
+            --tool-version 57db6f2
 
       - name: Checkpoint completed clinic evidence
         run: |
@@ -200,7 +200,7 @@ jobs:
             --truth study/ground-truth.warehouse-dispatch.md \
             --accept-tool-verified \
             --url https://repo-comprehension-system.vercel.app/ \
-            --tool-version 1a8b964
+            --tool-version 57db6f2
 
       - name: Build bound marking sheets
         run: |

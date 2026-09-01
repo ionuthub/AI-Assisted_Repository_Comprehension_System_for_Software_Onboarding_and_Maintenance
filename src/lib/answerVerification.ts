@@ -160,6 +160,48 @@ export function buildAnswerAuditPrompt(question: string, reviewedAnswer: string)
   ].join("\n");
 }
 
+const ADJUDICATION_QUESTION_PATTERNS = [
+  /\b(?:everywhere|every place|all places|complete set)\b/i,
+  /\b(?:what else|what[^?]*affected|change impact)\b/i,
+  /\b(?:treated differently|special cases?)\b/i,
+  /\bwhich\b[^?]*\b(?:implementation|strategy|handler|path)\b/i,
+  /\b(?:does|do)\b[^?]*\b(?:change|mutate|modify|only check)\b/i,
+  /\bwhere\b[^?]*\b(?:actually|assigned|booked|reserved|created|written|mutated)\b/i,
+  /\bwhat reacts\b/i,
+];
+
+/** Question shapes whose correctness depends on reconciliation rather than local facts. */
+export function requiresSemanticAdjudication(question: string): boolean {
+  return ADJUDICATION_QUESTION_PATTERNS.some((pattern) => pattern.test(question));
+}
+
+/**
+ * Independent final adjudication for causal, exhaustive, and hidden-mutation answers.
+ * The proposed answer is evidence to inspect, not context to trust.
+ */
+export function buildAnswerAdjudicationPrompt(question: string, reviewedAnswer: string): string {
+  return [
+    "Independently adjudicate this high-risk repository answer against Project Context.",
+    "Treat the proposed answer as untrusted. Return only a corrected final answer, with no verdict, checklist, or preamble.",
+    "Before writing, privately build a claim ledger for every causal or exhaustive statement: predicate, guards and early exits, whether a callback or branch actually executes, exact effect, runtime reach, and downstream consumer.",
+    "Mandatory reconciliation rules:",
+    "- make the opening paragraph the narrowest direct answer that remains true after every qualification",
+    "- if all live callers bypass a value or fallback, remove every claim that changing it alters live stored state, events, filters, metrics, or UI; label test-only effects separately",
+    "- distinguish eligibility or candidate filtering from ranking or preference; a preference map does not restrict candidates unless the control flow explicitly filters them",
+    "- when a guard, early return, or loop continue skips a callback, do not report the callback return value as an applied score, penalty, mutation, or runtime effect",
+    "- do not stack mutually exclusive branch effects or retain a broad claim that conflicts with a later caveat",
+    "- for change-impact questions, trace only the fields actually changed through values that are actually consumed; keep unrelated configuration in the same file separate",
+    "- for complete-set or special-case questions, enumerate every required branch but exclude test, seed, reset, decrement, dead, and bypassed paths from the live total",
+    "- preserve exact selected-implementation behaviour, mutations, returned fields, emitted events, and downstream state when supported",
+    "- support repository claims with exact file paths from Project Context and remove tangential claims that cannot survive the ledger",
+    "Finally compare the first paragraph, headings, and every later section against the private ledger. Rewrite any contradiction before returning the answer.",
+    "",
+    `Question: ${question}`,
+    "",
+    "Proposed answer:",
+    reviewedAnswer,
+  ].join("\n");
+}
 export function buildAnswerRepairPrompt(
   question: string,
   reviewedAnswer: string,

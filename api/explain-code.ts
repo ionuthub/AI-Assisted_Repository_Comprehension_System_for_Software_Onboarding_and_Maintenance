@@ -1,5 +1,6 @@
 import { Redis } from '@upstash/redis';
 import {
+  ADJUDICATION_GENERATION_CONFIG,
   AUDIT_GENERATION_CONFIG,
   DEFAULT_GEMINI_MODEL,
   encodeGenerationEvent,
@@ -15,9 +16,11 @@ import {
   systemContextFitsBudget,
 } from '../src/lib/promptBuilder';
 import {
+  buildAnswerAdjudicationPrompt,
   buildAnswerAuditPrompt,
   buildAnswerRepairPrompt,
   extractEvidencePathsFromContext,
+  requiresSemanticAdjudication,
   verifyGeneratedAnswer,
 } from '../src/lib/answerVerification';
 import { MODEL_BUDGET } from '../src/constants/appConstants';
@@ -213,7 +216,7 @@ async function callGemini(
   systemPrompt: string,
   apiKey: string,
   signal: AbortSignal,
-  generationConfig: typeof GENERATION_CONFIG | typeof AUDIT_GENERATION_CONFIG = GENERATION_CONFIG
+  generationConfig: typeof GENERATION_CONFIG | typeof AUDIT_GENERATION_CONFIG | typeof ADJUDICATION_GENERATION_CONFIG = GENERATION_CONFIG
 ): Promise<GeminiResult> {
   const url = `https://generativelanguage.googleapis.com/v1beta/models/${getGeminiModel()}:generateContent?key=${apiKey}`;
   const response = await fetchGeminiWithRetry(url, {
@@ -290,6 +293,17 @@ async function generateVerifiedAnswer(
     AUDIT_GENERATION_CONFIG
   );
   addUsage(usage, reviewed.usageMetadata);
+
+  if (requiresSemanticAdjudication(question)) {
+    reviewed = await callGemini(
+      [{ role: 'user', content: buildAnswerAdjudicationPrompt(question, reviewed.text) }],
+      systemPrompt,
+      apiKey,
+      signal,
+      ADJUDICATION_GENERATION_CONFIG
+    );
+    addUsage(usage, reviewed.usageMetadata);
+  }
 
   let verification = verifyGeneratedAnswer(reviewed.text, evidence);
 

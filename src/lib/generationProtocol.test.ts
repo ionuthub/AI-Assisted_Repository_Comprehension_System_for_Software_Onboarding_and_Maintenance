@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  ADJUDICATION_GENERATION_CONFIG,
   AUDIT_GENERATION_CONFIG,
   consumeGenerationStream,
   DEFAULT_GEMINI_MODEL,
@@ -39,6 +40,11 @@ describe("Gemini stream parsing", () => {
     expect(AUDIT_GENERATION_CONFIG).not.toHaveProperty("temperature");
   });
 
+  it("reserves high reasoning for targeted final adjudication", () => {
+    expect(ADJUDICATION_GENERATION_CONFIG.thinkingConfig.thinkingLevel).toBe("high");
+    expect(ADJUDICATION_GENERATION_CONFIG.maxOutputTokens).toBe(GENERATION_CONFIG.maxOutputTokens);
+    expect(ADJUDICATION_GENERATION_CONFIG).not.toHaveProperty("temperature");
+  });
   it("allows verified generation to outlive the former 90-second abort", () => {
     expect(MODEL_BUDGET.MAX_REQUEST_DURATION_MS).toBe(285_000);
   });

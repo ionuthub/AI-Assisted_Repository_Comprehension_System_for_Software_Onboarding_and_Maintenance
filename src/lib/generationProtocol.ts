@@ -22,6 +22,15 @@ export const AUDIT_GENERATION_CONFIG = {
   maxOutputTokens: MODEL_BUDGET.MAX_OUTPUT_TOKENS,
 } as const;
 
+/**
+ * High reasoning is reserved for question shapes whose answers must reconcile multiple
+ * execution paths or prove a complete set. Keeping ordinary questions at two calls limits
+ * latency while giving causal and exhaustive answers an independent final adjudication.
+ */
+export const ADJUDICATION_GENERATION_CONFIG = {
+  thinkingConfig: { thinkingLevel: "high" },
+  maxOutputTokens: MODEL_BUDGET.MAX_OUTPUT_TOKENS,
+} as const;
 /** Short, bounded backoff inside the overall request deadline. */
 export const MODEL_RETRY_DELAYS_MS = [2_000, 5_000] as const;
 

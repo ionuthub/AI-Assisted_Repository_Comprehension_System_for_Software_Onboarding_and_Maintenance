@@ -1,6 +1,6 @@
 import { MODEL_BUDGET } from "../constants/appConstants";
 
-export const DEFAULT_GEMINI_MODEL = "gemini-3.7-flash";
+export const DEFAULT_GEMINI_MODEL = "gemini-3.6-flash";
 
 export interface GenerationUsageMetadata {
   promptTokenCount?: number;

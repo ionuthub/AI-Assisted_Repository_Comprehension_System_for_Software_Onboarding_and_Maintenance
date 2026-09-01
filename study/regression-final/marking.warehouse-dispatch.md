@@ -1,6 +1,6 @@
 # Marking sheet, warehouse-dispatch
 
-<!-- accuracy-gate-binding: 4821d1cb79e595cd8de4481657566ef3bd5866a57fe2ba1c0da8abd2c199a476 -->
+<!-- accuracy-gate-binding: 2aebffc13d1526acbcf617b5a18b93c38002ec8fbea7364727cc645b71d2154b -->
 
 12 questions. For each one, decide whether the tool's answer says the same thing as the ground
 truth, and write `correct` or `incorrect` on the verdict line.
@@ -62,36 +62,58 @@ Evidence panel: Evidence · 52 files retrieved
 Retrieved: src/main.tsx (0.9), src/api/interceptors/index.ts (0.82), src/App.tsx (0.68), src/styles.css (0.65), package.json (0.64), src/jobs/revalidation.ts (0.61), src/store/useWarehouseStore.ts (0.61), src/api/api-client.ts (0.59), src/api/interceptors/audit-interceptor.ts (0.59), src/api/interceptors/auth-interceptor.ts (0.59), src/api/interceptors/hazardous-interceptor.ts (0.59), src/api/interceptors/types.ts (0.59), src/types/domain.ts (0.59), src/components/Layout.tsx (0.49), src/notifications/listener.ts (0.49), src/pages/DispatchLogPage.tsx (0.49), src/pages/OrderDetailPage.tsx (0.49), src/pages/OrderListPage.tsx (0.49), src/pages/ZoneOverviewPage.tsx (0.49), src/components/Toasts.tsx (0.44), src/data/seedData.ts (0.44), src/dispatch/allocator.ts (0.44), src/dispatch/orderService.ts (0.44), src/dispatch/releaseService.ts (0.44), src/notifications/service.ts (0.44), src/stock/reservation.ts (0.44), src/api/mock-server.ts (0.39), src/components/OrderCard.tsx (0.39), src/components/ZoneCard.tsx (0.39), src/config/zoneRules.ts (0.39), src/dispatch/handlers/registry.ts (0.39), src/dispatch/validation.ts (0.39), src/events/bus.ts (0.39), src/pricing/legacyPricing.ts (0.39), src/pricing/pricing.ts (0.39), src/stock/stockService.ts (0.39), src/tests/reservation.test.ts (0.39), src/tests/validation.test.ts (0.39), src/utils/formatters.ts (0.39), src/tests/allocation.test.ts (0.29), src/tests/pricing.test.ts (0.29), index.html (0), README.md (0), src/dispatch/handlers/bulkHandler.ts (0), src/dispatch/handlers/expressHandler.ts (0), src/dispatch/handlers/hazardousHandler.ts (0), src/dispatch/handlers/standardHandler.ts (0), src/vite-env.d.ts (0), tsconfig.app.json (0), tsconfig.json (0), tsconfig.node.json (0), vite.config.ts (0)
 
 ```
-Execution starts in **`index.html`**, which loads the application module via `<script type="module" src="/src/main.tsx"></script>` (`index.html`).
+Execution in this application starts in **`index.html`**, which loads **`src/main.tsx`** as an ES module script.
 
 ---
 
-Execution Flow
+Step-by-Step Execution Sequence
 
-#### 1. HTML Loading & Module Evaluation
+1. **HTML Entry Point (`index.html`)**
 
-**`index.html`**: The browser parses `index.html`, providing the `<div id="root"></div>` container and triggering module loading through `<script type="module" src="/src/main.tsx"></script>` (`index.html`).
-**`src/main.tsx`**: Top-level imports execute, loading React, ReactDOM, global styles (`src/styles.css`), and `App` (`src/App.tsx`). `main.tsx` finds `#root` in the DOM and calls `ReactDOM.createRoot(...).render(...)` to mount `<App />` inside `<React.StrictMode>` (`src/main.tsx`).
+The browser loads `index.html` containing the `#root` DOM element and executes `<script type="module" src="/src/main.tsx"></script>` (`index.html`).
 
-#### 2. Component Setup & Routing
+2. **Module Evaluation & React DOM Mounting (`src/main.tsx`)**
 
-**`src/App.tsx`**: Module evaluation creates the React Router instance via `createBrowserRouter` defining the root layout (`<Layout />`) and route hierarchy (`/`, `orders/:orderId`, `zones`, `log`). When `<App />` renders, it returns `<RouterProvider router={router} />` (`src/App.tsx`).
+Evaluating `src/main.tsx` imports global styles (`src/styles.css`), targets `document.getElementById("root")`, and creates a React root via `ReactDOM.createRoot().render()`, rendering `<App />` within `<React.StrictMode>` (`src/main.tsx`).
 
-#### 3. Post-Mount Effects & Runtime Services
+3. **Router Setup & Render (`src/App.tsx`)**
 
-When `<App />` mounts, its `useEffect` hook fires (`src/App.tsx`), initializing background services:
+At module scope in `src/App.tsx`, `createBrowserRouter` defines the client-side routes (`/`, `orders/:orderId`, `zones`, `log`) wrapped by `<Layout />`. `<App />` renders `<RouterProvider router={router} />` (`src/App.tsx`).
 
-1. **`installNotificationListeners()` (`src/notifications/listener.ts`)**: Sets a flag to prevent duplicate calls and registers event handlers on `eventBus` for `"shipment.released"` and `"stock.low"` (`src/notifications/listener.ts`).
+4. **Effects & Application Background Services (`src/App.tsx`, `src/notifications/listener.ts`, `src/store/useWarehouseStore.ts`)**
 
-2. **`initialize()` (`src/store/useWarehouseStore.ts`)**:
+Upon component mounting, the `<App />` `useEffect` hook triggers background runtime initialization (`src/App.tsx`):
 
-* Guarded by `get().initialized`, sets `initialized: true`.
+* **`installNotificationListeners()`**: Subscribes event handlers on `eventBus` for `"shipment.released"` and `"stock.low"` (`src/notifications/listener.ts`).
 
-* Starts a `300ms` `window.setInterval` that polls and drains queued notifications from `drainNotifications()` into Zustand state (`src/store/useWarehouseStore.ts`, `src/notifications/service.ts`).
+* **`initialize()`**:
 
-* Calls `startRevalidationJob()`, establishing a `60,000ms` `window.setInterval` that periodically executes `revalidateReservations()` against store state (`src/store/useWarehouseStore.ts`, `src/jobs/revalidation.ts`).
+* Sets `initialized: true` in `useWarehouseStore` to guard against duplicate runs (`src/store/useWarehouseStore.ts`).
 
-* Attaches a `{ once: true }` listener for the browser `beforeunload` event to clear the notification polling and revalidation timers (`src/store/useWarehouseStore.ts`).
+* Starts a 300ms polling interval (`pullNotifications`) that drains pending notifications from `drainNotifications()` into state (`src/store/useWarehouseStore.ts`, `src/notifications/service.ts`).
+
+* Starts the stock revalidation background job via `startRevalidationJob`, which defaults to running every 60,000 ms (`src/jobs/revalidation.ts`, `src/store/useWarehouseStore.ts`).
+
+* Registers a single-use `beforeunload` window listener to clear both interval timers when navigating away (`src/store/useWarehouseStore.ts`).
+
+---
+
+Grounding & Evidence
+**Direct Evidence**:
+
+* Root module import: `index.html`
+
+* Root creation and StrictMode render: `src/main.tsx`
+
+* Router creation and `useEffect` hook setup: `src/App.tsx`
+
+* Event bus listener registration: `src/notifications/listener.ts`
+
+* Store initialization, interval timers, and `beforeunload` cleanup: `src/store/useWarehouseStore.ts`
+
+* Stock revalidation job timer wrapper: `src/jobs/revalidation.ts`
+
+**Inferences**: None.
 ```
 
 **Verdict:** <!-- correct | incorrect -->
@@ -130,69 +152,73 @@ Evidence panel: Evidence · 52 files retrieved
 Retrieved: src/store/useWarehouseStore.ts (0.76), src/App.tsx (0.73), src/config/zoneRules.ts (0.7), src/pages/OrderDetailPage.tsx (0.7), src/pages/OrderListPage.tsx (0.7), src/pages/ZoneOverviewPage.tsx (0.7), src/data/seedData.ts (0.67), src/dispatch/allocator.ts (0.67), src/dispatch/releaseService.ts (0.67), src/jobs/revalidation.ts (0.67), src/pricing/pricing.ts (0.67), src/stock/reservation.ts (0.67), src/tests/pricing.test.ts (0.67), src/components/OrderCard.tsx (0.64), src/components/ZoneCard.tsx (0.64), src/dispatch/orderService.ts (0.64), src/api/interceptors/hazardous-interceptor.ts (0.61), src/api/mock-server.ts (0.61), src/components/Layout.tsx (0.61), src/components/Toasts.tsx (0.61), src/dispatch/handlers/registry.ts (0.61), src/dispatch/validation.ts (0.61), src/events/bus.ts (0.61), src/pages/DispatchLogPage.tsx (0.61), src/pricing/legacyPricing.ts (0.61), src/stock/stockService.ts (0.61), src/tests/allocation.test.ts (0.61), src/utils/formatters.ts (0.61), src/notifications/service.ts (0.55), src/types/domain.ts (0.55), src/main.tsx (0.53), src/notifications/listener.ts (0.53), src/tests/reservation.test.ts (0.48), src/tests/validation.test.ts (0.48), src/api/api-client.ts (0.46), src/api/interceptors/index.ts (0.44), src/api/interceptors/types.ts (0.44), src/dispatch/handlers/bulkHandler.ts (0.44), src/dispatch/handlers/expressHandler.ts (0.44), src/dispatch/handlers/hazardousHandler.ts (0.44), src/dispatch/handlers/standardHandler.ts (0.44), src/styles.css (0.35), src/api/interceptors/audit-interceptor.ts (0.29), src/api/interceptors/auth-interceptor.ts (0.29), README.md (0.09), index.html (0.03), package.json (0.02), src/vite-env.d.ts (0), tsconfig.app.json (0), tsconfig.json (0), tsconfig.node.json (0), vite.config.ts (0)
 
 ```
-An order is assigned to warehouse zones through a multi-step allocation process triggered when an operator initiates stock allocation. Candidate storage zones are ranked per order line using zone scoring rules, stock is greedily assigned across sorted zones, and inventory reservations are updated in state.
+An order is assigned to warehouse zones line-by-line during stock allocation (`allocateOrder` in `src/dispatch/allocator.ts`). The system scores active candidate zones, builds proposed allocations across available stock in descending score order, updates reserved inventory state, calculates pricing, and updates the order status.
 
 ---
 
-Step-by-Step Assignment Flow
+Detailed Zone Assignment & Allocation Flow
 
-#### 1. Trigger and Dispatch Handler Preparation
+1. **Triggering Allocation**
 
-Allocation begins when `allocate(id)` in `src/store/useWarehouseStore.ts` is invoked (e.g., via the UI in `src/pages/OrderListPage.tsx` or `src/pages/OrderDetailPage.tsx`). It passes the order and current zones to `allocateOrder()` in `src/dispatch/allocator.ts`:
+An operator initiates allocation from the UI (`OrderCard` in `src/components/OrderCard.tsx` or `OrderDetailPage` in `src/pages/OrderDetailPage.tsx`), calling the `allocate(id)` store action (`src/store/useWarehouseStore.ts`).
 
-`allocateOrder()` dynamically retrieves the order type's dispatch handler (`standard`, `express`, `bulk`, or `hazardous`) via `getHandler(input.type)` in `src/dispatch/handlers/registry.ts`.
-The handler prepares a cloned order (`handler.prepare()`), which appends type-specific audit notes (e.g., `standardHandler.ts`, `expressHandler.ts`, `bulkHandler.ts`, `hazardousHandler.ts`) and may alter order priority (e.g., `express` is set to `"critical"`, `hazardous` is set to `"urgent"`).
-The handler runs static inspection warnings (`handler.inspect()`).
+2. **Order Preparation & Verification**
 
-#### 2. Candidate Zone Ranking (`scoreZone`)
+`allocateOrder(input, zones)` in `src/dispatch/allocator.ts`:
 
-For each line item in `prepared.lines`, `allocateOrder()` filters zones to those that are `active` and contain a stock item matching `line.sku`. It computes a total score for each candidate zone via `scoreZone(zone, prepared, line)` from `src/config/zoneRules.ts` and sorts candidates in descending order by score.
+- Retrieves the type-specific handler from the dynamic handler registry (`src/dispatch/handlers/registry.ts`). Handlers for `"standard"`, `"express"`, `"bulk"`, and `"hazardous"` exist in `src/dispatch/handlers/`.
 
-`scoreZone()` evaluates rules returned by `rulesFor()` (sorted descending by rule `score`):
+- Prepares a cloned order via `handler.prepare(order)` (e.g., adding type notes or setting priority).
 
-**Hazard Isolation** (`score: 100`, `zoneKinds: ["secure"]`): Applies if `order.type === "hazardous"` or `line.hazardous`. Prefers `zone.kind === "secure"` with `+80`, otherwise `-100`.
-**Cold Chain** (`score: 90`, `zoneKinds: ["cold"]`): Applies if `line.temperature !== "ambient"`. Prefers matching `zone.temperature === line.temperature` with `+70`, otherwise `-100`.
-**Type Routing** (`score: 50`, `zoneKinds: ["general", "fast-pick", "bulk", "secure"]`): Prefers zone kinds mapped by `typeKinds[order.type]`:
+- Collects validation warnings via `handler.inspect(prepared)`.
 
-* `standard`: `["general", "fast-pick"]` (index 0 gets `+40`, index 1 gets `+30`)
+3. **Candidate Zone Scoring & Sorting**
 
-* `express`: `["fast-pick", "general"]` (index 0 gets `+40`, index 1 gets `+30`)
+For each line in `prepared.lines`, `allocateOrder` filters candidate zones (`zone.active === true` and containing `line.sku`) and calculates a numerical score via `scoreZone(zone, prepared, line)` (`src/config/zoneRules.ts`).
 
-* `bulk`: `["bulk", "general"]` (index 0 gets `+40`, index 1 gets `+30`)
+`scoreZone` evaluates applicable rules from `zoneRules` in descending order of rule `score` (`src/config/zoneRules.ts`):
 
-* `hazardous`: `["secure"]` (index 0 gets `+40`)
+- **Hazard Isolation** (rule score 100): Applies if `order.type === "hazardous"` or `line.hazardous`. Prefers `secure` zones (+80) and penalizes others (-100).
 
-* Unlisted zone kinds receive `-50`.
+- **Cold Chain** (rule score 90): Applies if `line.temperature !== "ambient"`. Prefers matching zone temperatures (+70) and penalizes non-matching ones (-100).
 
-**Capacity Balance** (`score: 10`, `zoneKinds: ["general", "fast-pick", "bulk", "secure", "cold"]`): Prefers zones with lower stock utilization: `Math.round((1 - used / zone.capacity) * 20)`.
-**Zone Kind Mismatch Penalty**: For every rule evaluated by `scoreZone`, if `zone.kind` is not included in `rule.zoneKinds`, `scoreZone` subtracts `25` points from the cumulative total.
+- **Type Routing** (rule score 50): Applies to all lines. Prefers zone kinds according to order type index in `typeKinds` (+40 for first preference, +30 for second; -50 if unlisted).
 
-#### 3. Greedy Stock Allocation
+- **Capacity Balance** (rule score 10): Applies to all lines. Scores zone availability ratio `Math.round((1 - used / zone.capacity) * 20)`.
 
-`allocateOrder()` iterates through the sorted candidate zones for each line:
+If a rule applies but the candidate zone's `kind` is not in `rule.zoneKinds`, 25 points are deducted for that rule. Candidate zones are then sorted by final score in descending order (`src/dispatch/allocator.ts`).
 
-Calculates available unreserved stock in the zone: `available = Math.max(0, item.onHand - item.reserved)`.
-Allocates `quantity = Math.min(remaining, available)` from the zone stock item.
-Pushes a proposed `Allocation` record containing `lineId`, `sku`, `zoneId`, `quantity`, `reservedAt` (ISO timestamp), and `lotCode` from the zone stock item.
-Subtracts allocated quantity from `remaining`. If `remaining > 0` after checking all candidate zones, a shortage warning is recorded (`"${line.sku} has ${remaining} unallocated units"`).
+4. **Building Proposed Allocations**
 
-#### 4. Stock Reservation & Store State Update
+`allocateOrder` iterates through sorted candidate zones for the remaining line quantity (`src/dispatch/allocator.ts`):
 
-Once proposed allocations are assembled:
+- Calculates available stock per zone item as `Math.max(0, item.onHand - item.reserved)`.
 
-`applyStockReservation()` in `src/stock/reservation.ts` validates proposed allocations against current zone stock, increments `item.reserved` on matching zone inventory, attaches `lotCode`, and returns updated zones alongside any shortages.
-Order total is calculated via `calculateOrderPrice(prepared)` in `src/pricing/pricing.ts` (using legacy pricing for `bulk` orders or current pricing for `standard`, `express`, and `hazardous` orders per `pricingStrategyFor()` in `src/config/zoneRules.ts`).
-Status Determination & Events:
+- Takes `Math.min(remaining, available)`.
 
-* If every line item quantity is fully matched by allocations, order status becomes `"allocated"` and `allocateOrder()` emits `order.allocated` on `eventBus` (`src/events/bus.ts`). Note: Currently, no listeners in the codebase are subscribed to `order.allocated`.
+- Creates a proposed `Allocation` object containing `lineId`, `sku`, `zoneId`, `quantity`, `reservedAt`, and `lotCode`.
 
-* If unallocated units or reservation shortages remain, order status becomes `"held"`.
+- If unallocated units remain after checking all candidate zones, a warning is generated (`src/dispatch/allocator.ts`).
 
-Persistence & State Sync:
+5. **Finalizing Reservations & State Persistence**
 
-* The updated order is saved via `saveOrder()` in `src/dispatch/orderService.ts` (calling `apiClient.patch()`).
+- `allocateOrder` calls `applyStockReservation(prepared, proposed, zones)` (`src/stock/reservation.ts`). `applyStockReservation` clones the zones, updates `item.reserved` quantities on assigned items, sets lot codes, and returns any stock shortages.
 
-* `useWarehouseStore.ts` updates Zustand state fields: replaces the order in `state.orders`, updates `state.zones` with reserved quantities, prepends a new entry to `state.logs` (`"allocated"` or `"held"`), and removes the order ID from `state.loadingOrderIds`.
+- Price total is assigned via `calculateOrderPrice(prepared)` (`src/pricing/pricing.ts`), which dispatches to `calculateLegacyPrice` (`src/pricing/legacyPricing.ts`) for `bulk` orders or calculates current handling/surcharges for standard/express/hazardous types (`src/config/zoneRules.ts`).
+
+- If all line quantities are satisfied and no shortages occurred, order status becomes `"allocated"` and `eventBus.emit("order.allocated", { order })` is emitted (`src/dispatch/allocator.ts`). Otherwise, status is set to `"held"`.
+
+- The store persists changes via `saveOrder(result.order)` (`src/dispatch/orderService.ts`) via `apiClient.patch` (`src/api/api-client.ts`), updates Zustand state (`orders`, `zones`, `logs`), and clears the loading state (`src/store/useWarehouseStore.ts`).
+
+---
+
+Supporting Sources & File Evidence
+`src/dispatch/allocator.ts`: Line allocation loop, scoring dispatch, building proposed allocations, calling reservation, status determination, emitting `"order.allocated"`.
+`src/config/zoneRules.ts`: `zoneRules` definitions, `rulesFor`, `scoreZone`, and `pricingStrategyFor`.
+`src/stock/reservation.ts`: `applyStockReservation` implementation incrementing `reserved` stock and outputting final `allocations` and `shortages`.
+`src/dispatch/handlers/registry.ts`: Handler registration and lazy dynamic loading of `./*.ts` handlers.
+`src/pricing/pricing.ts`: Price calculation logic based on strategy and order attributes.
+`src/store/useWarehouseStore.ts`: Action `allocate(id)` execution, API persistence via `saveOrder`, state mutation of `orders`, `zones`, and `logs`.
 ```
 
 **Verdict:** <!-- correct | incorrect -->
@@ -229,32 +255,27 @@ Evidence panel: Evidence · 52 files retrieved
 Retrieved: src/components/OrderCard.tsx (0.66), src/dispatch/orderService.ts (0.66), src/pages/OrderListPage.tsx (0.66), src/api/interceptors/hazardous-interceptor.ts (0.64), src/api/mock-server.ts (0.64), src/config/zoneRules.ts (0.64), src/data/seedData.ts (0.64), src/dispatch/allocator.ts (0.64), src/dispatch/handlers/registry.ts (0.64), src/dispatch/releaseService.ts (0.64), src/dispatch/validation.ts (0.64), src/events/bus.ts (0.64), src/jobs/revalidation.ts (0.64), src/pricing/legacyPricing.ts (0.64), src/pricing/pricing.ts (0.64), src/stock/reservation.ts (0.64), src/store/useWarehouseStore.ts (0.64), src/utils/formatters.ts (0.64), src/pages/OrderDetailPage.tsx (0.61), src/api/api-client.ts (0.59), src/api/interceptors/audit-interceptor.ts (0.59), src/api/interceptors/auth-interceptor.ts (0.59), src/api/interceptors/index.ts (0.59), src/api/interceptors/types.ts (0.59), src/App.tsx (0.59), src/components/ZoneCard.tsx (0.59), src/notifications/service.ts (0.59), src/pages/DispatchLogPage.tsx (0.59), src/stock/stockService.ts (0.59), src/tests/allocation.test.ts (0.59), src/tests/pricing.test.ts (0.59), src/tests/reservation.test.ts (0.59), src/tests/validation.test.ts (0.59), src/types/domain.ts (0.47), src/components/Layout.tsx (0.46), src/components/Toasts.tsx (0.46), src/dispatch/handlers/bulkHandler.ts (0.46), src/dispatch/handlers/expressHandler.ts (0.46), src/dispatch/handlers/hazardousHandler.ts (0.46), src/dispatch/handlers/standardHandler.ts (0.46), src/notifications/listener.ts (0.46), src/pages/ZoneOverviewPage.tsx (0.46), src/main.tsx (0.43), src/styles.css (0.28), index.html (0.01), package.json (0.01), README.md (0), src/vite-env.d.ts (0), tsconfig.app.json (0), tsconfig.json (0), tsconfig.node.json (0), vite.config.ts (0)
 
 ```
-The code that decides how a given order type is processed consists of four distinct systems across the repository:
-
-1. Dynamic Dispatch Handlers (`src/dispatch/handlers/`)
-
-The primary system for order-type-specific logic is the handler registry and concrete handlers in `src/dispatch/handlers/`:
-
-**Handler Registry (`src/dispatch/handlers/registry.ts`)**: `getHandler(type)` dynamically imports all sibling module files via `import.meta.glob("./*.ts")` to auto-register handlers, then returns the `DispatchHandler` registered for `order.type`.
-**Concrete Handlers**:
-
-* **Standard (`src/dispatch/handlers/standardHandler.ts`)**: Appends `"Standard pick wave assigned"` note in `prepare()`; checks for zero lines or quantities > 100 in `inspect()`; defaults carrier to `"Northline Ground"` and packages to $\lceil\text{units}/12\rceil$ in `shipmentDefaults()`.
-
-* **Express (`src/dispatch/handlers/expressHandler.ts`)**: Sets priority to `"critical"` and appends `"Moved to express pick lane"` note in `prepare()`; checks due-time remaining in `inspect()`; defaults carrier to `"Apex Priority"` and packages to $\lceil\text{weight}/20\rceil$ in `shipmentDefaults()`.
-
-* **Bulk (`src/dispatch/handlers/bulkHandler.ts`)**: Appends forklift requirement note in `prepare()`; checks for total units $< 20$ or missing destination company in `inspect()`; defaults carrier to `"Atlas Freight"` and packages to $\lceil\text{weight}/500\rceil$ in `shipmentDefaults()`.
-
-* **Hazardous (`src/dispatch/handlers/hazardousHandler.ts`)**: Sets priority to `"urgent"` and appends `"Dangerous goods paperwork required"` note in `prepare()`; verifies presence of a hazardous line and checks destination country in `inspect()`; defaults carrier to `"SecureChem Logistics"` and packages to $\lceil\text{units}/4\rceil$ in `shipmentDefaults()`.
-
-#### Execution Points for Handlers:
-
-**Allocation (`src/dispatch/allocator.ts`)**: `allocateOrder` calls `getHandler(input.type)` to run `prepare()` (modifying the order before stock matching) and `inspect()` (collecting initial warnings).
-**Release (`src/dispatch/releaseService.ts`)**: `releaseShipment` calls `getHandler(order.type)` to populate fallback carrier and package count defaults via `shipmentDefaults()`.
+The code that decides how a given order type (`standard`, `express`, `bulk`, `hazardous`) is processed spans handler implementations, zone routing and pricing configurations, validation logic, and API interceptors.
 
 ---
 
-2. Zone Routing & Pricing Configuration (`src/config/zoneRules.ts`)
-**Zone Selection (`typeKinds` & `type-routing` rule)**: `typeKinds` defines ordered zone kind preferences per order type:
+1. Dispatch Handler System (`src/dispatch/handlers/`)
+
+Primary type-specific behavior is governed by handlers registered in a central registry:
+
+**Registry (`src/dispatch/handlers/registry.ts`)**: `getHandler(type)` dynamically imports all handler modules (`./*.ts`) on first call and returns the `DispatchHandler` registered for that order type via `registerHandler()`.
+**Standard Handler (`src/dispatch/handlers/standardHandler.ts`)**: In `prepare()`, adds a "Standard pick wave assigned" note. In `inspect()`, checks for empty line lists and line quantities $> 100$. In `shipmentDefaults()`, returns carrier `"Northline Ground"` and package count $\lceil\text{units} / 12\rceil$.
+**Express Handler (`src/dispatch/handlers/expressHandler.ts`)**: In `prepare()`, forces `priority` to `"critical"` and appends a lane note. In `inspect()`, checks remaining minutes until `dueAt`. In `shipmentDefaults()`, returns carrier `"Apex Priority"` and package count $\lceil\text{weightKg} / 20\rceil$.
+**Bulk Handler (`src/dispatch/handlers/bulkHandler.ts`)**: In `prepare()`, appends a forklift load note based on total line weight. In `inspect()`, enforces a 20-unit minimum order quantity and requires a receiving company name. In `shipmentDefaults()`, returns carrier `"Atlas Freight"` and package count $\lceil\text{weightKg} / 500\rceil$.
+**Hazardous Handler (`src/dispatch/handlers/hazardousHandler.ts`)**: In `prepare()`, forces `priority` to `"urgent"` and appends a dangerous goods note. In `inspect()`, checks for regulated lines and international shipping restrictions. In `shipmentDefaults()`, returns carrier `"SecureChem Logistics"` and package count $\lceil\text{units} / 4\rceil$.
+Runtime Call Sites:
+**`src/dispatch/allocator.ts` (`allocateOrder`)**: Calls `getHandler(input.type)` to run `handler.prepare()` (mutating local clone priority/notes) and `handler.inspect()` (appending inspection warnings) prior to scoring zones and assigning allocations.
+**`src/dispatch/releaseService.ts` (`releaseShipment`)**: Calls `getHandler(order.type)` to retrieve `handler.shipmentDefaults(order)` for default carrier and package count assignment.
+
+---
+
+2. Zone Scoring & Pricing Configuration (`src/config/zoneRules.ts`)
+**Zone Routing (`typeKinds`)**: Maps each order type to an ordered list of preferred zone storage kinds:
 
 * `standard`: `["general", "fast-pick"]`
 
@@ -264,23 +285,30 @@ The primary system for order-type-specific logic is the handler registry and con
 
 * `hazardous`: `["secure"]`
 
-`scoreZone()` uses this in `rulesFor()` to calculate candidate zone scores during allocation in `src/dispatch/allocator.ts`. (Note: `hazard-isolation` also directly checks `order.type === "hazardous"` to prefer `secure` zones).
+`scoreZone()` uses this list within the `type-routing` rule to score and rank zone candidates during allocation in `src/dispatch/allocator.ts`.
 
-**Pricing Strategy Selection (`pricingByType` & `pricingStrategyFor`)**: Maps `bulk` to the `"legacy"` pricing strategy (`src/pricing/legacyPricing.ts`) and all other types (`standard`, `express`, `hazardous`) to `"current"`. `calculateOrderPrice()` in `src/pricing/pricing.ts` invokes `pricingStrategyFor(order)` to decide which calculation engine to execute.
-
----
-
-3. Shipment & Dock Validation (`src/dispatch/validation.ts`)
-
-In `validateShipment()`:
-
-**Dock Assignment**: Hazardous orders (`order.type === "hazardous"`) are hardcoded to dock `"D4"`. All other order types are assigned docks `"D1"`, `"D2"`, or `"D3"` based on an order ID character code modulo.
-**Carrier Restriction**: If `order.type === "hazardous"`, `shipment.carrier` must strictly equal `"SecureChem Logistics"`, otherwise validation fails with an error.
+**Pricing Strategy Selection (`pricingByType`)**: Maps order type to pricing strategy (`bulk` $\rightarrow$ `"legacy"`; `standard`, `express`, `hazardous` $\rightarrow$ `"current"`). `pricingStrategyFor(order)` exposes this lookup.
 
 ---
 
-4. API Request Interceptors (`src/api/interceptors/hazardous-interceptor.ts`)
-**Request Rerouting**: `hazardousInterceptor` checks if `request.body?.type === "hazardous"`. If true, it rewrites the outgoing HTTP path from `/orders` to `/controlled/orders`, adds the `x-controlled-load: true` header, and sets request metadata routing to `"dangerous-goods"`. `apiClient` applies this interceptor during API requests (`src/api/api-client.ts`).
+3. Price Calculation (`src/pricing/pricing.ts`)
+**`calculateOrderPrice(order)`**: Queries `pricingStrategyFor(order)`.
+
+* If `"legacy"` (`bulk`), calls `calculateLegacyPrice(order)` in `src/pricing/legacyPricing.ts` (subtotal + pallet handling fees $-$ volume discounts).
+
+* If `"current"`, calculates subtotal, weight-based handling fees, priority surcharges, and a dangerous goods surcharge ($65$) if any order line is marked hazardous.
+
+---
+
+4. Shipment Validation (`src/dispatch/validation.ts`)
+**`validateShipment(shipment, order)`**: Direct type check on `order.type`:
+
+* If `order.type === "hazardous"`, enforces carrier `"SecureChem Logistics"` (adding an error if mismatched) and assigns dock `"D4"`. For non-hazardous types, assigns dock `D1`–`D3` derived from `order.id`.
+
+---
+
+5. API Request Interception (`src/api/interceptors/hazardous-interceptor.ts`)
+**`hazardousInterceptor`**: Checked on outbound network requests via `applyInterceptors()` in `src/api/interceptors/index.ts`. If `request.body.type === "hazardous"`, rewrites `request.path` from `/orders` to `/controlled/orders`, adds header `"x-controlled-load": "true"`, and sets metadata `routing: "dangerous-goods"`.
 ```
 
 **Verdict:** <!-- correct | incorrect -->
@@ -332,68 +360,55 @@ Evidence panel: Evidence · 52 files retrieved
 Retrieved: src/pages/OrderListPage.tsx (0.61), src/stock/reservation.ts (0.61), src/stock/stockService.ts (0.61), src/App.tsx (0.59), src/data/seedData.ts (0.59), src/dispatch/allocator.ts (0.59), src/dispatch/releaseService.ts (0.59), src/jobs/revalidation.ts (0.59), src/tests/reservation.test.ts (0.59), src/components/OrderCard.tsx (0.44), src/events/bus.ts (0.44), src/store/useWarehouseStore.ts (0.44), src/types/domain.ts (0.44), src/api/mock-server.ts (0.43), src/components/Layout.tsx (0.43), src/config/zoneRules.ts (0.43), src/dispatch/handlers/registry.ts (0.43), src/dispatch/validation.ts (0.43), src/main.tsx (0.43), src/notifications/listener.ts (0.43), src/pages/DispatchLogPage.tsx (0.43), src/pages/OrderDetailPage.tsx (0.43), src/pages/ZoneOverviewPage.tsx (0.43), src/pricing/pricing.ts (0.43), src/tests/allocation.test.ts (0.43), src/tests/pricing.test.ts (0.43), src/tests/validation.test.ts (0.43), src/api/api-client.ts (0.29), src/api/interceptors/hazardous-interceptor.ts (0.29), src/api/interceptors/index.ts (0.29), src/api/interceptors/types.ts (0.29), src/components/Toasts.tsx (0.29), src/components/ZoneCard.tsx (0.29), src/dispatch/orderService.ts (0.29), src/notifications/service.ts (0.29), src/pricing/legacyPricing.ts (0.29), src/utils/formatters.ts (0.29), src/dispatch/handlers/bulkHandler.ts (0.28), src/dispatch/handlers/expressHandler.ts (0.28), src/dispatch/handlers/hazardousHandler.ts (0.28), src/dispatch/handlers/standardHandler.ts (0.28), src/styles.css (0.28), index.html (0), package.json (0), README.md (0), src/api/interceptors/audit-interceptor.ts (0), src/api/interceptors/auth-interceptor.ts (0), src/vite-env.d.ts (0), tsconfig.app.json (0), tsconfig.json (0), tsconfig.node.json (0), vite.config.ts (0)
 
 ```
-Stock reservation occurs in the core calculation engine (`applyStockReservation`), through three runtime call flows in application services and jobs, in direct unit test invocations, during stock release commit/reset operations, and within initial seed data.
+Stock is reserved, re-evaluated, decremented, or initialized across **7 specific locations** in the codebase:
 
 ---
 
-1. Core Reservation Engine
-**`applyStockReservation`** (`src/stock/reservation.ts`)
-
-* **Mechanism:** Mutates `item.reserved` on zone stock items using:
-
-`item.reserved = Math.max(0, item.reserved - alreadyReserved) + quantity`
-
-* **Returns:** Updated `zones` (with reserved stock quantities) and `accepted` allocations.
+1. Core Reservation Mutation Function
+**File:** `src/stock/reservation.ts` (`applyStockReservation`)
+**Behavior:** The single function that updates stock item `reserved` fields (`item.reserved = Math.max(0, item.reserved - alreadyReserved) + quantity`) on a deep clone of the supplied zones list. It calculates availability based on `onHand - reserved + alreadyReserved`, caps reserved amounts to available quantities, sets lot codes, and records shortages.
 
 ---
 
-2. Runtime Callers of `applyStockReservation`
-**Order Allocation Service (`allocateOrder` in `src/dispatch/allocator.ts`)**
-
-* **UI / Trigger Path:** Operator clicks "Allocate stock" in `OrderListPage.tsx` or `OrderDetailPage.tsx` $\rightarrow$ calls `allocate(id)` in `src/store/useWarehouseStore.ts` $\rightarrow$ invokes `allocateOrder()`.
-
-* **Behavior:** Generates candidate stock allocations for incoming or held orders, calls `applyStockReservation(prepared, proposed, zones)`, and persists updated zones and allocations into state via `useWarehouseStore.ts`.
-
-**Shipment Release Service (`releaseShipment` in `src/dispatch/releaseService.ts`)**
-
-* **UI / Trigger Path:** Operator clicks "Release shipment" in `OrderDetailPage.tsx` $\rightarrow$ calls `release(id)` in `src/store/useWarehouseStore.ts` $\rightarrow$ invokes `releaseShipment()`.
-
-* **Behavior:** Calls `applyStockReservation(order, order.allocations, zones)` to re-verify stock availability and update reservations before validating and committing the shipment.
-
-**Background Revalidation Job (`revalidateReservations` in `src/jobs/revalidation.ts`)**
-
-* **Trigger Path:** Mounted in `App.tsx` via `initialize()` in `src/store/useWarehouseStore.ts`, which runs `startRevalidationJob` every 60 seconds (`window.setInterval`).
-
-* **Behavior:** Zeroes out item `reserved` counts across working zones and re-runs `applyStockReservation` sequentially for all open orders in status `allocated`, `picking`, or `ready`.
+2. Order Allocation Workflow
+**File:** `src/dispatch/allocator.ts` (`allocateOrder`)
+**Trigger:** User clicks **"Allocate stock"** on `OrderCard` (`src/components/OrderCard.tsx`, rendered in `OrderListPage` at `src/pages/OrderListPage.tsx` or `OrderDetailPage` at `src/pages/OrderDetailPage.tsx`), which calls `useWarehouseStore.getState().allocate(id)` (`src/store/useWarehouseStore.ts`).
+**Behavior:** Scores zones, builds proposed allocations against unreserved inventory, and invokes `applyStockReservation(prepared, proposed, zones)` to lock in reservations for the order lines.
 
 ---
 
-3. Direct Unit Test Execution
-**`src/tests/reservation.test.ts`**
-
-* **Behavior:** Directly invokes `applyStockReservation(order, [request], zones)` to verify that `item.reserved` increments correctly, lot code data is populated, and shortages are reported without creating negative inventory.
-
----
-
-4. Stock Release Deductions and Revalidation Resets
-**Stock Release Commitment (`commitReleasedStock` in `src/stock/stockService.ts`)**
-
-* **Caller:** Called inside `releaseShipment` (`src/dispatch/releaseService.ts`).
-
-* **Behavior:** Decrements `item.reserved` (and `item.onHand`) by the released allocation quantity:
-
-`item.reserved = Math.max(0, item.reserved - allocation.quantity)`
-
-**Revalidation Baseline Reset (`revalidateReservations` in `src/jobs/revalidation.ts`)**
-
-* **Behavior:** Resets all item `reserved` values across working zones to `0` (`stock.map(item => ({ ...item, reserved: 0 }))`) prior to re-applying active order allocations.
+3. Shipment Release Verification
+**File:** `src/dispatch/releaseService.ts` (`releaseShipment`)
+**Trigger:** User clicks **"Release shipment"** on `OrderDetailPage` (`src/pages/OrderDetailPage.tsx`), which calls `useWarehouseStore.getState().release(id)` (`src/store/useWarehouseStore.ts`).
+**Behavior:** Executes `applyStockReservation(order, order.allocations, zones)` to re-verify stock availability immediately before validating shipment parameters and committing released stock.
 
 ---
 
-5. Initial Seed Data
-**`seedZones`** (`src/data/seedData.ts`)
+4. Background Reservation Revalidation Job
+**File:** `src/jobs/revalidation.ts` (`revalidateReservations`)
+**Trigger:** Timer interval started by `startRevalidationJob`, which is initialized via `initialize()` in `useWarehouseStore` (`src/store/useWarehouseStore.ts`) inside a React `useEffect` in `App` (`src/App.tsx`).
+**Behavior:** Resets working zone stock item `reserved` levels to `0`, then sequentially iterates through orders in `"allocated"`, `"picking"`, or `"ready"` status and runs `applyStockReservation({ ...order, allocations: [] }, order.allocations, workingZones)` to re-apply reservations across active orders.
 
-* **Behavior:** Establishes initial baseline `reserved` quantities on zone stock items using the local `stock()` helper function (e.g., `stock("BX-100", 800, 25, "BX2407A")` initializes 25 reserved units in zone `ZA-01`).
+---
+
+5. Committed Stock Deduction (Release Decrement)
+**File:** `src/stock/stockService.ts` (`commitReleasedStock`)
+**Trigger:** Called at the end of `releaseShipment()` in `src/dispatch/releaseService.ts`.
+**Behavior:** Deducts released quantities from reserved stock (`item.reserved = Math.max(0, item.reserved - allocation.quantity)`) as inventory leaves `onHand` count upon physical shipment release.
+
+---
+
+6. Initial Seed Data Definitions
+**File:** `src/data/seedData.ts` (`stock()` helper and `seedZones`)
+**Trigger:** Module evaluation when `useWarehouseStore` (`src/store/useWarehouseStore.ts`) initializes state with `structuredClone(seedZones)`.
+**Behavior:** Defines initial static `reserved` stock quantities for inventory items located in zones `ZA-01`, `ZB-02`, `ZC-03`, `ZS-04`, and `ZC-05`.
+
+---
+
+7. Automated Unit Tests
+**File:** `src/tests/reservation.test.ts`
+**Trigger:** Test runner execution (`vitest run`).
+**Behavior:** Directly invokes `applyStockReservation()` in two test cases to verify reservation incrementing, lot code assignment, shortage calculation, and non-negative availability bounds.
 ```
 
 **Verdict:** <!-- correct | incorrect -->
@@ -444,64 +459,63 @@ Evidence panel: Evidence · 52 files retrieved
 Retrieved: src/api/interceptors/types.ts (0.75), src/api/api-client.ts (0.66), src/api/interceptors/index.ts (0.66), src/api/mock-server.ts (0.66), src/api/interceptors/audit-interceptor.ts (0.61), src/api/interceptors/auth-interceptor.ts (0.61), src/api/interceptors/hazardous-interceptor.ts (0.61), src/dispatch/orderService.ts (0.59), src/types/domain.ts (0.54), src/data/seedData.ts (0.47), src/store/useWarehouseStore.ts (0.43), src/components/OrderCard.tsx (0.36), src/components/ZoneCard.tsx (0.36), src/config/zoneRules.ts (0.36), src/dispatch/allocator.ts (0.36), src/dispatch/handlers/registry.ts (0.36), src/dispatch/releaseService.ts (0.36), src/dispatch/validation.ts (0.36), src/events/bus.ts (0.36), src/jobs/revalidation.ts (0.36), src/notifications/service.ts (0.36), src/pages/DispatchLogPage.tsx (0.36), src/pages/OrderListPage.tsx (0.36), src/pricing/legacyPricing.ts (0.36), src/pricing/pricing.ts (0.36), src/stock/reservation.ts (0.36), src/stock/stockService.ts (0.36), src/tests/reservation.test.ts (0.36), src/tests/validation.test.ts (0.36), src/utils/formatters.ts (0.36), src/tests/allocation.test.ts (0.32), src/tests/pricing.test.ts (0.32), src/App.tsx (0.28), src/components/Layout.tsx (0.28), src/components/Toasts.tsx (0.28), src/pages/OrderDetailPage.tsx (0.28), src/pages/ZoneOverviewPage.tsx (0.28), index.html (0), package.json (0), README.md (0), src/dispatch/handlers/bulkHandler.ts (0), src/dispatch/handlers/expressHandler.ts (0), src/dispatch/handlers/hazardousHandler.ts (0), src/dispatch/handlers/standardHandler.ts (0), src/main.tsx (0), src/notifications/listener.ts (0), src/styles.css (0), src/vite-env.d.ts (0), tsconfig.app.json (0), tsconfig.json (0), tsconfig.node.json (0), vite.config.ts (0)
 
 ```
-Before an outgoing API request is sent to the mock server (`handleRequest`), an initial `ApiRequest` object is created inside `apiClient` and passed sequentially through three request interceptors (`authInterceptor`, `auditInterceptor`, and `hazardousInterceptor`) in `applyInterceptors` (`src/api/api-client.ts`, `src/api/interceptors/index.ts`). These interceptors authenticate, audit, and conditionally reroute hazardous requests.
+Before an outgoing API request is sent to the mock server handler, it is constructed with base properties and headers in `apiClient`, then processed sequentially through three registered request interceptors via `applyInterceptors()`.
 
 ---
 
-Step-by-Step Execution Flow
+Step-by-Step Request Lifecycle
 
 #### 1. Initial Request Construction
 
-When an API method is called (`apiClient.get`, `apiClient.post`, or `apiClient.patch` in `src/api/api-client.ts`, invoked by `src/dispatch/orderService.ts`), the helper function `request()` constructs a base `ApiRequest` object (`src/api/api-client.ts`):
+**File:** `src/api/api-client.ts`
 
-**`path`**: The target route passed to `apiClient` (e.g., `/orders` or `/orders/${order.id}`).
-**`method`**: `"GET"`, `"POST"`, or `"PATCH"`.
-**`body`**: The request payload (e.g., an `Order` object) or `undefined` for `GET` calls.
-**`headers`**: Initialized with `{ accept: "application/json" }`.
-**`metadata`**: Initialized as an empty object `{}`.
+When `apiClient.get()`, `apiClient.post()`, or `apiClient.patch()` is invoked, the internal `request()` function constructs an initial `ApiRequest` object containing:
 
-#### 2. Sequential Interceptor Execution
-
-`apiClient` passes the base `ApiRequest` to `applyInterceptors(initial)` (`src/api/interceptors/index.ts`), which executes the `interceptors` array in exact index order:
-
-1. **`authInterceptor`** (`src/api/interceptors/auth-interceptor.ts`):
-
-* Copies existing headers and appends `{ authorization: "Bearer warehouse-console-session" }`.
-
-2. **`auditInterceptor`** (`src/api/interceptors/audit-interceptor.ts`):
-
-* Copies existing headers and appends `"x-requested-at"` set to the current ISO timestamp (`new Date().toISOString()`).
-
-* Copies existing metadata and adds `{ source: "dispatch-console", correlationId: crypto.randomUUID() }`.
-
-3. **`hazardousInterceptor`** (`src/api/interceptors/hazardous-interceptor.ts`):
-
-* Inspects `request.body` as a partial `Order`.
-
-* **If `body?.type === "hazardous"`**:
-
-* Replaces `/orders` in `request.path` with `/controlled/orders`.
-
-* Appends `"x-controlled-load": "true"` to `request.headers`.
-
-* Appends `routing: "dangerous-goods"` to `request.metadata`.
-
-* **Otherwise**: Returns `request` unmodified.
-
-#### 3. Delivery to the Mock Server
-
-`applyInterceptors` returns the final modified `ApiRequest` object to `apiClient`, which passes it directly to `handleRequest<TResponse>(intercepted)` (`src/api/mock-server.ts`). Inside `handleRequest`:
-
-A delay of 90ms is introduced via `setTimeout`.
-The path is normalized by replacing `/controlled/orders` back to `/orders` via `normalizedPath`.
-The request's correlation ID is extracted from `request.metadata.correlationId` (falling back to a newly generated UUID if absent).
-Synchronous matching generates the response for `GET /orders`, `GET /orders/*`, or `PATCH /orders/*`.
+`path`: the target endpoint path passed to the client method (e.g. `/orders` or `/orders/${order.id}`).
+`method`: `"GET"`, `"POST"`, or `"PATCH"`.
+`body`: optional payload (`undefined` for GET calls).
+`headers`: initialized with `{ accept: "application/json" }`.
+`metadata`: initialized to an empty object `{}`.
 
 ---
 
-Verifiable Domain Limitations
-**Live Application Reach**: In the active application, `orderService.ts` makes `apiClient.get` calls (which have no `body`) and `apiClient.patch` calls passing full `Order` objects (`src/dispatch/orderService.ts`). Thus, `hazardousInterceptor` modifies requests specifically during `PATCH` calls for orders with `type === "hazardous"`.
-**Unreached Interceptor Paths**: `apiClient.post` is defined in `src/api/api-client.ts`, but it is not called anywhere in the codebase.
+#### 2. Sequential Interceptor Execution
+
+**Files:** `src/api/interceptors/index.ts`, `src/api/interceptors/auth-interceptor.ts`, `src/api/interceptors/audit-interceptor.ts`, `src/api/interceptors/hazardous-interceptor.ts`
+
+`apiClient` passes the initial `ApiRequest` to `applyInterceptors(initial)` (`src/api/api-client.ts`), which runs the request sequentially through the `interceptors` array defined in `src/api/interceptors/index.ts`:
+
+1. **`authInterceptor`** (`src/api/interceptors/auth-interceptor.ts`):
+
+* Copies existing headers and appends `authorization: "Bearer warehouse-console-session"`.
+
+2. **`auditInterceptor`** (`src/api/interceptors/audit-interceptor.ts`):
+
+* Copies existing headers and appends `x-requested-at` set to the current ISO timestamp (`new Date().toISOString()`).
+
+* Copies existing metadata and sets `source: "dispatch-console"` and `correlationId: crypto.randomUUID()`.
+
+3. **`hazardousInterceptor`** (`src/api/interceptors/hazardous-interceptor.ts`):
+
+* Inspects `request.body` (cast as `Partial<Order>`).
+
+* **If `body?.type === "hazardous"`**:
+
+* Modifies `path` by replacing `"/orders"` with `"/controlled/orders"`.
+
+* Copies existing headers and appends `"x-controlled-load": "true"`.
+
+* Copies existing metadata and appends `routing: "dangerous-goods"`.
+
+* **If `body?.type !== "hazardous"`**: returns the request unmodified.
+
+---
+
+#### 3. Dispatch to Mock Server
+
+**File:** `src/api/api-client.ts` & `src/api/mock-server.ts`
+
+The final `intercepted` `ApiRequest` returned by `applyInterceptors()` is passed directly into `handleRequest<TResponse>(intercepted)` in `src/api/mock-server.ts`.
 ```
 
 **Verdict:** <!-- correct | incorrect -->
@@ -538,39 +552,45 @@ Evidence panel: Evidence · 52 files retrieved
 Retrieved: src/dispatch/releaseService.ts (0.63), src/dispatch/validation.ts (0.63), src/tests/validation.test.ts (0.63), src/dispatch/handlers/registry.ts (0.59), src/events/bus.ts (0.59), src/pages/DispatchLogPage.tsx (0.59), src/pages/OrderDetailPage.tsx (0.59), src/store/useWarehouseStore.ts (0.59), src/data/seedData.ts (0.45), src/stock/reservation.ts (0.45), src/stock/stockService.ts (0.45), src/types/domain.ts (0.45), src/App.tsx (0.42), src/components/Layout.tsx (0.42), src/components/Toasts.tsx (0.42), src/dispatch/allocator.ts (0.42), src/dispatch/handlers/bulkHandler.ts (0.42), src/dispatch/handlers/expressHandler.ts (0.42), src/dispatch/handlers/hazardousHandler.ts (0.42), src/dispatch/handlers/standardHandler.ts (0.42), src/dispatch/orderService.ts (0.42), src/jobs/revalidation.ts (0.42), src/notifications/listener.ts (0.42), src/notifications/service.ts (0.42), src/pages/OrderListPage.tsx (0.42), src/pages/ZoneOverviewPage.tsx (0.42), src/utils/formatters.ts (0.42), src/api/api-client.ts (0.3), src/api/interceptors/hazardous-interceptor.ts (0.3), src/api/interceptors/index.ts (0.3), src/api/interceptors/types.ts (0.3), src/api/mock-server.ts (0.3), src/components/OrderCard.tsx (0.3), src/components/ZoneCard.tsx (0.3), src/config/zoneRules.ts (0.3), src/pricing/legacyPricing.ts (0.3), src/pricing/pricing.ts (0.3), src/tests/allocation.test.ts (0.3), src/tests/pricing.test.ts (0.3), src/tests/reservation.test.ts (0.3), src/main.tsx (0.28), tsconfig.node.json (0.07), tsconfig.app.json (0.04), src/styles.css (0), index.html (0), package.json (0), README.md (0), src/api/interceptors/audit-interceptor.ts (0), src/api/interceptors/auth-interceptor.ts (0), src/vite-env.d.ts (0), tsconfig.json (0), vite.config.ts (0)
 
 ```
-No, `validateShipment` does not only check—it mutates state by mutating the `dock` property directly on the passed-in `shipment` object (`src/dispatch/validation.ts`).
+`validateShipment` does **not** only check; it mutates state by assigning the `dock` property directly onto the passed `shipment` object argument in-place.
 
 ---
 
-Supporting Repository Details
+Key Evidence & Code Flow
 
-1. **Direct Argument Mutation in `validateShipment`**
+1. **In-Place Mutation of `shipment.dock`**
 
-In `src/dispatch/validation.ts`, `validateShipment` performs read-only error and warning checks, but right before returning the result, it calculates and mutates the `dock` property directly on the input `shipment` object:
+In `src/dispatch/validation.ts`, `validateShipment` calculates and assigns the dock to the incoming `shipment` object before returning the validation result:
 
 ```ts
+
+const numeric = order.id
+
+.split("")
+
+.reduce((sum, character) => sum + character.charCodeAt(0), 0);
 
 shipment.dock = order.type === "hazardous" ? "D4" : docks[numeric % 3];
 
 ```
 
-It does not mutate any store state, persistent database state, or properties on the `order` object.
+2. **Downstream Application Flow**
 
-2. **Runtime Data Flow & Impact**
+In `src/dispatch/releaseService.ts`:
 
-In `releaseShipment` (`src/dispatch/releaseService.ts`):
+- `releaseShipment` initializes a local `shipment` object without a `dock` property.
 
-- The initial `shipment` object is instantiated without a `dock` property.
+- It calls `validateShipment(shipment, order)`.
 
-- `validateShipment(shipment, order)` is called.
+- The in-place mutation of `shipment.dock` allows subsequent code in `releaseShipment` to read `shipment.dock` to set `releasedOrder.assignedDock` and construct the `log.detail` text.
 
-- The mutation performed by `validateShipment` attaches `shipment.dock` to the same object reference.
+3. **Validation in Tests**
 
-- Later in `releaseShipment`, the mutated `shipment.dock` property is read to populate `releasedOrder.assignedDock` and to construct the dispatch log entry string (`detail: ... at ${shipment.dock}`).
+In `src/tests/validation.test.ts`, tests pass a `candidate` shipment object to `validateShipment` and assert that `candidate.dock` was set by the function call (`expect(candidate.dock).toMatch(/^D[1-3]$/)` and `expect(candidate.dock).toBe("D4")`).
 
-3. **Test Reliance**
+Summary
 
-In `src/tests/validation.test.ts`, tests directly verify this side effect by asserting on `candidate.dock` after passing `candidate` into `validateShipment`.
+While `validateShipment` does not directly mutate external global state or the Zustand store, it is not pure—it mutates the `dock` field on the `shipment` object passed to it.
 ```
 
 **Verdict:** <!-- correct | incorrect -->
@@ -605,17 +625,13 @@ Evidence panel: Evidence · 52 files retrieved
 Retrieved: src/pricing/pricing.ts (0.66), src/tests/pricing.test.ts (0.66), src/config/zoneRules.ts (0.64), src/dispatch/allocator.ts (0.64), src/components/OrderCard.tsx (0.61), src/dispatch/orderService.ts (0.61), src/pages/OrderDetailPage.tsx (0.61), src/pages/OrderListPage.tsx (0.61), src/pricing/legacyPricing.ts (0.61), src/api/interceptors/hazardous-interceptor.ts (0.59), src/api/mock-server.ts (0.59), src/App.tsx (0.59), src/data/seedData.ts (0.59), src/dispatch/handlers/registry.ts (0.59), src/dispatch/releaseService.ts (0.59), src/dispatch/validation.ts (0.59), src/events/bus.ts (0.59), src/jobs/revalidation.ts (0.59), src/stock/reservation.ts (0.59), src/store/useWarehouseStore.ts (0.59), src/tests/allocation.test.ts (0.59), src/utils/formatters.ts (0.59), src/dispatch/handlers/bulkHandler.ts (0.57), src/types/domain.ts (0.47), src/api/api-client.ts (0.44), src/api/interceptors/index.ts (0.43), src/api/interceptors/types.ts (0.43), src/components/Layout.tsx (0.43), src/components/Toasts.tsx (0.43), src/components/ZoneCard.tsx (0.43), src/dispatch/handlers/expressHandler.ts (0.43), src/dispatch/handlers/hazardousHandler.ts (0.43), src/dispatch/handlers/standardHandler.ts (0.43), src/main.tsx (0.43), src/notifications/listener.ts (0.43), src/notifications/service.ts (0.43), src/pages/DispatchLogPage.tsx (0.43), src/pages/ZoneOverviewPage.tsx (0.43), src/stock/stockService.ts (0.43), src/tests/reservation.test.ts (0.43), src/tests/validation.test.ts (0.43), src/api/interceptors/audit-interceptor.ts (0.28), src/api/interceptors/auth-interceptor.ts (0.28), src/styles.css (0.28), index.html (0), package.json (0), README.md (0), src/vite-env.d.ts (0), tsconfig.app.json (0), tsconfig.json (0), tsconfig.node.json (0), vite.config.ts (0)
 
 ```
-For a bulk order, the **legacy pricing implementation** (`calculateLegacyPrice` in `src/pricing/legacyPricing.ts`) runs.
-
----
+The **`calculateLegacyPrice`** implementation (in `src/pricing/legacyPricing.ts`) runs for a bulk order.
 
 Why `calculateLegacyPrice` Runs
 
-1. **Order Total Entry Point:** When an order is allocated during dispatch in `src/dispatch/allocator.ts` (line 58), the system calculates the order's total price by calling `calculateOrderPrice(prepared)` defined in `src/pricing/pricing.ts`.
+1. **Strategy Resolution via Domain Mapping**:
 
-2. **Strategy Determination:** Inside `calculateOrderPrice` (`src/pricing/pricing.ts`, lines 7–8), the function invokes `pricingStrategyFor(order)`.
-
-3. **Type-to-Strategy Mapping:** `pricingStrategyFor` (`src/config/zoneRules.ts`, lines 72–74) looks up `order.type` in the `pricingByType` map (`src/config/zoneRules.ts`, lines 21–26):
+When `calculateOrderPrice(order)` is executed (`src/pricing/pricing.ts`), it calls `pricingStrategyFor(order)` (`src/config/zoneRules.ts`). Inside `src/config/zoneRules.ts`, `pricingStrategyFor` delegates to the `pricingByType` dictionary:
 
 ```ts
 
@@ -633,24 +649,38 @@ hazardous: "current",
 
 ```
 
-4. **Conditional Delegation:** When `order.type === "bulk"`, `pricingStrategyFor` returns `"legacy"`. In `calculateOrderPrice` (`src/pricing/pricing.ts`, line 8), the check `if (strategy === "legacy")` evaluates to `true`, causing execution to delegate directly to `calculateLegacyPrice(order)` and return its result (which computes costs using pallet handling fees and subtotal volume discounts in `src/pricing/legacyPricing.ts`).
+For a bulk order where `order.type === "bulk"`, `pricingStrategyFor` returns `"legacy"`.
 
----
+2. **Branching in `calculateOrderPrice`**:
 
-Evidence Summary
-**Direct Evidence:**
+Inside `calculateOrderPrice` (`src/pricing/pricing.ts`):
 
-* `src/pricing/pricing.ts`: `calculateOrderPrice` calls `pricingStrategyFor(order)` and immediately branches to `calculateLegacyPrice(order)` if `strategy === "legacy"`.
+```ts
 
-* `src/config/zoneRules.ts`: `pricingByType` maps `"bulk"` to `"legacy"`, and `pricingStrategyFor` returns `pricingByType[order.type]`.
+export function calculateOrderPrice(order: Order): number {
 
-* `src/dispatch/allocator.ts`: Calls `calculateOrderPrice(prepared)` when building the allocated order state.
+const strategy = pricingStrategyFor(order);
 
-* `src/pricing/legacyPricing.ts`: Contains the legacy pricing implementation using pallet handling rates and subtotal discounts.
+if (strategy === "legacy") return calculateLegacyPrice(order);
 
-* `src/tests/pricing.test.ts`: Verifies that bulk orders resolve to the `"legacy"` pricing strategy and that `calculateOrderPrice` produces the output of `calculateLegacyPrice`.
+...
 
-**Inferred Evidence:** None required; all execution flow and configuration mappings are directly visible in code.
+}
+
+```
+
+Because `strategy` resolves to `"legacy"`, `calculateOrderPrice` executes the conditional check `if (strategy === "legacy")` and directly calls and returns `calculateLegacyPrice(order)`. The remainder of `calculateOrderPrice` (which computes current subtotal handling, priority fees, and hazardous surcharges) is skipped.
+
+How `calculateLegacyPrice` Calculates the Price
+
+`calculateLegacyPrice` (`src/pricing/legacyPricing.ts`) calculates the total as follows:
+
+**Subtotal**: Sum of `quantity * unitPrice` across all order lines.
+**Pallet Handling Charge**: Calculates total weight in kg across lines, divides by 500, rounds up (`Math.ceil`), ensures at least 1 pallet (`Math.max(1, ...)`), and multiplies by `$18.50`.
+**Volume Discount**: Applies a subtotal discount of 7.5% if the subtotal is over $5,000, or 4% if over $2,000.
+**Total**: Returns `(subtotal + handling - volumeDiscount)` rounded to 2 decimal places.
+
+This configuration-driven behavior is verified in `src/tests/pricing.test.ts`.
 ```
 
 **Verdict:** <!-- correct | incorrect -->
@@ -701,39 +731,45 @@ Evidence panel: Evidence · 52 files retrieved
 Retrieved: src/dispatch/allocator.ts (0.63), src/dispatch/releaseService.ts (0.63), src/pages/DispatchLogPage.tsx (0.63), src/App.tsx (0.6), src/data/seedData.ts (0.6), src/events/bus.ts (0.6), src/notifications/listener.ts (0.6), src/notifications/service.ts (0.6), src/stock/stockService.ts (0.6), src/store/useWarehouseStore.ts (0.6), src/tests/allocation.test.ts (0.6), src/tests/validation.test.ts (0.6), src/dispatch/handlers/bulkHandler.ts (0.58), src/dispatch/handlers/expressHandler.ts (0.58), src/dispatch/handlers/hazardousHandler.ts (0.58), src/dispatch/handlers/registry.ts (0.58), src/dispatch/handlers/standardHandler.ts (0.58), src/dispatch/orderService.ts (0.58), src/dispatch/validation.ts (0.58), src/config/zoneRules.ts (0.45), src/pricing/pricing.ts (0.45), src/stock/reservation.ts (0.45), src/types/domain.ts (0.45), src/utils/formatters.ts (0.45), src/api/mock-server.ts (0.43), src/components/Layout.tsx (0.43), src/components/Toasts.tsx (0.43), src/jobs/revalidation.ts (0.43), src/main.tsx (0.43), src/pages/OrderDetailPage.tsx (0.43), src/pages/OrderListPage.tsx (0.43), src/pages/ZoneOverviewPage.tsx (0.43), src/tests/pricing.test.ts (0.43), src/tests/reservation.test.ts (0.43), src/api/api-client.ts (0.41), src/api/interceptors/hazardous-interceptor.ts (0.3), src/api/interceptors/index.ts (0.3), src/api/interceptors/types.ts (0.3), src/components/OrderCard.tsx (0.3), src/components/ZoneCard.tsx (0.3), src/pricing/legacyPricing.ts (0.3), src/styles.css (0.29), README.md (0.03), src/api/interceptors/audit-interceptor.ts (0.02), index.html (0.02), package.json (0.01), src/api/interceptors/auth-interceptor.ts (0), src/vite-env.d.ts (0), tsconfig.app.json (0), tsconfig.json (0), tsconfig.node.json (0), vite.config.ts (0)
 
 ```
-When a dispatch event is emitted via the event bus (`src/events/bus.ts`), reactions depend on the specific event type. Two events (`shipment.released` and `stock.low`) trigger registered listeners, while two others (`order.allocated` and `notification.created`) have no active listeners on the bus.
+Two emitted events have active listeners that react at runtime: **`"shipment.released"`** and **`"stock.low"`**. The other two event types defined in the system (**`"order.allocated"`** and **`"notification.created"`**) are emitted during operations but have no registered listeners.
 
 ---
 
-Direct Breakdown of Reactions by Event
+Detailed Reaction Traces
 
-#### 1. `shipment.released`
+#### 1. Reacting to `"shipment.released"`
 
-**Emitted by:** `releaseShipment()` in `src/dispatch/releaseService.ts` after shipment validation, order status mutation to `"released"`, and log entry creation.
-**Listener:** Registered in `installNotificationListeners()` in `src/notifications/listener.ts`.
-**Reaction:** Calls `publishNotification()` in `src/notifications/service.ts`, creating a success notification (`Order <id> released`) and unshifting it into an in-memory `pending` queue array.
-**Runtime Store & UI Effect:** In `src/store/useWarehouseStore.ts`, the store's `initialize()` function runs an interval every 300ms that calls `drainNotifications()`, removing pending items and updating the Zustand store's `notifications` state (capped at 8 items). The `Toasts` component (`src/components/Toasts.tsx`) renders these active notifications to the UI.
+**Emitted by:** `releaseShipment()` in `src/dispatch/releaseService.ts` when a shipment is successfully processed.
+**Listener setup:** `installNotificationListeners()` in `src/notifications/listener.ts` registers a listener when called inside `useEffect` in `src/App.tsx`.
+**Reaction:** The listener calls `publishNotification()` in `src/notifications/service.ts` to create a `success` notification containing the order ID, package count, and assigned dock.
 
-#### 2. `stock.low`
+#### 2. Reacting to `"stock.low"`
 
-**Emitted by:** `commitReleasedStock()` in `src/stock/stockService.ts` when an item's remaining available inventory (`onHand - reserved`) falls at or below its `reorderPoint` during stock release.
-**Listeners (2 active):**
+**Emitted by:** `commitReleasedStock()` in `src/stock/stockService.ts` when available stock (`onHand - reserved`) drops to or below `item.reorderPoint` after stock release.
+**Registered Listeners & Reactions:**
 
-1. **Notification Listener** (`src/notifications/listener.ts`): Invokes `publishNotification()`, pushing a warning notification (`Low stock: <sku>`) specifying the SKU, zone ID, and available quantity into the `pending` queue, which flows to the Zustand store state via 300ms polling and renders in `Toasts.tsx`.
+1. **UI Notification Listener:** Registered by `installNotificationListeners()` in `src/notifications/listener.ts`. It calls `publishNotification()` in `src/notifications/service.ts` to create a `warning` notification with the SKU, zone ID, and remaining available count.
 
-2. **Stock Signal Listener** (`src/stock/stockService.ts`): Evaluates at module import time and prepends a string formatted as `${sku} in ${zoneId}: ${available} available` to the local `lowStockSignals` array (popping the oldest entry if length exceeds 20).
-
----
-
-Events Emitted Without Active Bus Listeners
-**`order.allocated`** (`src/dispatch/allocator.ts`): Emitted by `allocateOrder()` when all lines are fully allocated and the order status transitions to `"allocated"`. No `eventBus.on("order.allocated")` listener is registered anywhere in the application.
-**`notification.created`** (`src/notifications/service.ts`): Emitted by `publishNotification()` whenever a notification object is generated. No `eventBus.on("notification.created")` subscriber exists in the codebase (the UI receives notifications through the 300ms polling interval calling `drainNotifications()` in `src/store/useWarehouseStore.ts`).
+2. **Signal Logger Listener:** Registered at module evaluation scope in `src/stock/stockService.ts`. It prepends a formatted string (`"${sku} in ${zoneId}: ${available} available"`) to the internal `lowStockSignals` array (capped at 20 entries).
 
 ---
 
-Execution & Listener Wire-up Timing
-**Module-scope Registration:** The `stock.low` listener in `src/stock/stockService.ts` is registered as soon as the module is imported.
-**Effect-level Registration:** The `shipment.released` and `stock.low` listeners in `src/notifications/listener.ts` are registered when `App.tsx` calls `installNotificationListeners()` inside a React `useEffect` hook. A guard flag (`installed`) ensures listeners are registered only once.
+Unhandled Events
+**`"order.allocated"`**: Emitted by `allocateOrder()` in `src/dispatch/allocator.ts` when all order lines are fully reserved. No `.on("order.allocated", ...)` listener is registered in the repository.
+**`"notification.created"`**: Emitted by `publishNotification()` in `src/notifications/service.ts` whenever a notification is created. No listener is registered for this event; the store consumes notifications via `setInterval` polling of `drainNotifications()` in `src/store/useWarehouseStore.ts`.
+
+---
+
+Evidence vs. Inference
+**Direct Evidence:**
+
+* Event listener registrations (`eventBus.on`) in `src/notifications/listener.ts` and `src/stock/stockService.ts`.
+
+* Event emission calls (`eventBus.emit`) in `src/dispatch/allocator.ts`, `src/dispatch/releaseService.ts`, `src/stock/stockService.ts`, and `src/notifications/service.ts`.
+
+* App initialization triggering listener setup in `src/App.tsx`.
+
+**Inference:** The presence of `"order.allocated"` and `"notification.created"` in the `WarehouseEvents` interface in `src/events/bus.ts` without corresponding `.on()` registrations indicates unused hooks or alternative consumption patterns (such as array polling for notifications).
 ```
 
 **Verdict:** <!-- correct | incorrect -->
@@ -778,89 +814,81 @@ Evidence panel: Evidence · 52 files retrieved
 Retrieved: src/components/OrderCard.tsx (0.63), src/dispatch/orderService.ts (0.63), src/pages/OrderListPage.tsx (0.63), src/api/interceptors/hazardous-interceptor.ts (0.62), src/api/mock-server.ts (0.62), src/config/zoneRules.ts (0.62), src/data/seedData.ts (0.62), src/dispatch/allocator.ts (0.62), src/dispatch/handlers/registry.ts (0.62), src/dispatch/releaseService.ts (0.62), src/dispatch/validation.ts (0.62), src/events/bus.ts (0.62), src/jobs/revalidation.ts (0.62), src/pricing/legacyPricing.ts (0.62), src/pricing/pricing.ts (0.62), src/stock/reservation.ts (0.62), src/store/useWarehouseStore.ts (0.62), src/utils/formatters.ts (0.62), src/pages/OrderDetailPage.tsx (0.6), src/api/api-client.ts (0.58), src/api/interceptors/audit-interceptor.ts (0.58), src/api/interceptors/auth-interceptor.ts (0.58), src/api/interceptors/index.ts (0.58), src/api/interceptors/types.ts (0.58), src/App.tsx (0.58), src/components/ZoneCard.tsx (0.58), src/notifications/service.ts (0.58), src/pages/DispatchLogPage.tsx (0.58), src/stock/stockService.ts (0.58), src/tests/allocation.test.ts (0.58), src/tests/pricing.test.ts (0.58), src/tests/reservation.test.ts (0.58), src/tests/validation.test.ts (0.58), src/types/domain.ts (0.46), src/components/Layout.tsx (0.44), src/components/Toasts.tsx (0.44), src/dispatch/handlers/bulkHandler.ts (0.44), src/dispatch/handlers/expressHandler.ts (0.44), src/dispatch/handlers/hazardousHandler.ts (0.44), src/dispatch/handlers/standardHandler.ts (0.44), src/notifications/listener.ts (0.44), src/pages/ZoneOverviewPage.tsx (0.44), src/main.tsx (0.42), src/styles.css (0.28), index.html (0.01), package.json (0.01), README.md (0), src/vite-env.d.ts (0), tsconfig.app.json (0), tsconfig.json (0), tsconfig.node.json (0), vite.config.ts (0)
 
 ```
-To add a new order type to the application, you must update the domain type union, create a dispatch handler module, update zone routing and pricing records, and update the UI filter menu. Depending on domain rules, shipment validation, API request interceptors, seed data, and tests may also need updating.
+To add a new order type to the repository, changes are required in the domain definitions, zone routing/pricing configuration, dispatch handler registration, and UI filter options. Additional changes to seed data, pricing calculations, shipment validation, API interceptors, and tests may also be required depending on domain rules for the new type.
 
 ---
 
-1. Primary Required Changes
+Required Repository Changes
 
-#### A. Domain Type Union
+1. **Domain Union Type Definition**
 
-**`src/types/domain.ts`** (Line 1):
+* **File:** `src/types/domain.ts`
 
-Add the new string literal to the `OrderType` type definition:
+* **Change:** Add the new literal string to the `OrderType` union definition (`export type OrderType = "standard" | "express" | "bulk" | "hazardous";`).
 
-```ts
+2. **Zone Routing & Pricing Maps**
 
-export type OrderType = "standard" | "express" | "bulk" | "hazardous" | "your_new_type";
+* **File:** `src/config/zoneRules.ts`
 
-```
+* **Change:** Satisfy TypeScript record typing by adding entries for the new type in:
 
-#### B. Dispatch Handler Module
+* `typeKinds: Record<OrderType, Zone["kind"][]>` — defines zone preference priority when `scoreZone` calculates allocation scores.
 
-**`src/dispatch/handlers/`**:
+* `pricingByType: Record<OrderType, PricingStrategy>` — maps the type to `"current"` or `"legacy"` strategy.
 
-Create a new module file in the `src/dispatch/handlers/` directory (alongside existing handlers such as `standardHandler.ts`, `expressHandler.ts`, `bulkHandler.ts`, and `hazardousHandler.ts`) that implements the `DispatchHandler` interface and calls `registerHandler(...)` upon module evaluation.
+3. **Dispatch Handler Registration**
 
-* **Auto-discovery:** `getHandler()` in `src/dispatch/handlers/registry.ts` uses `import.meta.glob("./*.ts")` to dynamically import and register all handler files in this directory.
+* **Files:**
 
-* **Runtime caller requirement:** `getHandler(order.type)` is directly invoked during stock allocation (`allocateOrder` in `src/dispatch/allocator.ts`, line 17) and shipment release (`releaseShipment` in `src/dispatch/releaseService.ts`, line 18). If no handler is registered for the new type, `getHandler()` throws `No dispatch handler registered for ${type}`.
+* `src/dispatch/handlers/registry.ts`
 
-#### C. Exhaustive Configuration Records
+* Existing handler examples: `src/dispatch/handlers/standardHandler.ts`, `src/dispatch/handlers/expressHandler.ts`, `src/dispatch/handlers/bulkHandler.ts`, `src/dispatch/handlers/hazardousHandler.ts`
 
-**`src/config/zoneRules.ts`** (Lines 14–26):
+* **Change:** Create a new module inside `src/dispatch/handlers/` that implements the `DispatchHandler` interface (`type`, `prepare`, `inspect`, and `shipmentDefaults`) and calls `registerHandler(...)` at module evaluation scope.
 
-Add the new type key to both mapped record objects. TypeScript will enforce completeness because both are explicitly typed as `Record<OrderType, ...>`:
+* **Evidence:** `getHandler` in `src/dispatch/handlers/registry.ts` uses `import.meta.glob("./*.ts")` to dynamically import and register all sibling handler files in `src/dispatch/handlers/` except `registry.ts`.
 
-1. `typeKinds: Record<OrderType, Zone["kind"][]>`: Specifies the prioritized zone kinds used by `scoreZone()` and rule `"type-routing"`.
+4. **UI Filter Options**
 
-2. `pricingByType: Record<OrderType, PricingStrategy>`: Specifies whether the order type uses `"current"` or `"legacy"` pricing calculations via `pricingStrategyFor()`.
+* **File:** `src/pages/OrderListPage.tsx`
 
----
-
-2. UI Updates
-**`src/pages/OrderListPage.tsx`** (Lines 15–21):
-
-Add the new type to the hardcoded `types` array so it renders as a selectable option in the filter dropdown:
-
-```ts
-
-const types: Array<Order["type"] | "all"> = [
-
-"all",
-
-"standard",
-
-"express",
-
-"bulk",
-
-"hazardous",
-
-"your_new_type",
-
-];
-
-```
+* **Change:** Add the new type string to `const types: Array<Order["type"] | "all">` so users can filter by the new type in the order list toolbar select element.
 
 ---
 
-3. Conditional / Domain-Specific Changes
-**Shipment Dock and Carrier Validation (`src/dispatch/validation.ts`)**:
+Conditional & Domain-Specific Changes
 
-`validateShipment()` checks `order.type` to require specific carriers (e.g., `"SecureChem Logistics"` for `"hazardous"`) and assign special docks (e.g., dock `"D4"` vs. general docks `D1–D3`). If the new order type requires custom dock assignment or carrier validation rules, add logic here.
+Depending on specific rules for the new order type:
 
-**API Request Interceptors (`src/api/interceptors/hazardous-interceptor.ts` & `src/api/interceptors/index.ts`)**:
+**Seed Data:**
 
-If the API client needs to rewrite request paths or append specific headers for the new order type (similar to how `hazardousInterceptor` redirects `/orders` to `/controlled/orders`), create an interceptor and include it in the `interceptors` array in `src/api/interceptors/index.ts`.
+* **File:** `src/data/seedData.ts`
 
-**Seed Data (`src/data/seedData.ts`)**:
+* **Details:** Update `orderSpecs` if initial mock orders of the new type should be available at startup.
 
-Add sample entries using the new type to `orderSpecs` (lines 139–250) to make test orders available in the application store (`useWarehouseStore.ts`).
+**Specialized Pricing Logic:**
 
-**Unit Tests (`src/tests/`)**:
+* **File:** `src/pricing/pricing.ts`
 
-Update or add unit tests in `src/tests/allocation.test.ts`, `src/tests/pricing.test.ts`, and `src/tests/validation.test.ts` to cover allocation behavior, pricing strategies, and validation rules for the new type.
+* **Details:** Update `calculateOrderPrice` if the new order type requires specific fees or surcharges (similar to `hazardousFee` or `priorityFee`).
+
+**Shipment Dock & Carrier Restrictions:**
+
+* **File:** `src/dispatch/validation.ts`
+
+* **Details:** Update `validateShipment` if the new order type requires carrier validation or specific dock assignments (e.g., hazardous orders requiring dock `D4` and `SecureChem Logistics`).
+
+**API Interceptors:**
+
+* **Files:** `src/api/interceptors/hazardous-interceptor.ts`, `src/api/interceptors/index.ts`
+
+* **Details:** Add a new `RequestInterceptor` and add it to `interceptors` in `src/api/interceptors/index.ts` if requests involving the new type require custom request path rewrites or headers.
+
+**Test Suites:**
+
+* **Files:** `src/tests/allocation.test.ts`, `src/tests/pricing.test.ts`, `src/tests/validation.test.ts`
+
+* **Details:** Add unit tests covering allocation scoring, pricing calculations, and shipment validation rules for the new order type.
 ```
 
 **Verdict:** <!-- correct | incorrect -->
@@ -899,104 +927,73 @@ Evidence panel: Evidence · 52 files retrieved
 Retrieved: src/config/zoneRules.ts (0.68), src/dispatch/allocator.ts (0.64), src/pricing/pricing.ts (0.64), src/tests/pricing.test.ts (0.64), src/components/ZoneCard.tsx (0.61), src/pages/ZoneOverviewPage.tsx (0.61), src/App.tsx (0.59), src/data/seedData.ts (0.59), src/dispatch/releaseService.ts (0.59), src/jobs/revalidation.ts (0.59), src/stock/reservation.ts (0.59), src/stock/stockService.ts (0.59), src/store/useWarehouseStore.ts (0.59), src/types/domain.ts (0.49), src/dispatch/handlers/registry.ts (0.46), src/events/bus.ts (0.46), src/pricing/legacyPricing.ts (0.46), src/tests/allocation.test.ts (0.46), src/utils/formatters.ts (0.44), src/api/mock-server.ts (0.43), src/components/Layout.tsx (0.43), src/components/Toasts.tsx (0.43), src/dispatch/orderService.ts (0.43), src/dispatch/validation.ts (0.43), src/main.tsx (0.43), src/notifications/listener.ts (0.43), src/notifications/service.ts (0.43), src/pages/DispatchLogPage.tsx (0.43), src/pages/OrderDetailPage.tsx (0.43), src/pages/OrderListPage.tsx (0.43), src/tests/reservation.test.ts (0.43), src/tests/validation.test.ts (0.43), src/api/api-client.ts (0.33), src/api/interceptors/hazardous-interceptor.ts (0.33), src/api/interceptors/index.ts (0.33), src/api/interceptors/types.ts (0.33), src/components/OrderCard.tsx (0.33), src/dispatch/handlers/bulkHandler.ts (0.31), src/dispatch/handlers/expressHandler.ts (0.31), src/dispatch/handlers/hazardousHandler.ts (0.31), src/dispatch/handlers/standardHandler.ts (0.31), src/styles.css (0.28), index.html (0), package.json (0), README.md (0), src/api/interceptors/audit-interceptor.ts (0), src/api/interceptors/auth-interceptor.ts (0), src/vite-env.d.ts (0), tsconfig.app.json (0), tsconfig.json (0), tsconfig.node.json (0), vite.config.ts (0)
 
 ```
-Modifying the zone rules in `src/config/zoneRules.ts` affects two distinct control paths: **zone candidate scoring for stock allocation** (`scoreZone`, `rulesFor`, `zoneRules`) and **order pricing strategy resolution** (`pricingStrategyFor`, `pricingByType`).
-
-Below is the complete trace of every downstream execution flow, runtime state mutation, UI component, event, job, and test suite affected.
+Changing the zone rules in `src/config/zoneRules.ts` affects order pricing strategy selection (`pricingStrategyFor`), order line candidate ranking (`scoreZone`), and rule collection (`rulesFor`). Because these functions feed directly into dispatch workflows, stock reservation, background revalidation, release verification, and UI consumers, the effects trace through the following paths:
 
 ---
 
-Direct Importers & Entry Points
+1. Order Pricing Strategy & Order Totals (`pricingStrategyFor`, `calculateOrderPrice`)
+**Pricing Strategy Dispatch (`src/pricing/pricing.ts`)**: `calculateOrderPrice(order)` calls `pricingStrategyFor(order)`.
 
-Only two production files directly import from `src/config/zoneRules.ts`:
+* If a type maps to `"legacy"`, `calculateLegacyPrice(order)` (`src/pricing/legacyPricing.ts`) calculates totals using pallet-based handling fees and volume discounts (> $2000 / > $5000).
 
-1. `src/dispatch/allocator.ts` imports `scoreZone` (lines 1, 23).
+* If a type maps to `"current"`, `calculateOrderPrice` calculates subtotal + weight handling (`Math.max(7.5, weight * 0.11)`) + priority fee + hazardous surcharge ($65).
 
-2. `src/pricing/pricing.ts` imports `pricingStrategyFor` (lines 1, 5).
+**Order Total Mutation (`src/dispatch/allocator.ts`)**: In `allocateOrder()`, `calculateOrderPrice` sets `order.total` on the allocated or held order result.
+**UI Consumers**:
 
----
+* `src/components/OrderCard.tsx`: Displays `order.total` formatted via `money()` or `"Pending"`.
 
-Downstream Trace 1: Zone Scoring & Allocation Flow (`scoreZone`)
-
-#### 1. Allocation Candidate Evaluation (`src/dispatch/allocator.ts`)
-
-`allocateOrder()` receives an `Order` and `Zone[]`.
-For each `OrderLine`, candidates are evaluated by calling `scoreZone(zone, prepared, line)` (`src/config/zoneRules.ts`, line 78).
-`scoreZone` invokes `rulesFor(order, line)`, filtering rules where `rule.applies()` is true and sorting by `rule.score` descending. It subtracts 25 points if `zone.kind` is not in `rule.zoneKinds`, otherwise adding `rule.prefer(zone, order, line)`.
-Candidates are filtered by `zone.active` and matching SKU stock, then sorted descending by score (`src/dispatch/allocator.ts`, lines 22–27). Stock is allocated sequentially from top-ranked candidates.
-
-#### 2. Downstream State & Event Impact (`src/dispatch/allocator.ts`, `src/stock/reservation.ts`)
-
-**Allocations & Lot Codes**: A change in rule scores, zone kinds, or predicates (`hazard-isolation`, `cold-chain`, `type-routing`, `capacity-balance`) alters which candidate zone is picked first, changing the `zoneId` and `lotCode` populated on `Allocation` objects.
-**Shortages & Status**: If scoring prefers a zone with insufficient net stock (`onHand - item.reserved + alreadyReserved`), unallocated units remain or `applyStockReservation` (`src/stock/reservation.ts`, line 28) reports shortages.
-
-* If lines remain unallocated or shortages exist (`complete === false`), `order.status` becomes `"held"` and warnings are populated (`src/dispatch/allocator.ts`, line 62).
-
-* If `complete === true`, `order.status` becomes `"allocated"`, and `eventBus.emit("order.allocated", { order })` fires (`src/dispatch/allocator.ts`, line 64). Note: there are currently no registered listeners for `"order.allocated"` on `eventBus` (`src/events/bus.ts`).
-
-#### 3. Execution Entry Points & Store Mutations (`src/store/useWarehouseStore.ts`)
-
-`allocate(id)` is called when an operator clicks "Allocate stock" in `OrderCard` (`src/components/OrderCard.tsx`, line 91) or `OrderDetailPage` (`src/pages/OrderDetailPage.tsx`, line 71).
-`allocate()` calls `allocateOrder()`, saves via `saveOrder()` (`src/dispatch/orderService.ts`), and updates Zustand store fields `orders`, `zones` (reserved stock increments), and appends an entry to `logs`.
-
-#### 4. Revalidation Background Job (`src/jobs/revalidation.ts`)
-
-`revalidateReservations()` runs periodically via `startRevalidationJob()` (`src/store/useWarehouseStore.ts`, line 88).
-Revalidation re-applies stored `order.allocations` against current zone stock using `applyStockReservation()`. If previous rule scoring forced stock into low-stock zones that later experience shortages, revalidation flips order status from `"allocated"`, `"picking"`, or `"ready"` to `"held"`, adds operator notes, and logs a `"revalidated"` audit event.
-
-#### 5. Release Service Flow (`src/dispatch/releaseService.ts`)
-
-When `release(id)` is triggered (`OrderDetailPage.tsx`, line 87), `releaseShipment()` validates `order.allocations` (which were selected via `scoreZone`).
-If allocations are missing or carrier rules fail in `validateShipment()` (`src/dispatch/validation.ts`), release throws an error, populating `globalError` in store.
-On successful release, `commitReleasedStock()` (`src/stock/stockService.ts`, line 15) decrements `onHand` and `reserved` stock. If `onHand - reserved <= reorderPoint`, it emits `stock.low`, which is handled by `installNotificationListeners()` (`src/notifications/listener.ts`, line 15) to display a warning toast (`src/components/Toasts.tsx`).
-
-#### 6. UI Consumers
-
-**`src/components/OrderCard.tsx`**: Renders progress track (`progress-track`) and unit counts based on allocated quantities.
-**`src/pages/OrderDetailPage.tsx`**: Renders line item allocation chips (`allocation-chip`), total assigned units, and shipment carrier/dock details.
-**`src/pages/ZoneOverviewPage.tsx` & `src/components/ZoneCard.tsx`**: Renders updated reserved stock counters, zone capacity percentage, available units, and reorder point warning banners (`low-warning`).
+* `src/pages/OrderDetailPage.tsx`: Displays `order.total` formatted via `money()` or `"Calculated on allocation"`.
 
 ---
 
-Downstream Trace 2: Order Pricing Flow (`pricingStrategyFor`)
+2. Candidate Zone Ranking, Allocation & Stock Reservation (`rulesFor`, `scoreZone`, `allocateOrder`)
+**Zone Candidate Scoring (`src/dispatch/allocator.ts`)**: `allocateOrder()` calls `scoreZone(zone, prepared, line)` for every active zone containing matching SKU stock. `scoreZone` filters rules using `rulesFor(order, line)` (which runs `rule.applies`), deducts `25` points if `rule.zoneKinds` excludes `zone.kind`, and adds `rule.prefer(...)`. Candidates are sorted by score descending.
+**Selection & Allocation Outcome (`src/dispatch/allocator.ts`)**: Sorting determines which zone's `onHand - reserved` stock is consumed first and which `lotCode` is attached to the generated `Allocation`.
+**Shortages, Status & Warnings (`src/dispatch/allocator.ts`)**:
 
-#### 1. Price Calculation (`src/pricing/pricing.ts`)
+* If candidate scoring changes zone order or rule exclusions prevent complete allocation, remaining unallocated units append warnings (`${line.sku} has ${remaining} unallocated units`).
 
-`calculateOrderPrice(order)` calls `pricingStrategyFor(order)` (`src/config/zoneRules.ts`, line 74) which reads `pricingByType[order.type]`.
-**"legacy" Branch**: Routes to `calculateLegacyPrice(order)` (`src/pricing/legacyPricing.ts`), computing price based on pallet counts (weight / 500kg ceiling), $18.50 pallet handling fee, and volume discounts (> $2000 = 4%, > $5000 = 7.5%).
-**"current" Branch**: Computes subtotal, weight handling (`Math.max(7.5, weight * 0.11)`), priority fees (critical = $45, urgent = $20), and hazardous surcharge ($65).
+* `applyStockReservation()` (`src/stock/reservation.ts`) reserves the accepted allocations in memory and returns additional shortage warnings if stock is insufficient.
 
-#### 2. Downstream Flow & UI Consumers
+* If allocations do not fully satisfy line quantities, `order.status` becomes `"held"` instead of `"allocated"`.
 
-`allocateOrder()` sets `order.total = calculateOrderPrice(prepared)` (`src/dispatch/allocator.ts`, line 63) and returns `total` in `AllocationBundle`.
-`order.total` is persisted in the store (`src/store/useWarehouseStore.ts`, line 125) and displayed in:
+**Emitted Events & Audit Logs (`src/dispatch/allocator.ts`, `src/store/useWarehouseStore.ts`)**:
 
-* `OrderCard` (`src/components/OrderCard.tsx`, line 59): Order value formatted via `money()`.
+* If fully allocated (`status === "allocated"`), `allocateOrder` emits `order.allocated` via `eventBus` (`src/events/bus.ts`). Note: `order.allocated` currently has no registered listeners in the codebase.
 
-* `OrderDetailPage` (`src/pages/OrderDetailPage.tsx`, line 111): Value panel displaying total price and order type handling label.
+* `useWarehouseStore.allocate()` saves the order via `saveOrder()` (`src/dispatch/orderService.ts`) and prepends a log entry to `logs` with action `"allocated"` or `"held"`.
 
 ---
 
-Affected Unit Tests
+3. Downstream Revalidation, Release, Stock Commit & Low Stock Notifications
+**Background Reservation Revalidation (`src/jobs/revalidation.ts`)**:
 
-Modifying `src/config/zoneRules.ts` directly impacts the assertion outcomes of the following test files:
+* `revalidateReservations()` re-evaluates order allocations for orders in `"allocated"`, `"picking"`, or `"ready"` status using `applyStockReservation()`.
 
-1. **`src/tests/allocation.test.ts`**:
+* If altered allocation rules lead to unfulfilled reservations during revalidation, `order.status` flips to `"held"`, a note is appended, and a `"revalidated"` log entry is added in `useWarehouseStore.ts`.
 
-* Line 16: Asserts express non-cold orders allocate to fast-pick zone `"ZB-02"` (relies on `type-routing` rule score).
+**Shipment Release Validation (`src/dispatch/releaseService.ts`, `src/dispatch/validation.ts`)**:
 
-* Line 28: Asserts hazardous item `"CL-900"` allocates exclusively to secure zone `"ZS-04"` (relies on `hazard-isolation` rule score of 100).
+* `releaseShipment()` re-applies stock reservations against current zones via `applyStockReservation()`.
 
-* Line 37: Asserts orders hold when inventory is insufficient.
+* `validateShipment()` verifies `order.allocations` (requiring positive quantities and active allocations) and enforces dock assignments (hazardous orders map to dock `"D4"`, others map via order ID hash).
 
-2. **`src/tests/pricing.test.ts`**:
+* On release, `eventBus.emit("shipment.released", ...)` fires. `installNotificationListeners()` (`src/notifications/listener.ts`) listens to `shipment.released` and creates a toast notification via `publishNotification()`.
 
-* Line 8: Imports `pricingStrategyFor` directly and asserts `pricingStrategyFor(bulk)` returns `"legacy"`.
+**Stock Commit & Low Stock Warnings (`src/stock/stockService.ts`)**:
 
-* Line 10: Asserts `calculateOrderPrice(bulk)` equals `calculateLegacyPrice(bulk)`.
+* `releaseShipment()` calls `commitReleasedStock()`, which decrements `onHand` and `reserved` counts on the committed `Zone` objects.
 
-* Line 21: Asserts standard orders incur current handling charges.
+* If `onHand - reserved <= item.reorderPoint`, `commitReleasedStock` emits `stock.low`. `installNotificationListeners()` (`src/notifications/listener.ts`) listens to `stock.low` and triggers a warning notification toast.
 
-* Line 33: Asserts hazardous orders include the dangerous goods surcharge.
+* Low stock state affects reorder alert counts in `src/pages/ZoneOverviewPage.tsx` and warning badges in `src/components/ZoneCard.tsx`.
+
+---
+
+4. Affected Automated Tests
+`src/tests/pricing.test.ts`: Directly imports `pricingStrategyFor` and `calculateOrderPrice` to verify bulk order legacy pricing dispatch and standard/hazardous pricing calculations.
+`src/tests/allocation.test.ts`: Directly calls `allocateOrder` to verify express items score fast-pick zone `ZB-02` highest, hazardous line items route to secure zone `ZS-04`, and unallocated stock forces orders into `"held"` status.
 ```
 
 **Verdict:** <!-- correct | incorrect -->
@@ -1033,76 +1030,71 @@ Evidence panel: Evidence · 52 files retrieved
 Retrieved: src/api/interceptors/hazardous-interceptor.ts (0.61), src/api/interceptors/index.ts (0.59), src/api/mock-server.ts (0.59), src/data/seedData.ts (0.59), src/dispatch/orderService.ts (0.59), src/pages/OrderListPage.tsx (0.59), src/store/useWarehouseStore.ts (0.59), src/tests/allocation.test.ts (0.59), src/tests/pricing.test.ts (0.59), src/tests/reservation.test.ts (0.59), src/tests/validation.test.ts (0.59), src/dispatch/handlers/hazardousHandler.ts (0.57), src/api/interceptors/types.ts (0.44), src/types/domain.ts (0.44), src/api/api-client.ts (0.43), src/api/interceptors/audit-interceptor.ts (0.43), src/api/interceptors/auth-interceptor.ts (0.43), src/App.tsx (0.43), src/components/Layout.tsx (0.43), src/components/OrderCard.tsx (0.43), src/components/Toasts.tsx (0.43), src/config/zoneRules.ts (0.43), src/dispatch/allocator.ts (0.43), src/dispatch/releaseService.ts (0.43), src/dispatch/validation.ts (0.43), src/jobs/revalidation.ts (0.43), src/notifications/service.ts (0.43), src/pages/DispatchLogPage.tsx (0.43), src/pages/OrderDetailPage.tsx (0.43), src/pages/ZoneOverviewPage.tsx (0.43), src/pricing/legacyPricing.ts (0.43), src/pricing/pricing.ts (0.43), src/stock/reservation.ts (0.43), src/dispatch/handlers/registry.ts (0.41), src/components/ZoneCard.tsx (0.29), src/events/bus.ts (0.29), src/stock/stockService.ts (0.29), src/utils/formatters.ts (0.29), src/main.tsx (0.28), src/notifications/listener.ts (0.28), src/dispatch/handlers/bulkHandler.ts (0.27), src/dispatch/handlers/expressHandler.ts (0.27), src/dispatch/handlers/standardHandler.ts (0.27), README.md (0.04), index.html (0), package.json (0), src/styles.css (0), src/vite-env.d.ts (0), tsconfig.app.json (0), tsconfig.json (0), tsconfig.node.json (0), vite.config.ts (0)
 
 ```
-Yes, hazardous orders (where `order.type === "hazardous"`) and order lines marked hazardous (`line.hazardous === true`) are treated differently across API interception, dispatch handler processing, zone selection scoring, shipment validation, dock assignment, pricing calculations, UI filtering, line styling, and unit test assertions.
+Yes, orders with `type === "hazardous"` or lines with `line.hazardous === true` are treated differently across API interception, order handling, zone allocation scoring, pricing, shipment validation/dock assignment, and UI display.
 
 ---
 
-1. API Request Interception & Routing
-**File:** `src/api/interceptors/hazardous-interceptor.ts` (lines 5–12)
-**Behavior:** When an `ApiRequest` body has `type === "hazardous"`, `hazardousInterceptor` rewrites the request before dispatching it to `handleRequest` in `src/api/mock-server.ts`:
+Where and How Hazardous Orders Are Treated Differently
 
-* Changes `request.path` by replacing `/orders` with `/controlled/orders`.
+#### 1. API Request Interception
+
+**File:** `src/api/interceptors/hazardous-interceptor.ts`
+**Behavior:** When an `ApiRequest` body has `type === "hazardous"`, the interceptor:
+
+* Replaces `/orders` with `/controlled/orders` in `request.path`.
 
 * Adds header `"x-controlled-load": "true"`.
 
 * Sets `request.metadata.routing = "dangerous-goods"`.
 
-**Flow:** `hazardousInterceptor` is registered in `interceptors` (`src/api/interceptors/index.ts`, lines 7–11) and called on every request via `apiClient` (`src/api/api-client.ts`, lines 15–16), such as during `saveOrder` in `src/dispatch/orderService.ts` (line 10). `handleRequest` in `src/api/mock-server.ts` (lines 7–9) normalizes `/controlled/orders` back to `/orders`.
-2. Specialized Dispatch Handler (`hazardous` Order Type)
-**File:** `src/dispatch/handlers/hazardousHandler.ts` (lines 3–27)
-**Behavior:** Automatically registered in `src/dispatch/handlers/registry.ts` when dynamic imports run in `getHandler("hazardous")`. It implements handler hooks called during `allocateOrder` (`src/dispatch/allocator.ts`, line 17) and `releaseShipment` (`src/dispatch/releaseService.ts`, line 16):
+**Flow:** `applyInterceptors` (`src/api/interceptors/index.ts`) runs `hazardousInterceptor` on API requests initiated by `apiClient` (`src/api/api-client.ts`), such as `saveOrder` in `src/dispatch/orderService.ts`. The mock server (`src/api/mock-server.ts`) normalizes `/controlled/orders` back to `/orders`.
 
-* **`prepare(order)`:** Appends `"Dangerous goods paperwork required"` to `order.notes` and overrides `order.priority` to `"urgent"`.
+#### 2. Order Preparation, Inspection, and Shipment Defaults
 
-* **`inspect(order)`:** Returns warning strings if no line has `line.hazardous === true` (`"Hazardous order has no regulated line"`) or if `order.destination.country !== "US"` (`"International dangerous goods review required"`).
+**Files:** `src/dispatch/handlers/hazardousHandler.ts`, `src/dispatch/handlers/registry.ts`
+**Behavior:** Dynamically loaded and retrieved via `getHandler("hazardous")` during `allocateOrder` (`src/dispatch/allocator.ts`) and `releaseShipment` (`src/dispatch/releaseService.ts`):
 
-* **`shipmentDefaults(order)`:** Sets default carrier to `"SecureChem Logistics"` and package count to `Math.max(1, Math.ceil(units / 4))`.
+* **`prepare(order)`**: Appends `"Dangerous goods paperwork required"` to `order.notes` and updates `order.priority` to `"urgent"`.
 
-3. Inventory Zone Selection & Preference Scoring
-**File:** `src/config/zoneRules.ts` (lines 14–19, 29–36)
+* **`inspect(order)`**: Appends warning issues if no line has `line.hazardous === true` (`"Hazardous order has no regulated line"`) or if `order.destination.country !== "US"` (`"International dangerous goods review required"`).
+
+* **`shipmentDefaults(order)`**: Sets the default `carrier` to `"SecureChem Logistics"` and `packageCount` to `Math.max(1, Math.ceil(units / 4))`.
+
+#### 3. Zone Scoring & Stock Allocation
+
+**Files:** `src/config/zoneRules.ts`, `src/dispatch/allocator.ts`
 **Behavior:**
 
-* `typeKinds.hazardous` restricts allowed zone kinds for `hazardous` order types to `["secure"]`.
+* `typeKinds.hazardous` restricts allowed zone kinds to `["secure"]`.
 
-* The `hazard-isolation` rule (score `100`) applies whenever `order.type === "hazardous" || line.hazardous`. During zone evaluation in `scoreZone` (`src/config/zoneRules.ts`, lines 79–84), non-`secure` zones lose 25 base points for kind mismatch plus 100 points (`-100`), while `secure` zones (such as `ZS-04` in `src/data/seedData.ts`, lines 403–415) gain `+80` preference points.
+* The `hazard-isolation` rule (highest score rule, score 100) applies when `order.type === "hazardous"` or `line.hazardous === true`. It adds `+80` preference score to `secure` zones (such as `ZS-04` in `src/data/seedData.ts`) and `-100` to non-secure zones.
 
-4. Shipment Validation & Dock Assignment
-**File:** `src/dispatch/validation.ts` (lines 28–30, 36)
-**Behavior:** Invoked inside `releaseShipment` (`src/dispatch/releaseService.ts`, line 32):
+#### 4. Order Pricing Surcharge
 
-* **Validation rule:** If `order.type === "hazardous"` and `shipment.carrier !== "SecureChem Logistics"`, validation fails with error `"Approved dangerous goods carrier required"`.
+**Files:** `src/pricing/pricing.ts`, `src/config/zoneRules.ts`
+**Behavior:**
 
-* **Dock assignment:** Forces `shipment.dock = "D4"` for `order.type === "hazardous"`, whereas non-hazardous orders are assigned docks `D1`, `D2`, or `D3` based on `order.id` hash modulo 3.
+* `pricingStrategyFor` in `src/config/zoneRules.ts` returns `"current"` for `"hazardous"` orders.
 
-5. Pricing Surcharges
-**File:** `src/pricing/pricing.ts` (lines 7–20)
-**Behavior:** Called during `allocateOrder` (`src/dispatch/allocator.ts`, line 59) when calculating `order.total`:
+* `calculateOrderPrice` in `src/pricing/pricing.ts` adds a flat `$65` surcharge (`hazardousFee`) if `order.lines.some((line) => line.hazardous)` is true.
 
-* `pricingStrategyFor` (`src/config/zoneRules.ts`, lines 21–26, 75–77) resolves `hazardous` orders to the `"current"` pricing strategy.
+#### 5. Shipment Carrier Validation & Dock Assignment
 
-* `calculateOrderPrice` checks if any line in the order has `line.hazardous === true`. If true, it adds a `$65` surcharge (`hazardousFee`).
+**File:** `src/dispatch/validation.ts`
+**Behavior:** During shipment validation in `validateShipment` (called by `releaseShipment` in `src/dispatch/releaseService.ts`):
 
-6. User Interface Components & Visual Indicators
-**File:** `src/pages/OrderListPage.tsx` (lines 16–22, 118–129)
+* Validation fails with error `"Approved dangerous goods carrier required"` if `order.type === "hazardous"` and `shipment.carrier !== "SecureChem Logistics"`.
 
-* Renders `"hazardous"` as an option in the "Order type" filter dropdown.
+* `shipment.dock` is hardcoded to `"D4"` when `order.type === "hazardous"`, whereas other orders are assigned to `D1`, `D2`, or `D3`.
 
-**File:** `src/pages/OrderDetailPage.tsx` (line 155) & `src/styles.css` (lines 201, 207)
+#### 6. User Interface
 
-* In the line items table, any line where `line.hazardous` is `true` renders an `<em>Controlled</em>` tag styled in light red (`background: #fae9e7; color: #aa403a;`).
+**Files:** `src/pages/OrderListPage.tsx`, `src/pages/OrderDetailPage.tsx`
+**Behavior:**
 
-7. Automated Test Assertions
-**File:** `src/tests/allocation.test.ts` (lines 18–27)
+* `src/pages/OrderListPage.tsx` includes `"hazardous"` in its order type filter dropdown.
 
-* Verifies that allocating a `hazardous` order routes stock allocations for SKU `CL-900` specifically to secure zone `ZS-04`.
-
-**File:** `src/tests/pricing.test.ts` (lines 25–34)
-
-* Asserts that `calculateOrderPrice` adds the dangerous goods surcharge for hazardous orders.
-
-**File:** `src/tests/validation.test.ts` (lines 31–46)
-
-* Asserts that validating a `hazardous` shipment fails without `"SecureChem Logistics"` and assigns dock `D4`.
+* `src/pages/OrderDetailPage.tsx` renders a `Controlled` badge (`<em>Controlled</em>`) next to any order line where `line.hazardous === true`.
 ```
 
 **Verdict:** <!-- correct | incorrect -->
@@ -1136,32 +1128,45 @@ Evidence panel: Evidence · 52 files retrieved
 Retrieved: src/dispatch/handlers/registry.ts (0.63), src/dispatch/releaseService.ts (0.63), src/dispatch/validation.ts (0.63), src/events/bus.ts (0.63), src/store/useWarehouseStore.ts (0.63), src/tests/validation.test.ts (0.63), src/App.tsx (0.45), src/components/Layout.tsx (0.45), src/components/Toasts.tsx (0.45), src/data/seedData.ts (0.45), src/dispatch/allocator.ts (0.45), src/dispatch/handlers/bulkHandler.ts (0.45), src/dispatch/handlers/expressHandler.ts (0.45), src/dispatch/handlers/hazardousHandler.ts (0.45), src/dispatch/handlers/standardHandler.ts (0.45), src/dispatch/orderService.ts (0.45), src/jobs/revalidation.ts (0.45), src/notifications/listener.ts (0.45), src/notifications/service.ts (0.45), src/pages/DispatchLogPage.tsx (0.45), src/pages/OrderDetailPage.tsx (0.45), src/pages/OrderListPage.tsx (0.45), src/pages/ZoneOverviewPage.tsx (0.45), src/stock/reservation.ts (0.45), src/stock/stockService.ts (0.45), src/types/domain.ts (0.45), src/api/api-client.ts (0.3), src/api/interceptors/hazardous-interceptor.ts (0.3), src/api/interceptors/index.ts (0.3), src/api/interceptors/types.ts (0.3), src/api/mock-server.ts (0.3), src/components/OrderCard.tsx (0.3), src/components/ZoneCard.tsx (0.3), src/config/zoneRules.ts (0.3), src/main.tsx (0.3), src/pricing/legacyPricing.ts (0.3), src/pricing/pricing.ts (0.3), src/tests/allocation.test.ts (0.3), src/tests/pricing.test.ts (0.3), src/tests/reservation.test.ts (0.3), src/utils/formatters.ts (0.3), index.html (0), package.json (0), README.md (0), src/api/interceptors/audit-interceptor.ts (0), src/api/interceptors/auth-interceptor.ts (0), src/styles.css (0), src/vite-env.d.ts (0), tsconfig.app.json (0), tsconfig.json (0), tsconfig.node.json (0), vite.config.ts (0)
 
 ```
-A dock is assigned to a shipment in **`src/dispatch/validation.ts`** within the **`validateShipment`** function.
+A dock is assigned to a shipment inside the `validateShipment` function in **`src/dispatch/validation.ts`** (lines 35–37).
 
-Assignment Logic
+Assignment Mechanics & Data Flow
 
-In `src/dispatch/validation.ts`:
+1. **Assignment Logic (`src/dispatch/validation.ts`)**
 
-The function calculates a character code sum from `order.id` (`numeric`).
-If `order.type === "hazardous"`, `shipment.dock` is set to `"D4"`.
-For all other order types, `shipment.dock` is set to `"D1"`, `"D2"`, or `"D3"` using `docks[numeric % 3]` from `const docks = ["D1", "D2", "D3", "D4"]`.
-Execution Flow and Runtime Effects
+Inside `validateShipment(shipment, order)`, `shipment.dock` is set directly via mutation on the passed `shipment` object:
 
-1. **Entry Point**: The user triggers release from `OrderDetailPage.tsx` (`src/pages/OrderDetailPage.tsx`), calling `useWarehouseStore.release(id)` (`src/store/useWarehouseStore.ts`).
+```typescript
 
-2. **Release Execution**: The store calls `releaseShipment` (`src/dispatch/releaseService.ts`), which constructs the base `shipment` object and passes it to `validateShipment(shipment, order)` (`src/dispatch/validation.ts`).
+const numeric = order.id
 
-3. **Mutation**: `validateShipment` mutates `shipment.dock` in place.
+.split("")
 
-4. **State and Event Output**:
+.reduce((sum, character) => sum + character.charCodeAt(0), 0);
 
-* `releaseShipment` copies `shipment.dock` to `releasedOrder.assignedDock` (`src/dispatch/releaseService.ts`).
+shipment.dock = order.type === "hazardous" ? "D4" : docks[numeric % 3];
 
-* The dock assignment is included in the returned dispatch log detail string (`src/dispatch/releaseService.ts`).
+```
 
-* `releaseShipment` emits the `"shipment.released"` event containing the `shipment` (`src/dispatch/releaseService.ts`).
+* **Hazardous orders (`order.type === "hazardous"`)**: Assigned dock `"D4"`.
 
-* The event listener installed in `installNotificationListeners` (`src/notifications/listener.ts`) handles `"shipment.released"` and displays the dock in a toast notification message.
+* **Non-hazardous orders**: Assigned dock `"D1"`, `"D2"`, or `"D3"` deterministically using the modulo index (`numeric % 3`) of the ASCII character code sum of `order.id` against `const docks = ["D1", "D2", "D3", "D4"]`.
+
+2. **Runtime Execution & Persistence (`src/dispatch/releaseService.ts`)**
+
+When an order is released via `releaseShipment(order, zones, actor)`:
+
+* A `Shipment` object is constructed without a `dock` property (`src/dispatch/releaseService.ts`, lines 17–25).
+
+* `releaseShipment` calls `validateShipment(shipment, order)` (`src/dispatch/releaseService.ts`, line 31), which mutates `shipment.dock`.
+
+* The assigned dock is then copied to the released order as `releasedOrder.assignedDock` (`src/dispatch/releaseService.ts`, line 36) and formatted into the dispatch log detail (`src/dispatch/releaseService.ts`, line 48).
+
+* The `shipment.released` event emits the payload containing `shipment` and `order`, which `installNotificationListeners` (`src/notifications/listener.ts`, lines 10–16) reads to display the dock location in UI notifications.
+
+3. **Store & Consumer Reaching (`src/store/useWarehouseStore.ts`)**
+
+* The store action `release(id)` (`src/store/useWarehouseStore.ts`, lines 212–237) calls `releaseShipment`, persists the updated order via `saveOrder`, and updates the store state, making `assignedDock` available to components such as `OrderDetailPage` (`src/pages/OrderDetailPage.tsx`, line 253).
 ```
 
 **Verdict:** <!-- correct | incorrect -->

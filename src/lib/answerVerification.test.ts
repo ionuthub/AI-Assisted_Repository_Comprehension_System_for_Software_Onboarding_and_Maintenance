@@ -133,9 +133,13 @@ describe("verification prompts", () => {
     expect(prompt).toContain("if every live caller supplies an override");
     expect(prompt).toContain("explicitly identify relevant emitted event types with no listener");
     expect(prompt).toContain("whether it mutates the supplied objects or a cloned structure");
-    expect(prompt).toContain("do not count seed values, initialization, resets, decrements");
+    expect(prompt).toContain("never reduce the final answer to only the strategy name and mapping");
+    expect(prompt).toContain("the opening answer and total must count only production sites");
+    expect(prompt).toContain("explicitly exclude seed values, initialization, resets, decrements");
     expect(prompt).toContain("inspect the complete returned object or assignment block");
     expect(prompt).toContain("audit every file-location claim and causal statement");
+    expect(prompt).toContain("compare the opening answer and every heading with later qualifications");
+    expect(prompt).toContain("do not claim a live downstream effect when all live callers bypass");
     expect(prompt).toContain("recompute comparisons");
     expect(prompt).toContain("One listener creates a notification.");
   });

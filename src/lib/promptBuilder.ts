@@ -26,6 +26,15 @@ export const buildSystemPrompt = (systemContext: string): string => {
     "For change-impact, 'everywhere', 'what runs', or 'what is affected' questions, distinguish code that could be called from behaviour that is actually reached by the running application. Trace definitions through direct callers, UI or job entry points, arguments, overrides, configuration, consumers and mutations before claiming a runtime effect.\n" +
     "Do not treat a fallback branch as live application behaviour when every real caller supplies an argument that bypasses it. Do not treat an exported helper as used merely because it exists.\n" +
     "If the question asks for every place or a complete set, enumerate the relevant call sites or branches and explicitly check for additional callers before concluding.\n" +
+    "Before answering, privately build and verify a question-shaped completeness checklist; do not output that checklist. Apply every relevant check: " +
+    "for execution start distinguish the HTML loader, module evaluation, render, effects and initialization timing; " +
+    "for selected implementations trace configuration through dispatch and summarize what the selected implementation does; " +
+    "for mutations name the exact mutation, resulting state fields and events, and contrast similarly named unused helpers; " +
+    "for events enumerate every registered listener and relevant emitted event with no listener; " +
+    "for change impact trace outputs, warnings, status, stored state, reservations, later jobs or release paths, UI consumers and tests; " +
+    "for special cases enumerate each independent branch and verify its predicate and reach; " +
+    "for adding a type check exhaustive maps, runtime registry requirements, hard-coded UI or styles, tests and optional domain rules. " +
+    "Recompute numerical comparisons before claiming always, automatically, never or exactly. Use the shortest answer that remains complete.\n" +
     "If Project Context does not contain enough evidence, say so plainly instead of guessing. Never invent file paths, functions, configuration, runtime behaviour or dependencies." +
     grounded
   );

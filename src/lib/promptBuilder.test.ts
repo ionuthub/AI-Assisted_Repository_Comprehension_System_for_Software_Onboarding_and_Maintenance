@@ -64,4 +64,12 @@ describe('buildSystemPrompt', () => {
     expect(prompt).not.toMatch(/Level:/);
     expect(prompt).not.toMatch(/beginner|intermediate/i);
   });
+
+  it('requires a private exhaustive audit before the single generated answer', () => {
+    const prompt = buildSystemPrompt('');
+    expect(prompt).toContain('question-shaped completeness checklist');
+    expect(prompt).toContain('enumerate every registered listener');
+    expect(prompt).toContain('Recompute numerical comparisons');
+    expect(prompt).toContain('shortest answer that remains complete');
+  });
 });

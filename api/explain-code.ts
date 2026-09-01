@@ -14,7 +14,6 @@ import {
   systemContextFitsBudget,
 } from '../src/lib/promptBuilder';
 import {
-  buildAnswerAuditPrompt,
   buildAnswerRepairPrompt,
   extractEvidencePathsFromContext,
   verifyGeneratedAnswer,
@@ -277,15 +276,7 @@ async function generateVerifiedAnswer(
     checkedInputTokens,
   };
 
-  const draft = await callGemini(messages, systemPrompt, apiKey, signal);
-  addUsage(usage, draft.usageMetadata);
-
-  let reviewed = await callGemini(
-    [{ role: 'user', content: buildAnswerAuditPrompt(question, draft.text) }],
-    systemPrompt,
-    apiKey,
-    signal
-  );
+  let reviewed = await callGemini(messages, systemPrompt, apiKey, signal);
   addUsage(usage, reviewed.usageMetadata);
 
   let verification = verifyGeneratedAnswer(reviewed.text, evidence);
@@ -328,7 +319,7 @@ function streamVerifiedAnswer(
     start(streamController) {
       // Send one ignorable newline immediately. The client already ignores blank NDJSON lines.
       // This commits the response before Vercel Edge's initial-response deadline while keeping
-      // every unverified model token private until draft -> review -> evidence verification passes.
+      // every unverified model token private until exhaustive generation and evidence checks pass.
       streamController.enqueue(encoder.encode('\n'));
 
       void (async () => {

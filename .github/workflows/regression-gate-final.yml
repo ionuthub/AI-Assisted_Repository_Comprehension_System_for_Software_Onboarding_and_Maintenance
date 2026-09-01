@@ -123,6 +123,124 @@ jobs:
               raise SystemExit('Could not find the gate provenance block to bind the resolved model')
           text = text.replace(old_gate_model, new_gate_model)
 
+          retry_old = '''for (const { id, question } of questions) {
+            process.stdout.write(`Q${id} … `);
+
+            // The final interface exposes repository Q&A under the Answers workspace tab.
+            // The first question and follow-up questions use separate accessible inputs.
+            let questionInput = page.locator('#repository-question');
+            if ((await questionInput.count()) === 0) {
+              const followUp = page.locator('#repository-question-follow-up');
+              if ((await followUp.count()) === 0) {
+                await page.getByRole('button', { name: 'Answers' }).click();
+                questionInput = page.locator('#repository-question');
+                await questionInput.waitFor();
+              } else {
+                questionInput = followUp;
+              }
+            }
+            await questionInput.fill(question);
+            await questionInput.press('Enter');
+
+            const answerPanel = page.locator('[data-generation-status]').first();
+            await answerPanel.waitFor({ timeout: 300_000 });
+            const generationStatus = await answerPanel.getAttribute("data-generation-status");
+            const finishReason = await answerPanel.getAttribute("data-finish-reason");
+            const resolvedModel = await answerPanel.getAttribute("data-model");
+            const promptTokenCount = await answerPanel.getAttribute("data-prompt-token-count");
+            const outputTokenCount = await answerPanel.getAttribute("data-output-token-count");
+            const totalTokenCount = await answerPanel.getAttribute("data-total-token-count");
+            if (generationStatus !== "complete" || finishReason !== "STOP") {
+              const visible = (await answerPanel.innerText()).replace(/\\s+/g, " ").trim().slice(0, 240);
+              throw new Error(
+                `Q${id} generation incomplete: status=${generationStatus ?? "missing"}, ` +
+                  `finishReason=${finishReason ?? "missing"}, answer=${JSON.stringify(visible)}`
+              );
+            }'''
+          retry_new = '''for (const { id, question } of questions) {
+            process.stdout.write(`Q${id} … `);
+
+            // A provider capacity spike must not discard earlier completed questions. Retry only
+            // incomplete/error responses; a completed answer is never re-rolled for its content.
+            const maxGenerationAttempts = 3;
+            let generationAttempts = 0;
+            let answerPanel;
+            let generationStatus;
+            let finishReason;
+            let resolvedModel;
+            let promptTokenCount;
+            let outputTokenCount;
+            let totalTokenCount;
+
+            for (let attempt = 1; attempt <= maxGenerationAttempts; attempt += 1) {
+              generationAttempts = attempt;
+
+              // The final interface exposes repository Q&A under the Answers workspace tab.
+              // The first question and follow-up questions use separate accessible inputs.
+              let questionInput = page.locator('#repository-question');
+              if ((await questionInput.count()) === 0) {
+                const followUp = page.locator('#repository-question-follow-up');
+                if ((await followUp.count()) === 0) {
+                  await page.getByRole('button', { name: 'Answers' }).click();
+                  questionInput = page.locator('#repository-question');
+                  await questionInput.waitFor();
+                } else {
+                  questionInput = followUp;
+                }
+              }
+              await questionInput.fill(question);
+              await questionInput.press('Enter');
+
+              answerPanel = page.locator('[data-generation-status]').first();
+              let visible = '';
+              try {
+                await answerPanel.waitFor({ timeout: 300_000 });
+                generationStatus = await answerPanel.getAttribute("data-generation-status");
+                finishReason = await answerPanel.getAttribute("data-finish-reason");
+                resolvedModel = await answerPanel.getAttribute("data-model");
+                promptTokenCount = await answerPanel.getAttribute("data-prompt-token-count");
+                outputTokenCount = await answerPanel.getAttribute("data-output-token-count");
+                totalTokenCount = await answerPanel.getAttribute("data-total-token-count");
+                visible = (await answerPanel.innerText()).replace(/\\s+/g, " ").trim().slice(0, 240);
+              } catch (error) {
+                visible = String(error).replace(/\\s+/g, " ").slice(0, 240);
+              }
+
+              if (generationStatus === "complete" && finishReason === "STOP") break;
+
+              const transient = /(?:\\b429\\b|\\b503\\b|high demand|UNAVAILABLE|request timeout|Timeout)/i.test(visible);
+              if (!transient || attempt === maxGenerationAttempts) {
+                throw new Error(
+                  `Q${id} generation incomplete after ${attempt} attempt(s): ` +
+                    `status=${generationStatus ?? "missing"}, ` +
+                    `finishReason=${finishReason ?? "missing"}, answer=${JSON.stringify(visible)}`
+                );
+              }
+
+              const delaySeconds = 30 * attempt;
+              console.log(`transient generation failure on attempt ${attempt}; retrying in ${delaySeconds}s`);
+              await page.keyboard.press("Escape");
+              await page.waitForTimeout(delaySeconds * 1000);
+            }'''
+          if retry_old not in text:
+              raise SystemExit('Could not find the patched generation block to add transient retries')
+          text = text.replace(retry_old, retry_new)
+
+          old_attempts = '''    generation: {
+                status: generationStatus,
+                finishReason,
+                model: resolvedModel,
+                usageMetadata: {'''
+          new_attempts = '''    generation: {
+                status: generationStatus,
+                finishReason,
+                model: resolvedModel,
+                attempts: generationAttempts,
+                usageMetadata: {'''
+          if old_attempts not in text:
+              raise SystemExit('Could not find the generation record to add attempt provenance')
+          text = text.replace(old_attempts, new_attempts)
+
           path.write_text(text)
           PY
 

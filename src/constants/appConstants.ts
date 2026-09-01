@@ -44,8 +44,9 @@ export const MODEL_BUDGET = {
   // exhausted 4,096 tokens while reviewing a cross-file answer before any final answer could
   // be released, so leave enough headroom for both reasoning and the concise visible response.
   MAX_OUTPUT_TOKENS: 8_192,
-  // Keep the application abort below Vercel's 300-second function limit while allowing the
-  // verified draft-and-review pipeline to finish under variable model latency.
-  MAX_REQUEST_DURATION_MS: 240_000,
+  // Run 13 observed audited answers completing at the old 240-second boundary and the next
+  // request being aborted there. Keep a 15-second platform margin under Vercel's 300-second
+  // function limit while allowing the verified draft-and-review pipeline to finish.
+  MAX_REQUEST_DURATION_MS: 285_000,
   MAX_VERIFICATION_ATTEMPTS: 2,
 } as const;

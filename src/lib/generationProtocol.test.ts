@@ -33,8 +33,8 @@ describe("Gemini stream parsing", () => {
     expect(GENERATION_CONFIG).not.toHaveProperty("temperature");
   });
 
-  it("uses a focused low-reasoning semantic audit within the request deadline", () => {
-    expect(AUDIT_GENERATION_CONFIG.thinkingConfig.thinkingLevel).toBe("low");
+  it("uses medium reasoning for the independent semantic audit", () => {
+    expect(AUDIT_GENERATION_CONFIG.thinkingConfig.thinkingLevel).toBe("medium");
     expect(AUDIT_GENERATION_CONFIG.maxOutputTokens).toBe(GENERATION_CONFIG.maxOutputTokens);
     expect(AUDIT_GENERATION_CONFIG).not.toHaveProperty("temperature");
   });

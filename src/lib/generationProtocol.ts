@@ -16,9 +16,9 @@ export const GENERATION_CONFIG = {
   maxOutputTokens: MODEL_BUDGET.MAX_OUTPUT_TOKENS,
 } as const;
 
-/** A focused low-latency pass checks the draft against the explicit semantic audit rubric. */
+/** A medium-reasoning pass checks the draft against the explicit semantic audit rubric. */
 export const AUDIT_GENERATION_CONFIG = {
-  thinkingConfig: { thinkingLevel: "low" },
+  thinkingConfig: { thinkingLevel: "medium" },
   maxOutputTokens: MODEL_BUDGET.MAX_OUTPUT_TOKENS,
 } as const;
 

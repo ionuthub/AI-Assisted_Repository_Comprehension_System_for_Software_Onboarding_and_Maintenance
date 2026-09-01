@@ -16,7 +16,6 @@ import {
 import {
   buildAnswerAuditPrompt,
   buildAnswerRepairPrompt,
-  buildAnswerReviewPrompt,
   extractEvidencePathsFromContext,
   verifyGeneratedAnswer,
 } from '../src/lib/answerVerification';
@@ -282,15 +281,7 @@ async function generateVerifiedAnswer(
   addUsage(usage, draft.usageMetadata);
 
   let reviewed = await callGemini(
-    [{ role: 'user', content: buildAnswerReviewPrompt(question, draft.text) }],
-    systemPrompt,
-    apiKey,
-    signal
-  );
-  addUsage(usage, reviewed.usageMetadata);
-
-  reviewed = await callGemini(
-    [{ role: 'user', content: buildAnswerAuditPrompt(question, reviewed.text) }],
+    [{ role: 'user', content: buildAnswerAuditPrompt(question, draft.text) }],
     systemPrompt,
     apiKey,
     signal

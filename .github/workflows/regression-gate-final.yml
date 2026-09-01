@@ -172,7 +172,7 @@ jobs:
 
             // A provider capacity spike must not discard earlier completed questions. Retry only
             // incomplete/error responses; a completed answer is never re-rolled for its content.
-            const maxGenerationAttempts = 3;
+            const maxGenerationAttempts = 5;
             let generationAttempts = 0;
             let answerPanel;
             let generationStatus;
@@ -227,7 +227,7 @@ jobs:
                 );
               }
 
-              const delaySeconds = 30 * attempt;
+              const delaySeconds = Math.min(60 * 2 ** (attempt - 1), 360);
               console.log(`transient generation failure on attempt ${attempt}; retrying in ${delaySeconds}s`);
               await page.keyboard.press("Escape");
               await page.waitForTimeout(delaySeconds * 1000);

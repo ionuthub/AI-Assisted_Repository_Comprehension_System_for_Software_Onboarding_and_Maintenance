@@ -170,7 +170,7 @@ jobs:
             --truth study/ground-truth.clinic-triage.md \
             --accept-tool-verified \
             --url https://repo-comprehension-system.vercel.app/ \
-            --tool-version 756d6cf
+            --tool-version 1a8b964
 
       - name: Checkpoint completed clinic evidence
         run: |
@@ -200,7 +200,7 @@ jobs:
             --truth study/ground-truth.warehouse-dispatch.md \
             --accept-tool-verified \
             --url https://repo-comprehension-system.vercel.app/ \
-            --tool-version 756d6cf
+            --tool-version 1a8b964
 
       - name: Build bound marking sheets
         run: |

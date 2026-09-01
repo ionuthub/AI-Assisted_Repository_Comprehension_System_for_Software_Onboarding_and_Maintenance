@@ -33,7 +33,7 @@ describe("Gemini stream parsing", () => {
   });
 
   it("allows verified generation to outlive the former 90-second abort", () => {
-    expect(MODEL_BUDGET.MAX_REQUEST_DURATION_MS).toBe(240_000);
+    expect(MODEL_BUDGET.MAX_REQUEST_DURATION_MS).toBe(285_000);
   });
 
   it("retries temporary provider failures but not a monthly spending cap", () => {

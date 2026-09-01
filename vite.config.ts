@@ -2,6 +2,7 @@ import { defineConfig, loadEnv } from "vite";
 import react from "@vitejs/plugin-react-swc";
 import path from "path";
 import {
+  AUDIT_GENERATION_CONFIG,
   DEFAULT_GEMINI_MODEL,
   encodeGenerationEvent,
   GENERATION_CONFIG,
@@ -14,6 +15,7 @@ import {
   systemContextFitsBudget,
 } from "./src/lib/promptBuilder";
 import {
+  buildAnswerAuditPrompt,
   buildAnswerRepairPrompt,
   extractEvidencePathsFromContext,
   verifyGeneratedAnswer,
@@ -73,7 +75,8 @@ async function callDevGemini(
   systemPrompt: string,
   model: string,
   apiKey: string,
-  signal: AbortSignal
+  signal: AbortSignal,
+  generationConfig: typeof GENERATION_CONFIG | typeof AUDIT_GENERATION_CONFIG = GENERATION_CONFIG
 ): Promise<DevGeminiResult> {
   const response = await fetch(
     `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`,
@@ -83,7 +86,7 @@ async function callDevGemini(
       body: JSON.stringify({
         contents: toGeminiContents(messages),
         systemInstruction: { parts: [{ text: systemPrompt }] },
-        generationConfig: GENERATION_CONFIG,
+        generationConfig,
       }),
       signal,
     }
@@ -137,7 +140,17 @@ async function generateVerifiedDevAnswer(
     modelCalls += 1;
   };
 
-  let reviewed = await callDevGemini(messages, systemPrompt, model, apiKey, signal);
+  const draft = await callDevGemini(messages, systemPrompt, model, apiKey, signal);
+  addUsage(draft.usageMetadata);
+
+  let reviewed = await callDevGemini(
+    [{ role: 'user', content: buildAnswerAuditPrompt(question, draft.text) }],
+    systemPrompt,
+    model,
+    apiKey,
+    signal,
+    AUDIT_GENERATION_CONFIG
+  );
   addUsage(reviewed.usageMetadata);
 
   let verification = verifyGeneratedAnswer(reviewed.text, evidence);

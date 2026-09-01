@@ -1,8 +1,8 @@
 {
  "repository": "clinic-triage",
  "date": "",
- "toolVersion": "57db6f2",
- "model": "gemini-3.7-flash",
+ "toolVersion": "cdbff3e",
+ "model": "gemini-3.6-flash",
  "generation": {
   "thinkingLevel": "medium",
   "maxOutputTokens": 8192,
@@ -26,7 +26,288 @@
     "src/App.tsx:7-8",
     "src/App.tsx:11-21"
    ],
-   "correctAnswerNotes": "The comment at src/main.tsx:5 states that an Internet Explorer compatibility shim is required.\nNo shim is imported and no code acts on it. The comment describes something the code does not\ndo.\n\nAn earlier version of this answer said nothing reads a value from either module. That is true\nof `scheduling/eventListener`, whose only export has no callers, and false of `audit/logger`:\n`AuditLogPage` imports `getEventAudit` and calls it, which is what Q8 relies on when it says\nthe audit list reaches the screen. The claim about lines 7 and 8 is about those two statements,\nnot about the modules elsewhere in the application."
+   "correctAnswerNotes": "The comment at src/main.tsx:5 states that an Internet Explorer compatibility shim is required.\nNo shim is imported and no code acts on it. The comment describes something the code does not\ndo.\n\nAn earlier version of this answer said nothing reads a value from either module. That is true\nof `scheduling/eventListener`, whose only export has no callers, and false of `audit/logger`:\n`AuditLogPage` imports `getEventAudit` and calls it, which is what Q8 relies on when it says\nthe audit list reaches the screen. The claim about lines 7 and 8 is about those two statements,\nnot about the modules elsewhere in the application.",
+   "toolAnswer": "Execution starts in **`index.html`**, which serves as the document entry point and loads the primary module via `<script type=\"module\" src=\"/src/main.tsx\"></script>`.\n\n---\n\nKey Stages of Application Startup\n\n1. **HTML Document Loading (`index.html`)**\n\nThe browser loads `index.html`, which provides the `<div id=\"root\"></div>` DOM container and specifies `/src/main.tsx` as the JavaScript module entry point [`index.html`].\n\n2. **Module Entry & DOM Mounting (`src/main.tsx`)**\n\n`src/main.tsx` imports React, `App`, and the CSS styling [`src/main.tsx`]. It executes `ReactDOM.createRoot` on `#root` and renders the top-level `<App />` component inside React's strict mode [`src/main.tsx`].\n\n3. **Module Evaluation & Event Registration (`src/App.tsx`)**\n\nWhen `src/App.tsx` is imported and evaluated, two side-effect modules are executed immediately prior to component rendering [`src/App.tsx`]:\n\n* `src/scheduling/eventListener.ts` — Registers an event listener on `clinicEvents` for `\"appointment:booked\"` [`src/scheduling/eventListener.ts`].\n\n* `src/audit/logger.ts` — Registers an event listener on `clinicEvents` for `\"appointment:booked\"` to write audit entries [`src/audit/logger.ts`].\n\n4. **Router & Initial View Rendering (`src/App.tsx`)**\n\n`App` initializes `<BrowserRouter>` with a layout shell route (`Layout`) and mounts the default index route, **`ReferralListPage`** [`src/App.tsx`, `src/pages/ReferralListPage.tsx`].",
+   "toolEvidence": [
+    {
+     "rank": 1,
+     "path": "src/main.tsx",
+     "score": 0.9
+    },
+    {
+     "rank": 2,
+     "path": "src/App.tsx",
+     "score": 0.68
+    },
+    {
+     "rank": 3,
+     "path": "src/styles.css",
+     "score": 0.65
+    },
+    {
+     "rank": 4,
+     "path": "package.json",
+     "score": 0.64
+    },
+    {
+     "rank": 5,
+     "path": "src/data/seed.ts",
+     "score": 0.61
+    },
+    {
+     "rank": 6,
+     "path": "src/audit/logger.ts",
+     "score": 0.49
+    },
+    {
+     "rank": 7,
+     "path": "src/components/Layout.tsx",
+     "score": 0.49
+    },
+    {
+     "rank": 8,
+     "path": "src/pages/AuditLogPage.tsx",
+     "score": 0.49
+    },
+    {
+     "rank": 9,
+     "path": "src/pages/ClinicianOverviewPage.tsx",
+     "score": 0.49
+    },
+    {
+     "rank": 10,
+     "path": "src/pages/ReferralDetailPage.tsx",
+     "score": 0.49
+    },
+    {
+     "rank": 11,
+     "path": "src/pages/ReferralListPage.tsx",
+     "score": 0.49
+    },
+    {
+     "rank": 12,
+     "path": "src/scheduling/eventListener.ts",
+     "score": 0.49
+    },
+    {
+     "rank": 13,
+     "path": "src/store/useClinicStore.ts",
+     "score": 0.44
+    },
+    {
+     "rank": 14,
+     "path": "src/tests/banding.test.ts",
+     "score": 0.44
+    },
+    {
+     "rank": 15,
+     "path": "src/tests/eligibility.test.ts",
+     "score": 0.44
+    },
+    {
+     "rank": 16,
+     "path": "src/tests/registry.test.ts",
+     "score": 0.44
+    },
+    {
+     "rank": 17,
+     "path": "src/tests/scheduling.test.ts",
+     "score": 0.44
+    },
+    {
+     "rank": 18,
+     "path": "src/types/domain.ts",
+     "score": 0.44
+    },
+    {
+     "rank": 19,
+     "path": "src/components/PriorityPanel.tsx",
+     "score": 0.33
+    },
+    {
+     "rank": 20,
+     "path": "src/components/ReferralTable.tsx",
+     "score": 0.33
+    },
+    {
+     "rank": 21,
+     "path": "src/components/SlotPicker.tsx",
+     "score": 0.33
+    },
+    {
+     "rank": 22,
+     "path": "src/events/channel.ts",
+     "score": 0.33
+    },
+    {
+     "rank": 23,
+     "path": "src/hooks/useReferralFilters.ts",
+     "score": 0.33
+    },
+    {
+     "rank": 24,
+     "path": "src/jobs/nightlyReverification.ts",
+     "score": 0.33
+    },
+    {
+     "rank": 25,
+     "path": "src/triage/routes/loadRoutes.ts",
+     "score": 0.33
+    },
+    {
+     "rank": 26,
+     "path": "src/triage/routes/registry.ts",
+     "score": 0.33
+    },
+    {
+     "rank": 27,
+     "path": "src/utils/format.ts",
+     "score": 0.33
+    },
+    {
+     "rank": 28,
+     "path": "src/api/pipeline/redact-stage.ts",
+     "score": 0.29
+    },
+    {
+     "rank": 29,
+     "path": "src/api/referrals-api.ts",
+     "score": 0.29
+    },
+    {
+     "rank": 30,
+     "path": "src/config/priorityRules.ts",
+     "score": 0.29
+    },
+    {
+     "rank": 31,
+     "path": "src/events/types.ts",
+     "score": 0.29
+    },
+    {
+     "rank": 32,
+     "path": "src/scheduling/service.ts",
+     "score": 0.29
+    },
+    {
+     "rank": 33,
+     "path": "src/scheduling/types.ts",
+     "score": 0.29
+    },
+    {
+     "rank": 34,
+     "path": "src/triage/banding.ts",
+     "score": 0.29
+    },
+    {
+     "rank": 35,
+     "path": "src/triage/eligibility.ts",
+     "score": 0.29
+    },
+    {
+     "rank": 36,
+     "path": "src/triage/validation.ts",
+     "score": 0.29
+    },
+    {
+     "rank": 37,
+     "path": "index.html",
+     "score": 0
+    },
+    {
+     "rank": 38,
+     "path": "README.md",
+     "score": 0
+    },
+    {
+     "rank": 39,
+     "path": "src/api/api-client.ts",
+     "score": 0
+    },
+    {
+     "rank": 40,
+     "path": "src/api/pipeline/auth-stage.ts",
+     "score": 0
+    },
+    {
+     "rank": 41,
+     "path": "src/api/pipeline/trace-stage.ts",
+     "score": 0
+    },
+    {
+     "rank": 42,
+     "path": "src/api/pipeline/types.ts",
+     "score": 0
+    },
+    {
+     "rank": 43,
+     "path": "src/scheduling/oldSlotFinder.ts",
+     "score": 0
+    },
+    {
+     "rank": 44,
+     "path": "src/scheduling/slotFinder.ts",
+     "score": 0
+    },
+    {
+     "rank": 45,
+     "path": "src/triage/routes/followUp.ts",
+     "score": 0
+    },
+    {
+     "rank": 46,
+     "path": "src/triage/routes/routine.ts",
+     "score": 0
+    },
+    {
+     "rank": 47,
+     "path": "src/triage/routes/safeguarding.ts",
+     "score": 0
+    },
+    {
+     "rank": 48,
+     "path": "src/triage/routes/urgent.ts",
+     "score": 0
+    },
+    {
+     "rank": 49,
+     "path": "tsconfig.app.json",
+     "score": 0
+    },
+    {
+     "rank": 50,
+     "path": "tsconfig.json",
+     "score": 0
+    },
+    {
+     "rank": 51,
+     "path": "tsconfig.node.json",
+     "score": 0
+    },
+    {
+     "rank": 52,
+     "path": "vite.config.ts",
+     "score": 0
+    }
+   ],
+   "toolEvidenceHeading": "Evidence · 52 files retrieved",
+   "toolUnverifiedMentions": [],
+   "toolCoverage": "Searched 52 of 52 eligible repository files. Ranking scores combine retrieval signals and do not measure answer correctness.",
+   "toolScreenshot": "study/gate-screenshots/clinic-triage-q01.png",
+   "toolScreenshotComplete": true,
+   "toolGeneration": {
+    "status": "complete",
+    "finishReason": "STOP",
+    "model": "gemini-3.6-flash",
+    "attempts": 1,
+    "capturedAt": "2026-09-01T11:28:39.303Z",
+    "usageMetadata": {
+     "promptTokenCount": 32938,
+     "candidatesTokenCount": 388,
+     "totalTokenCount": 33880
+    }
+   },
+   "correct": null
   },
   {
    "id": 2,
@@ -44,7 +325,288 @@
     "src/pages/ReferralDetailPage.tsx:49",
     "src/pages/ReferralDetailPage.tsx:96-104"
    ],
-   "correctAnswerNotes": "Each entry in `priorityRules` declares a `band`, and `calculateBand` never reads it — line 22\ntakes `band` from `bandThresholds`, not from the rule. The declared band is not merely unused,\nit is misleading in two cases. A routine referral (0 base points) matching only `mobility`\nscores 2 and resolves to green, though the rule declares amber; the same holds for\n`post-discharge`, which declares amber and is worth 3 points. Only the accumulated score and\n`bandThresholds` determine the outcome.\n\nThe \"unless the operator supplies an override\" clause is doing more work than it appears. From\nthe interface an override is *always* supplied: `ReferralDetailPage` seeds its local `priority`\nstate to `referral?.priority ?? \"green\"` and passes it unconditionally to `acceptReferral`. The\noverride is therefore never `undefined`, so `calculateBand` never determines a stored band\nthrough the UI. Its result reaches the operator only as a suggestion in `PriorityPanel`.\n\nA band *can* be changed after acceptance, but not through the action named for it. The Accept\nbutton is relabelled \"Update priority\" whenever the status is not `incoming`, stays enabled\nuntil the referral is booked, and calls `acceptReferral` again with the panel's current\nselection — which stores the new band, re-runs `checkEligibility`, re-emits `referral:accepted`\nand writes an audit entry reading \"Referral accepted\" for what the interface called an update.\n\nThe store also exposes a `setPriority` action for the same purpose, and nothing calls it. `grep -rn setPriority src` returns four lines: the interface declaration, the\nimplementation, and two in `ReferralDetailPage` that are the component's own `useState` setter,\nnot the store action — a name collision, and the reason an earlier version of this answer\npresented the action as a live path. Striking the clause outright then went too far in the\nother direction, implying nothing re-bands after acceptance when the Accept button does.\n\nThe absence was confirmed by enumeration rather than by the grep alone. `useClinicStore` appears\non twenty-seven lines across seven files — `eligibility.test.ts` (9), `ReferralDetailPage` (6),\n`AuditLogPage` (3), `ClinicianOverviewPage` (3), `Layout` (3), `ReferralListPage` (2), and the\nstore's own definition (1) — and seventeen member references reached through `state.` or\n`getState().`, one of them split across `eligibility.test.ts:12-14` and so invisible to a\nline-oriented grep. None reaches `state.setPriority`. The audit entry the\naction writes, \"Priority changed\", can therefore never appear in the application."
+   "correctAnswerNotes": "Each entry in `priorityRules` declares a `band`, and `calculateBand` never reads it — line 22\ntakes `band` from `bandThresholds`, not from the rule. The declared band is not merely unused,\nit is misleading in two cases. A routine referral (0 base points) matching only `mobility`\nscores 2 and resolves to green, though the rule declares amber; the same holds for\n`post-discharge`, which declares amber and is worth 3 points. Only the accumulated score and\n`bandThresholds` determine the outcome.\n\nThe \"unless the operator supplies an override\" clause is doing more work than it appears. From\nthe interface an override is *always* supplied: `ReferralDetailPage` seeds its local `priority`\nstate to `referral?.priority ?? \"green\"` and passes it unconditionally to `acceptReferral`. The\noverride is therefore never `undefined`, so `calculateBand` never determines a stored band\nthrough the UI. Its result reaches the operator only as a suggestion in `PriorityPanel`.\n\nA band *can* be changed after acceptance, but not through the action named for it. The Accept\nbutton is relabelled \"Update priority\" whenever the status is not `incoming`, stays enabled\nuntil the referral is booked, and calls `acceptReferral` again with the panel's current\nselection — which stores the new band, re-runs `checkEligibility`, re-emits `referral:accepted`\nand writes an audit entry reading \"Referral accepted\" for what the interface called an update.\n\nThe store also exposes a `setPriority` action for the same purpose, and nothing calls it. `grep -rn setPriority src` returns four lines: the interface declaration, the\nimplementation, and two in `ReferralDetailPage` that are the component's own `useState` setter,\nnot the store action — a name collision, and the reason an earlier version of this answer\npresented the action as a live path. Striking the clause outright then went too far in the\nother direction, implying nothing re-bands after acceptance when the Accept button does.\n\nThe absence was confirmed by enumeration rather than by the grep alone. `useClinicStore` appears\non twenty-seven lines across seven files — `eligibility.test.ts` (9), `ReferralDetailPage` (6),\n`AuditLogPage` (3), `ClinicianOverviewPage` (3), `Layout` (3), `ReferralListPage` (2), and the\nstore's own definition (1) — and seventeen member references reached through `state.` or\n`getState().`, one of them split across `eligibility.test.ts:12-14` and so invisible to a\nline-oriented grep. None reaches `state.setPriority`. The audit entry the\naction writes, \"Priority changed\", can therefore never appear in the application.",
+   "toolAnswer": "A referral is assigned its priority band (**`\"red\"`**, **`\"amber\"`**, or **`\"green\"`**) through an automated scoring rule system that suggests a band, which is then confirmed or manually overridden when a user accepts or updates the referral.\n\n---\n\n1. Automated Score Calculation\n\nThe algorithm in `calculateBand` calculates a numerical score based on the referral's type and clinical signals (`src/triage/banding.ts`):\n\n1. **Base Points by Pathway Type** (`src/config/priorityRules.ts`):\n\n- `safeguarding`: 8 points\n\n- `urgent`: 5 points\n\n- `followUp`: 1 point\n\n- `routine`: 0 points\n\n2. **Signal Rules Added** (`src/config/priorityRules.ts`):\n\n- `safeguarding-signal`: +10 points if `safeguardingConcern` is true\n\n- `rapid-deterioration`: +7 points if `deterioration` is true and `painScore >= 7`\n\n- `severe-pain`: +4 points if `painScore >= 7`\n\n- `post-discharge`: +3 points if `recentDischarge` is true\n\n- `mobility`: +2 points if `mobilityRisk` is true\n\n- `persistent-symptoms`: +1 point if `symptomDays > 21`\n\n3. **Threshold Matching** (`src/config/priorityRules.ts`):\n\nTotal points map to the first matching threshold:\n\n- **Score $\\ge$ 9**: `red` (Priority 1)\n\n- **Score $\\ge$ 4**: `amber` (Priority 2)\n\n- **Score $\\ge$ 0**: `green` (Priority 3)\n\n---\n\n2. UI Presentation & Selection\nIn `PriorityPanel` (`src/components/PriorityPanel.tsx`), `calculateBand(referral)` runs to show the score, matched rule signals, target response window in hours, and the **Suggested band**.\nThe page component (`ReferralDetailPage.tsx`, `src/pages/ReferralDetailPage.tsx`) stores the selected band in local state (`priority`), defaulting to `referral.priority ?? \"green\"`.\nThe user can click any of the options (Priority 1 / Priority 2 / Priority 3) in `PriorityPanel` to select an explicit band.\n\n---\n\n3. Application State Update\n\nWhen the user clicks **Accept referral** or **Update priority** in `ReferralDetailPage`:\n\n1. `onAccept` calls `accept(referral.id, priority)` in `useClinicStore` (`src/pages/ReferralDetailPage.tsx`).\n\n2. `acceptReferral` in `useClinicStore` (`src/store/useClinicStore.ts`):\n\n- Runs `checkEligibility(referral)` (`src/triage/eligibility.ts`); if ineligible, throws an error and emits an `eligibility:failed` event.\n\n- Sets the referral's `status` to `\"accepted\"` and `priority` to the chosen band (or defaults to `calculateBand(referral).band` if no override is supplied).\n\n- Writes an audit log entry via `addAudit`.\n\n- Emits a `referral:accepted` event on `clinicEvents` (`src/events/channel.ts`).\n\n*(Note: `useClinicStore` also exports a `setPriority` state action in `src/store/useClinicStore.ts`, but the active UI flow uses `acceptReferral` in `src/pages/ReferralDetailPage.tsx`.)*",
+   "toolEvidence": [
+    {
+     "rank": 1,
+     "path": "src/components/PriorityPanel.tsx",
+     "score": 0.78
+    },
+    {
+     "rank": 2,
+     "path": "src/config/priorityRules.ts",
+     "score": 0.76
+    },
+    {
+     "rank": 3,
+     "path": "src/hooks/useReferralFilters.ts",
+     "score": 0.76
+    },
+    {
+     "rank": 4,
+     "path": "src/pages/ReferralDetailPage.tsx",
+     "score": 0.76
+    },
+    {
+     "rank": 5,
+     "path": "src/store/useClinicStore.ts",
+     "score": 0.73
+    },
+    {
+     "rank": 6,
+     "path": "src/triage/banding.ts",
+     "score": 0.73
+    },
+    {
+     "rank": 7,
+     "path": "src/utils/format.ts",
+     "score": 0.73
+    },
+    {
+     "rank": 8,
+     "path": "src/components/ReferralTable.tsx",
+     "score": 0.7
+    },
+    {
+     "rank": 9,
+     "path": "src/events/types.ts",
+     "score": 0.67
+    },
+    {
+     "rank": 10,
+     "path": "src/scheduling/service.ts",
+     "score": 0.67
+    },
+    {
+     "rank": 11,
+     "path": "src/pages/ReferralListPage.tsx",
+     "score": 0.64
+    },
+    {
+     "rank": 12,
+     "path": "src/api/pipeline/redact-stage.ts",
+     "score": 0.61
+    },
+    {
+     "rank": 13,
+     "path": "src/api/referrals-api.ts",
+     "score": 0.61
+    },
+    {
+     "rank": 14,
+     "path": "src/App.tsx",
+     "score": 0.61
+    },
+    {
+     "rank": 15,
+     "path": "src/components/SlotPicker.tsx",
+     "score": 0.61
+    },
+    {
+     "rank": 16,
+     "path": "src/data/seed.ts",
+     "score": 0.61
+    },
+    {
+     "rank": 17,
+     "path": "src/jobs/nightlyReverification.ts",
+     "score": 0.61
+    },
+    {
+     "rank": 18,
+     "path": "src/scheduling/types.ts",
+     "score": 0.61
+    },
+    {
+     "rank": 19,
+     "path": "src/tests/banding.test.ts",
+     "score": 0.61
+    },
+    {
+     "rank": 20,
+     "path": "src/tests/registry.test.ts",
+     "score": 0.61
+    },
+    {
+     "rank": 21,
+     "path": "src/triage/eligibility.ts",
+     "score": 0.61
+    },
+    {
+     "rank": 22,
+     "path": "src/triage/routes/registry.ts",
+     "score": 0.61
+    },
+    {
+     "rank": 23,
+     "path": "src/triage/validation.ts",
+     "score": 0.61
+    },
+    {
+     "rank": 24,
+     "path": "src/types/domain.ts",
+     "score": 0.56
+    },
+    {
+     "rank": 25,
+     "path": "src/triage/routes/loadRoutes.ts",
+     "score": 0.55
+    },
+    {
+     "rank": 26,
+     "path": "src/components/Layout.tsx",
+     "score": 0.53
+    },
+    {
+     "rank": 27,
+     "path": "src/events/channel.ts",
+     "score": 0.53
+    },
+    {
+     "rank": 28,
+     "path": "src/pages/AuditLogPage.tsx",
+     "score": 0.53
+    },
+    {
+     "rank": 29,
+     "path": "src/pages/ClinicianOverviewPage.tsx",
+     "score": 0.53
+    },
+    {
+     "rank": 30,
+     "path": "src/tests/eligibility.test.ts",
+     "score": 0.53
+    },
+    {
+     "rank": 31,
+     "path": "src/scheduling/oldSlotFinder.ts",
+     "score": 0.48
+    },
+    {
+     "rank": 32,
+     "path": "src/scheduling/slotFinder.ts",
+     "score": 0.48
+    },
+    {
+     "rank": 33,
+     "path": "src/tests/scheduling.test.ts",
+     "score": 0.48
+    },
+    {
+     "rank": 34,
+     "path": "src/api/api-client.ts",
+     "score": 0.44
+    },
+    {
+     "rank": 35,
+     "path": "src/api/pipeline/types.ts",
+     "score": 0.44
+    },
+    {
+     "rank": 36,
+     "path": "src/audit/logger.ts",
+     "score": 0.44
+    },
+    {
+     "rank": 37,
+     "path": "src/main.tsx",
+     "score": 0.44
+    },
+    {
+     "rank": 38,
+     "path": "src/scheduling/eventListener.ts",
+     "score": 0.44
+    },
+    {
+     "rank": 39,
+     "path": "src/triage/routes/followUp.ts",
+     "score": 0.44
+    },
+    {
+     "rank": 40,
+     "path": "src/triage/routes/routine.ts",
+     "score": 0.44
+    },
+    {
+     "rank": 41,
+     "path": "src/triage/routes/safeguarding.ts",
+     "score": 0.44
+    },
+    {
+     "rank": 42,
+     "path": "src/triage/routes/urgent.ts",
+     "score": 0.44
+    },
+    {
+     "rank": 43,
+     "path": "src/api/pipeline/auth-stage.ts",
+     "score": 0.29
+    },
+    {
+     "rank": 44,
+     "path": "src/api/pipeline/trace-stage.ts",
+     "score": 0.29
+    },
+    {
+     "rank": 45,
+     "path": "src/styles.css",
+     "score": 0.29
+    },
+    {
+     "rank": 46,
+     "path": "README.md",
+     "score": 0.05
+    },
+    {
+     "rank": 47,
+     "path": "index.html",
+     "score": 0
+    },
+    {
+     "rank": 48,
+     "path": "package.json",
+     "score": 0
+    },
+    {
+     "rank": 49,
+     "path": "tsconfig.app.json",
+     "score": 0
+    },
+    {
+     "rank": 50,
+     "path": "tsconfig.json",
+     "score": 0
+    },
+    {
+     "rank": 51,
+     "path": "tsconfig.node.json",
+     "score": 0
+    },
+    {
+     "rank": 52,
+     "path": "vite.config.ts",
+     "score": 0
+    }
+   ],
+   "toolEvidenceHeading": "Evidence · 52 files retrieved",
+   "toolUnverifiedMentions": [],
+   "toolCoverage": "Searched 52 of 52 eligible repository files. Ranking scores combine retrieval signals and do not measure answer correctness.",
+   "toolScreenshot": "study/gate-screenshots/clinic-triage-q02.png",
+   "toolScreenshotComplete": true,
+   "toolGeneration": {
+    "status": "complete",
+    "finishReason": "STOP",
+    "model": "gemini-3.6-flash",
+    "attempts": 1,
+    "capturedAt": "2026-09-01T11:29:19.423Z",
+    "usageMetadata": {
+     "promptTokenCount": 32939,
+     "candidatesTokenCount": 793,
+     "totalTokenCount": 35361
+    }
+   },
+   "correct": null
   },
   {
    "id": 3,
@@ -61,7 +623,288 @@
     "src/pages/ReferralDetailPage.tsx:7-8",
     "src/pages/ReferralDetailPage.tsx:33"
    ],
-   "correctAnswerNotes": "This route handler is distinct from priority banding and slot-finder selection. The\n`import.meta.glob` at loadRoutes.ts:1-5 excludes `registry.ts` and `loadRoutes.ts` itself, so a\nnew route module is discovered without editing any central list. `registry.test.ts:7-8`\nindependently asserts that four handlers register."
+   "correctAnswerNotes": "This route handler is distinct from priority banding and slot-finder selection. The\n`import.meta.glob` at loadRoutes.ts:1-5 excludes `registry.ts` and `loadRoutes.ts` itself, so a\nnew route module is discovered without editing any central list. `registry.test.ts:7-8`\nindependently asserts that four handlers register.",
+   "toolAnswer": "The processing of a given referral type is primarily decided across two subsystems: **pathway routing** in `src/triage/routes/` and **policy configuration** in `src/config/priorityRules.ts`.\n\n---\n\n1. Pathway Guidance Routing\n\nHow a referral's recommended pathway, instructions, and telephone requirement are determined is managed by the routing registry:\n\n**Route Registry (`src/triage/routes/registry.ts`)**: Defines `routeReferral(referral)`, which retrieves the handler mapped to `referral.type` from a module-level `handlers` map.\n**Dynamic Route Loader (`src/triage/routes/loadRoutes.ts`)**: Dynamically imports all route handler modules using `import.meta.glob`.\n**Type Route Handlers**:\n\n* `src/triage/routes/routine.ts`: Configures standard pathway instructions.\n\n* `src/triage/routes/urgent.ts`: Sets `requiresPhoneCall: true` and urgent contact instructions.\n\n* `src/triage/routes/followUp.ts`: Configures pathway instructions focused on previous care teams and letters.\n\n* `src/triage/routes/safeguarding.ts`: Restricts recommended service to `\"Community nursing\"` and sets `requiresPhoneCall: true`.\n\n**UI Dispatch (`src/pages/ReferralDetailPage.tsx`)**: Calls `loadRoutes()` in an effect and evaluates `routeReferral(referral)` to render pathway summary and warnings.\n\n---\n\n2. Triage Priority & Slot Strategy Selection\n\nHow a referral type affects priority scoring, target resolution times, and appointment slot finding is governed by:\n\n**Policy Mapping (`src/config/priorityRules.ts`)**: Defines `referralPolicies`, which maps every `ReferralType` to its base parameters:\n\n* `routine`: `basePoints: 0`, `finder: \"standard\"`, `targetHours: 336`\n\n* `urgent`: `basePoints: 5`, `finder: \"standard\"`, `targetHours: 24`\n\n* `followUp`: `basePoints: 1`, `finder: \"continuity\"`, `targetHours: 168`\n\n* `safeguarding`: `basePoints: 8`, `finder: \"standard\"`, `targetHours: 4`\n\n**Clinical Banding (`src/triage/banding.ts`)**: `calculateBand()` reads `referralPolicies[referral.type]` to compute base points and target SLA hours.\n**Scheduling Finder Dispatch (`src/scheduling/service.ts`)**: `availableSlots()` evaluates `referralPolicies[referral.type].finder` to dispatch slot searches to either standard slot selection (`src/scheduling/slotFinder.ts`) or continuity-preferred slot selection (`src/scheduling/oldSlotFinder.ts`).\n\n---\n\n3. Special-Case Type Checks\n**Eligibility Rules (`src/triage/eligibility.ts`)**: `checkEligibility()` checks `referral.type === \"safeguarding\"` to reject referrals for patients under age 16.\n**API Redaction Pipeline (`src/api/pipeline/redact-stage.ts`)**: `redactStage` masks phone numbers, postcodes, and clinical notes if `referral.type === \"safeguarding\"`.",
+   "toolEvidence": [
+    {
+     "rank": 1,
+     "path": "src/components/ReferralTable.tsx",
+     "score": 0.66
+    },
+    {
+     "rank": 2,
+     "path": "src/hooks/useReferralFilters.ts",
+     "score": 0.66
+    },
+    {
+     "rank": 3,
+     "path": "src/pages/ReferralDetailPage.tsx",
+     "score": 0.66
+    },
+    {
+     "rank": 4,
+     "path": "src/api/pipeline/redact-stage.ts",
+     "score": 0.64
+    },
+    {
+     "rank": 5,
+     "path": "src/api/referrals-api.ts",
+     "score": 0.64
+    },
+    {
+     "rank": 6,
+     "path": "src/components/PriorityPanel.tsx",
+     "score": 0.64
+    },
+    {
+     "rank": 7,
+     "path": "src/components/SlotPicker.tsx",
+     "score": 0.64
+    },
+    {
+     "rank": 8,
+     "path": "src/config/priorityRules.ts",
+     "score": 0.64
+    },
+    {
+     "rank": 9,
+     "path": "src/data/seed.ts",
+     "score": 0.64
+    },
+    {
+     "rank": 10,
+     "path": "src/jobs/nightlyReverification.ts",
+     "score": 0.64
+    },
+    {
+     "rank": 11,
+     "path": "src/scheduling/service.ts",
+     "score": 0.64
+    },
+    {
+     "rank": 12,
+     "path": "src/scheduling/types.ts",
+     "score": 0.64
+    },
+    {
+     "rank": 13,
+     "path": "src/store/useClinicStore.ts",
+     "score": 0.64
+    },
+    {
+     "rank": 14,
+     "path": "src/triage/banding.ts",
+     "score": 0.64
+    },
+    {
+     "rank": 15,
+     "path": "src/triage/eligibility.ts",
+     "score": 0.64
+    },
+    {
+     "rank": 16,
+     "path": "src/triage/routes/registry.ts",
+     "score": 0.64
+    },
+    {
+     "rank": 17,
+     "path": "src/triage/validation.ts",
+     "score": 0.64
+    },
+    {
+     "rank": 18,
+     "path": "src/utils/format.ts",
+     "score": 0.64
+    },
+    {
+     "rank": 19,
+     "path": "src/pages/ReferralListPage.tsx",
+     "score": 0.61
+    },
+    {
+     "rank": 20,
+     "path": "src/api/api-client.ts",
+     "score": 0.59
+    },
+    {
+     "rank": 21,
+     "path": "src/api/pipeline/auth-stage.ts",
+     "score": 0.59
+    },
+    {
+     "rank": 22,
+     "path": "src/api/pipeline/trace-stage.ts",
+     "score": 0.59
+    },
+    {
+     "rank": 23,
+     "path": "src/App.tsx",
+     "score": 0.59
+    },
+    {
+     "rank": 24,
+     "path": "src/audit/logger.ts",
+     "score": 0.59
+    },
+    {
+     "rank": 25,
+     "path": "src/events/channel.ts",
+     "score": 0.59
+    },
+    {
+     "rank": 26,
+     "path": "src/events/types.ts",
+     "score": 0.59
+    },
+    {
+     "rank": 27,
+     "path": "src/scheduling/oldSlotFinder.ts",
+     "score": 0.59
+    },
+    {
+     "rank": 28,
+     "path": "src/scheduling/slotFinder.ts",
+     "score": 0.59
+    },
+    {
+     "rank": 29,
+     "path": "src/tests/registry.test.ts",
+     "score": 0.59
+    },
+    {
+     "rank": 30,
+     "path": "src/triage/routes/loadRoutes.ts",
+     "score": 0.47
+    },
+    {
+     "rank": 31,
+     "path": "src/types/domain.ts",
+     "score": 0.47
+    },
+    {
+     "rank": 32,
+     "path": "src/api/pipeline/types.ts",
+     "score": 0.46
+    },
+    {
+     "rank": 33,
+     "path": "src/components/Layout.tsx",
+     "score": 0.46
+    },
+    {
+     "rank": 34,
+     "path": "src/pages/AuditLogPage.tsx",
+     "score": 0.46
+    },
+    {
+     "rank": 35,
+     "path": "src/pages/ClinicianOverviewPage.tsx",
+     "score": 0.46
+    },
+    {
+     "rank": 36,
+     "path": "src/tests/banding.test.ts",
+     "score": 0.46
+    },
+    {
+     "rank": 37,
+     "path": "src/tests/eligibility.test.ts",
+     "score": 0.46
+    },
+    {
+     "rank": 38,
+     "path": "src/tests/scheduling.test.ts",
+     "score": 0.46
+    },
+    {
+     "rank": 39,
+     "path": "src/triage/routes/followUp.ts",
+     "score": 0.46
+    },
+    {
+     "rank": 40,
+     "path": "src/triage/routes/routine.ts",
+     "score": 0.46
+    },
+    {
+     "rank": 41,
+     "path": "src/triage/routes/safeguarding.ts",
+     "score": 0.46
+    },
+    {
+     "rank": 42,
+     "path": "src/triage/routes/urgent.ts",
+     "score": 0.46
+    },
+    {
+     "rank": 43,
+     "path": "src/main.tsx",
+     "score": 0.43
+    },
+    {
+     "rank": 44,
+     "path": "src/scheduling/eventListener.ts",
+     "score": 0.43
+    },
+    {
+     "rank": 45,
+     "path": "src/styles.css",
+     "score": 0.28
+    },
+    {
+     "rank": 46,
+     "path": "index.html",
+     "score": 0.06
+    },
+    {
+     "rank": 47,
+     "path": "package.json",
+     "score": 0.03
+    },
+    {
+     "rank": 48,
+     "path": "README.md",
+     "score": 0
+    },
+    {
+     "rank": 49,
+     "path": "tsconfig.app.json",
+     "score": 0
+    },
+    {
+     "rank": 50,
+     "path": "tsconfig.json",
+     "score": 0
+    },
+    {
+     "rank": 51,
+     "path": "tsconfig.node.json",
+     "score": 0
+    },
+    {
+     "rank": 52,
+     "path": "vite.config.ts",
+     "score": 0
+    }
+   ],
+   "toolEvidenceHeading": "Evidence · 52 files retrieved",
+   "toolUnverifiedMentions": [],
+   "toolCoverage": "Searched 52 of 52 eligible repository files. Ranking scores combine retrieval signals and do not measure answer correctness.",
+   "toolScreenshot": "study/gate-screenshots/clinic-triage-q03.png",
+   "toolScreenshotComplete": true,
+   "toolGeneration": {
+    "status": "complete",
+    "finishReason": "STOP",
+    "model": "gemini-3.6-flash",
+    "attempts": 1,
+    "capturedAt": "2026-09-01T11:30:16.053Z",
+    "usageMetadata": {
+     "promptTokenCount": 32941,
+     "candidatesTokenCount": 726,
+     "totalTokenCount": 35132
+    }
+   },
+   "correct": null
   },
   {
    "id": 4,
@@ -75,7 +918,288 @@
     "src/jobs/nightlyReverification.ts:9-34",
     "src/pages/AuditLogPage.tsx:27-34"
    ],
-   "correctAnswerNotes": "The previous note claimed that tests call `checkEligibility` directly. They do not.\n`grep -rn checkEligibility src` returns seven lines: three imports, the definition, and the\nthree call sites named above. `eligibility.test.ts` reaches it only indirectly, through\n`useClinicStore.acceptReferral`.\n\nThe claim is absolute, so the ways it could be evaded were checked as well. There is no\n`import *`, no re-export, and no `require` anywhere in the tree, and the only dynamic import is\nthe `import.meta.glob` in `loadRoutes.ts`, scoped to `./*.ts` within `src/triage/routes/`.\nNothing can reach the function under another name.\n\nDespite its name, the \"nightly\" reverification is not scheduled. It runs only when an operator\npresses the verify button on the audit log page."
+   "correctAnswerNotes": "The previous note claimed that tests call `checkEligibility` directly. They do not.\n`grep -rn checkEligibility src` returns seven lines: three imports, the definition, and the\nthree call sites named above. `eligibility.test.ts` reaches it only indirectly, through\n`useClinicStore.acceptReferral`.\n\nThe claim is absolute, so the ways it could be evaded were checked as well. There is no\n`import *`, no re-export, and no `require` anywhere in the tree, and the only dynamic import is\nthe `import.meta.glob` in `loadRoutes.ts`, scoped to `./*.ts` within `src/triage/routes/`.\nNothing can reach the function under another name.\n\nDespite its name, the \"nightly\" reverification is not scheduled. It runs only when an operator\npresses the verify button on the audit log page.",
+   "toolAnswer": "Eligibility is directly checked in **three location functions** in the codebase via `checkEligibility` (`src/triage/eligibility.ts`).\n\nHere is every place where an eligibility check occurs, including the direct call sites, their runtime triggers, UI/job entry points, and test suites.\n\n---\n\nDirect Call Sites & Execution Flow\n\n1. **Referral Acceptance (`acceptReferral` in Zustand Store)**\n\n* **Location:** `src/store/useClinicStore.ts` (lines 46–54)\n\n* **What happens:** Before accepting a referral and assigning a priority band, `acceptReferral` calls `checkEligibility(referral)`. If ineligible, it emits an `eligibility:failed` event with phase `\"acceptance\"` and throws an error, preventing the status update.\n\n* **Runtime / Entry Points:**\n\n* **UI:** Triggered on the Referral Detail page (`src/pages/ReferralDetailPage.tsx`, line 51) when a coordinator clicks the **\"Accept referral\"** button.\n\n* **Tests:** Executed in unit tests (`src/tests/eligibility.test.ts`, lines 10, 20, 31).\n\n2. **Appointment Booking Validation (`checkAppointment`)**\n\n* **Location:** `src/triage/validation.ts` (lines 11–18)\n\n* **What happens:** Before booking a slot, `checkAppointment` calls `checkEligibility(referral)`. If ineligible, it emits an `eligibility:failed` event with phase `\"booking\"` and throws an error, aborting the booking.\n\n* **Runtime / Entry Points:**\n\n* **Store Action:** Invoked inside `bookAppointment` in `src/store/useClinicStore.ts` (line 119).\n\n* **UI:** Triggered on the Referral Detail page via the `SlotPicker` component (`src/components/SlotPicker.tsx`, line 24 -> `ReferralDetailPage.tsx`, line 62) when a coordinator clicks **\"Confirm appointment\"**.\n\n* **Tests:** Executed in scheduling unit tests (`src/tests/scheduling.test.ts`, lines 22, 34).\n\n3. **Nightly Reverification Job (`runNightlyReverification`)**\n\n* **Location:** `src/jobs/nightlyReverification.ts` (lines 19–27)\n\n* **What happens:** Iterates through all existing referrals with status `\"accepted\"` or `\"booked\"` and calls `checkEligibility(referral)` on each candidate. For any failures, it records the failure and emits an `eligibility:failed` event with phase `\"nightly\"`.\n\n* **Runtime / Entry Points:**\n\n* **UI:** Triggered manually from the Governance / Audit Log page (`src/pages/AuditLogPage.tsx`, line 28) when a user clicks the **\"Run eligibility check\"** button.",
+   "toolEvidence": [
+    {
+     "rank": 1,
+     "path": "src/pages/ReferralListPage.tsx",
+     "score": 0.61
+    },
+    {
+     "rank": 2,
+     "path": "src/triage/eligibility.ts",
+     "score": 0.61
+    },
+    {
+     "rank": 3,
+     "path": "src/App.tsx",
+     "score": 0.59
+    },
+    {
+     "rank": 4,
+     "path": "src/jobs/nightlyReverification.ts",
+     "score": 0.59
+    },
+    {
+     "rank": 5,
+     "path": "src/store/useClinicStore.ts",
+     "score": 0.59
+    },
+    {
+     "rank": 6,
+     "path": "src/triage/validation.ts",
+     "score": 0.59
+    },
+    {
+     "rank": 7,
+     "path": "src/tests/eligibility.test.ts",
+     "score": 0.57
+    },
+    {
+     "rank": 8,
+     "path": "src/components/ReferralTable.tsx",
+     "score": 0.44
+    },
+    {
+     "rank": 9,
+     "path": "src/hooks/useReferralFilters.ts",
+     "score": 0.44
+    },
+    {
+     "rank": 10,
+     "path": "src/types/domain.ts",
+     "score": 0.44
+    },
+    {
+     "rank": 11,
+     "path": "src/audit/logger.ts",
+     "score": 0.43
+    },
+    {
+     "rank": 12,
+     "path": "src/components/Layout.tsx",
+     "score": 0.43
+    },
+    {
+     "rank": 13,
+     "path": "src/data/seed.ts",
+     "score": 0.43
+    },
+    {
+     "rank": 14,
+     "path": "src/events/channel.ts",
+     "score": 0.43
+    },
+    {
+     "rank": 15,
+     "path": "src/main.tsx",
+     "score": 0.43
+    },
+    {
+     "rank": 16,
+     "path": "src/pages/AuditLogPage.tsx",
+     "score": 0.43
+    },
+    {
+     "rank": 17,
+     "path": "src/pages/ClinicianOverviewPage.tsx",
+     "score": 0.43
+    },
+    {
+     "rank": 18,
+     "path": "src/pages/ReferralDetailPage.tsx",
+     "score": 0.43
+    },
+    {
+     "rank": 19,
+     "path": "src/scheduling/eventListener.ts",
+     "score": 0.43
+    },
+    {
+     "rank": 20,
+     "path": "src/tests/scheduling.test.ts",
+     "score": 0.43
+    },
+    {
+     "rank": 21,
+     "path": "src/triage/banding.ts",
+     "score": 0.43
+    },
+    {
+     "rank": 22,
+     "path": "src/api/pipeline/redact-stage.ts",
+     "score": 0.29
+    },
+    {
+     "rank": 23,
+     "path": "src/api/referrals-api.ts",
+     "score": 0.29
+    },
+    {
+     "rank": 24,
+     "path": "src/components/PriorityPanel.tsx",
+     "score": 0.29
+    },
+    {
+     "rank": 25,
+     "path": "src/components/SlotPicker.tsx",
+     "score": 0.29
+    },
+    {
+     "rank": 26,
+     "path": "src/config/priorityRules.ts",
+     "score": 0.29
+    },
+    {
+     "rank": 27,
+     "path": "src/events/types.ts",
+     "score": 0.29
+    },
+    {
+     "rank": 28,
+     "path": "src/scheduling/service.ts",
+     "score": 0.29
+    },
+    {
+     "rank": 29,
+     "path": "src/scheduling/types.ts",
+     "score": 0.29
+    },
+    {
+     "rank": 30,
+     "path": "src/triage/routes/registry.ts",
+     "score": 0.29
+    },
+    {
+     "rank": 31,
+     "path": "src/utils/format.ts",
+     "score": 0.29
+    },
+    {
+     "rank": 32,
+     "path": "src/styles.css",
+     "score": 0.28
+    },
+    {
+     "rank": 33,
+     "path": "src/tests/banding.test.ts",
+     "score": 0.28
+    },
+    {
+     "rank": 34,
+     "path": "src/tests/registry.test.ts",
+     "score": 0.28
+    },
+    {
+     "rank": 35,
+     "path": "src/triage/routes/loadRoutes.ts",
+     "score": 0.28
+    },
+    {
+     "rank": 36,
+     "path": "index.html",
+     "score": 0
+    },
+    {
+     "rank": 37,
+     "path": "package.json",
+     "score": 0
+    },
+    {
+     "rank": 38,
+     "path": "README.md",
+     "score": 0
+    },
+    {
+     "rank": 39,
+     "path": "src/api/api-client.ts",
+     "score": 0
+    },
+    {
+     "rank": 40,
+     "path": "src/api/pipeline/auth-stage.ts",
+     "score": 0
+    },
+    {
+     "rank": 41,
+     "path": "src/api/pipeline/trace-stage.ts",
+     "score": 0
+    },
+    {
+     "rank": 42,
+     "path": "src/api/pipeline/types.ts",
+     "score": 0
+    },
+    {
+     "rank": 43,
+     "path": "src/scheduling/oldSlotFinder.ts",
+     "score": 0
+    },
+    {
+     "rank": 44,
+     "path": "src/scheduling/slotFinder.ts",
+     "score": 0
+    },
+    {
+     "rank": 45,
+     "path": "src/triage/routes/followUp.ts",
+     "score": 0
+    },
+    {
+     "rank": 46,
+     "path": "src/triage/routes/routine.ts",
+     "score": 0
+    },
+    {
+     "rank": 47,
+     "path": "src/triage/routes/safeguarding.ts",
+     "score": 0
+    },
+    {
+     "rank": 48,
+     "path": "src/triage/routes/urgent.ts",
+     "score": 0
+    },
+    {
+     "rank": 49,
+     "path": "tsconfig.app.json",
+     "score": 0
+    },
+    {
+     "rank": 50,
+     "path": "tsconfig.json",
+     "score": 0
+    },
+    {
+     "rank": 51,
+     "path": "tsconfig.node.json",
+     "score": 0
+    },
+    {
+     "rank": 52,
+     "path": "vite.config.ts",
+     "score": 0
+    }
+   ],
+   "toolEvidenceHeading": "Evidence · 52 files retrieved",
+   "toolUnverifiedMentions": [],
+   "toolCoverage": "Searched 52 of 52 eligible repository files. Ranking scores combine retrieval signals and do not measure answer correctness.",
+   "toolScreenshot": "study/gate-screenshots/clinic-triage-q04.png",
+   "toolScreenshotComplete": true,
+   "toolGeneration": {
+    "status": "complete",
+    "finishReason": "STOP",
+    "model": "gemini-3.6-flash",
+    "attempts": 1,
+    "capturedAt": "2026-09-01T11:30:50.649Z",
+    "usageMetadata": {
+     "promptTokenCount": 32942,
+     "candidatesTokenCount": 639,
+     "totalTokenCount": 35189
+    }
+   },
+   "correct": null
   },
   {
    "id": 5,
@@ -91,7 +1215,288 @@
     "src/api/referrals-api.ts:3-9",
     "src/api/referrals-api.ts:10-16"
    ],
-   "correctAnswerNotes": "`reduceRight` composes the declared stage list so the request enters trace first, then auth,\nthen redact.\n\nRedaction is narrower than \"conditionally\" suggests: `redactBody` returns the body untouched\nunless it is a referral whose `type` is `safeguarding` *and* which carries a `patient` object.\n\nNothing in the application ever exercises this pipeline, and the reason is stronger than an\nabsence of calls. `submitReferral` and `recordBooking` are the only functions that call\n`apiRequest`, and neither has an importer. `api-client.ts` has exactly one importer,\n`referrals-api.ts` itself, and no module outside `src/api/` imports anything from `src/api/` at\nall. The module graph rooted at `main.tsx` therefore never reaches the directory, so the\n`reduceRight` composition does not merely go uncalled — it never executes, because the module\nis never loaded. No test imports it either. `transport` is a stub that echoes the request body.\n\nOne qualifier, because the distinction matters: this is unreachable, not dead. `tsconfig.app.json`\nincludes `src`, so these files are still type-checked and a break in them still fails the build."
+   "correctAnswerNotes": "`reduceRight` composes the declared stage list so the request enters trace first, then auth,\nthen redact.\n\nRedaction is narrower than \"conditionally\" suggests: `redactBody` returns the body untouched\nunless it is a referral whose `type` is `safeguarding` *and* which carries a `patient` object.\n\nNothing in the application ever exercises this pipeline, and the reason is stronger than an\nabsence of calls. `submitReferral` and `recordBooking` are the only functions that call\n`apiRequest`, and neither has an importer. `api-client.ts` has exactly one importer,\n`referrals-api.ts` itself, and no module outside `src/api/` imports anything from `src/api/` at\nall. The module graph rooted at `main.tsx` therefore never reaches the directory, so the\n`reduceRight` composition does not merely go uncalled — it never executes, because the module\nis never loaded. No test imports it either. `transport` is a stub that echoes the request body.\n\nOne qualifier, because the distinction matters: this is unreachable, not dead. `tsconfig.app.json`\nincludes `src`, so these files are still type-checked and a break in them still fails the build.",
+   "toolAnswer": "Before an outgoing API request is sent, it passes sequentially through a 3-stage composed middleware pipeline (**tracing** → **authentication** → **data redaction**) before reaching the mock network transport layer.\n\n---\n\nStep-by-Step Pipeline Flow\n\n#### 1. Invocation & Composition Entry\n\nWhen `apiRequest` is called (`src/api/api-client.ts`), it ensures `headers` defaults to an object (`request.headers ?? {}`) and passes the request to the `composed` pipeline constructed via `stages.reduceRight`. The stage execution order is:\n\n```\n\napiRequest() ──> traceStage ──> authStage ──> redactStage ──> transport\n\n```\n\n#### 2. Trace Identifier Generation (`traceStage`)\n\n**File:** `src/api/pipeline/trace-stage.ts`\nGenerates a unique trace ID formatted as ``trace-${Date.now()}-${Math.random().toString(16).slice(2)}``.\nAdds the trace ID to request headers under `X-Trace-Id`.\n\n#### 3. Authentication & Role Context Enrichment (`authStage`)\n\n**File:** `src/api/pipeline/auth-stage.ts`\nMerges authorization and role headers into the request:\n\n* `Authorization: \"Bearer clinic-session\"`\n\n* `X-Staff-Role: \"triage\"`\n\n#### 4. Sensitive Data Redaction (`redactStage`)\n\n**File:** `src/api/pipeline/redact-stage.ts`\nEvaluates `request.body`. If the request body contains a referral where `type === \"safeguarding\"` and `patient` is present, it redacts sensitive patient fields before sending:\n\n* `notes` is replaced with `\"[restricted clinical note]\"`\n\n* `patient.phone` is replaced with `\"[safe contact required]\"`\n\n* `patient.postcode` is replaced with `\"[restricted]\"`\n\nFor all other referral types or request bodies, the body is left unchanged.\n\n#### 5. Transport Delivery (`transport`)\n\n**File:** `src/api/api-client.ts`\nReceives the fully transformed request and returns a resolved `Promise` containing an `ApiResponse`:\n\n* `status`: `200`\n\n* `data`: `request.body ?? { ok: true }`\n\n* `requestId`: `request.headers[\"X-Trace-Id\"] ?? \"local\"`\n\n---\n\nRuntime Application Evidence vs Inference\n**Direct Evidence:**\n\n* `apiRequest` is exported from `src/api/api-client.ts` and called by `submitReferral` (PATCH `/referrals/:id`) and `recordBooking` (POST `/referrals/:id/booking`) in `src/api/referrals-api.ts`.\n\n* The pipeline executes synchronously through asynchronous middleware functions defined in `src/api/pipeline/`.\n\n**Direct Evidence / Application Reach:**\n\n* The primary application UI stores and updates referral state strictly via local Zustand state (`src/store/useClinicStore.ts`).\n\n* Neither `submitReferral` nor `recordBooking` are called from `useClinicStore.ts` or any React components in `src/pages/` or `src/components/`. The pipeline exists in the codebase but is not triggered by standard user interactions in the present UI flow.",
+   "toolEvidence": [
+    {
+     "rank": 1,
+     "path": "src/api/pipeline/types.ts",
+     "score": 0.69
+    },
+    {
+     "rank": 2,
+     "path": "src/api/api-client.ts",
+     "score": 0.66
+    },
+    {
+     "rank": 3,
+     "path": "src/api/referrals-api.ts",
+     "score": 0.66
+    },
+    {
+     "rank": 4,
+     "path": "src/api/pipeline/auth-stage.ts",
+     "score": 0.61
+    },
+    {
+     "rank": 5,
+     "path": "src/api/pipeline/redact-stage.ts",
+     "score": 0.61
+    },
+    {
+     "rank": 6,
+     "path": "src/api/pipeline/trace-stage.ts",
+     "score": 0.61
+    },
+    {
+     "rank": 7,
+     "path": "src/tests/eligibility.test.ts",
+     "score": 0.59
+    },
+    {
+     "rank": 8,
+     "path": "src/tests/registry.test.ts",
+     "score": 0.59
+    },
+    {
+     "rank": 9,
+     "path": "src/types/domain.ts",
+     "score": 0.47
+    },
+    {
+     "rank": 10,
+     "path": "src/data/seed.ts",
+     "score": 0.43
+    },
+    {
+     "rank": 11,
+     "path": "src/store/useClinicStore.ts",
+     "score": 0.43
+    },
+    {
+     "rank": 12,
+     "path": "src/triage/routes/loadRoutes.ts",
+     "score": 0.43
+    },
+    {
+     "rank": 13,
+     "path": "src/triage/routes/registry.ts",
+     "score": 0.43
+    },
+    {
+     "rank": 14,
+     "path": "src/audit/logger.ts",
+     "score": 0.32
+    },
+    {
+     "rank": 15,
+     "path": "src/components/PriorityPanel.tsx",
+     "score": 0.32
+    },
+    {
+     "rank": 16,
+     "path": "src/components/ReferralTable.tsx",
+     "score": 0.32
+    },
+    {
+     "rank": 17,
+     "path": "src/components/SlotPicker.tsx",
+     "score": 0.32
+    },
+    {
+     "rank": 18,
+     "path": "src/config/priorityRules.ts",
+     "score": 0.32
+    },
+    {
+     "rank": 19,
+     "path": "src/events/types.ts",
+     "score": 0.32
+    },
+    {
+     "rank": 20,
+     "path": "src/hooks/useReferralFilters.ts",
+     "score": 0.32
+    },
+    {
+     "rank": 21,
+     "path": "src/jobs/nightlyReverification.ts",
+     "score": 0.32
+    },
+    {
+     "rank": 22,
+     "path": "src/pages/ReferralDetailPage.tsx",
+     "score": 0.32
+    },
+    {
+     "rank": 23,
+     "path": "src/scheduling/service.ts",
+     "score": 0.32
+    },
+    {
+     "rank": 24,
+     "path": "src/scheduling/types.ts",
+     "score": 0.32
+    },
+    {
+     "rank": 25,
+     "path": "src/triage/banding.ts",
+     "score": 0.32
+    },
+    {
+     "rank": 26,
+     "path": "src/triage/eligibility.ts",
+     "score": 0.32
+    },
+    {
+     "rank": 27,
+     "path": "src/triage/validation.ts",
+     "score": 0.32
+    },
+    {
+     "rank": 28,
+     "path": "src/utils/format.ts",
+     "score": 0.32
+    },
+    {
+     "rank": 29,
+     "path": "src/components/Layout.tsx",
+     "score": 0.28
+    },
+    {
+     "rank": 30,
+     "path": "src/events/channel.ts",
+     "score": 0.28
+    },
+    {
+     "rank": 31,
+     "path": "src/pages/AuditLogPage.tsx",
+     "score": 0.28
+    },
+    {
+     "rank": 32,
+     "path": "src/pages/ClinicianOverviewPage.tsx",
+     "score": 0.28
+    },
+    {
+     "rank": 33,
+     "path": "src/pages/ReferralListPage.tsx",
+     "score": 0.28
+    },
+    {
+     "rank": 34,
+     "path": "src/tests/banding.test.ts",
+     "score": 0.28
+    },
+    {
+     "rank": 35,
+     "path": "src/tests/scheduling.test.ts",
+     "score": 0.28
+    },
+    {
+     "rank": 36,
+     "path": "src/triage/routes/followUp.ts",
+     "score": 0.28
+    },
+    {
+     "rank": 37,
+     "path": "src/triage/routes/routine.ts",
+     "score": 0.28
+    },
+    {
+     "rank": 38,
+     "path": "src/triage/routes/safeguarding.ts",
+     "score": 0.28
+    },
+    {
+     "rank": 39,
+     "path": "src/triage/routes/urgent.ts",
+     "score": 0.28
+    },
+    {
+     "rank": 40,
+     "path": "src/scheduling/oldSlotFinder.ts",
+     "score": 0.04
+    },
+    {
+     "rank": 41,
+     "path": "src/styles.css",
+     "score": 0
+    },
+    {
+     "rank": 42,
+     "path": "index.html",
+     "score": 0
+    },
+    {
+     "rank": 43,
+     "path": "package.json",
+     "score": 0
+    },
+    {
+     "rank": 44,
+     "path": "README.md",
+     "score": 0
+    },
+    {
+     "rank": 45,
+     "path": "src/App.tsx",
+     "score": 0
+    },
+    {
+     "rank": 46,
+     "path": "src/main.tsx",
+     "score": 0
+    },
+    {
+     "rank": 47,
+     "path": "src/scheduling/eventListener.ts",
+     "score": 0
+    },
+    {
+     "rank": 48,
+     "path": "src/scheduling/slotFinder.ts",
+     "score": 0
+    },
+    {
+     "rank": 49,
+     "path": "tsconfig.app.json",
+     "score": 0
+    },
+    {
+     "rank": 50,
+     "path": "tsconfig.json",
+     "score": 0
+    },
+    {
+     "rank": 51,
+     "path": "tsconfig.node.json",
+     "score": 0
+    },
+    {
+     "rank": 52,
+     "path": "vite.config.ts",
+     "score": 0
+    }
+   ],
+   "toolEvidenceHeading": "Evidence · 52 files retrieved",
+   "toolUnverifiedMentions": [],
+   "toolCoverage": "Searched 52 of 52 eligible repository files. Ranking scores combine retrieval signals and do not measure answer correctness.",
+   "toolScreenshot": "study/gate-screenshots/clinic-triage-q05.png",
+   "toolScreenshotComplete": true,
+   "toolGeneration": {
+    "status": "complete",
+    "finishReason": "STOP",
+    "model": "gemini-3.6-flash",
+    "attempts": 1,
+    "capturedAt": "2026-09-01T11:31:13.201Z",
+    "usageMetadata": {
+     "promptTokenCount": 32942,
+     "candidatesTokenCount": 732,
+     "totalTokenCount": 35812
+    }
+   },
+   "correct": null
   },
   {
    "id": 6,
@@ -101,7 +1506,288 @@
    "correctAnswerFiles": [
     "src/triage/validation.ts:5-42"
    ],
-   "correctAnswerNotes": "The function name and comment imply a check, but the slot mutation is the actual booking\noperation."
+   "correctAnswerNotes": "The function name and comment imply a check, but the slot mutation is the actual booking\noperation.",
+   "toolAnswer": "**`checkAppointment` does change state.** Despite its name suggesting a pure/read-only validation function, it performs both direct mutation and event-driven state updates.\n\n---\n\nHow `checkAppointment` Changes State\n\n#### 1. In-place Mutation of Clinician Slot Data\n\nIn [`src/triage/validation.ts`](src/triage/validation.ts), after verifying eligibility and slot availability, `checkAppointment` mutates the clinician's slot object in place:\n\n```ts\n\nslot.bookedReferralId = referral.id;\n\n```\n\nBecause the `clinician` passed into `checkAppointment` from the store (`useClinicStore.ts` line 118) or tests is a reference to the existing clinician object, this line directly modifies the `bookedReferralId` property of that clinician's slot.\n\n#### 2. Event Emission and Event-Listener State Mutations\n\n`checkAppointment` emits the `\"appointment:booked\"` event via the `clinicEvents` channel ([`src/triage/validation.ts`](src/triage/validation.ts)):\n\n```ts\n\nclinicEvents.emit(\"appointment:booked\", {\n\nappointment,\n\npatientName: referral.patient.name,\n\n});\n\n```\n\nThis triggers two global event listeners registered at runtime import:\n\n1. **`src/scheduling/eventListener.ts`**: Adds the `slotId` to the `recentlyBooked` `Set`:\n\n```ts\n\nclinicEvents.on(\"appointment:booked\", ({ appointment }) => {\n\nrecentlyBooked.add(appointment.slotId);\n\n});\n\n```\n\n2. **`src/audit/logger.ts`**: Unshifts a new `AuditEntry` into the module's internal `eventEntries` array:\n\n```ts\n\nclinicEvents.on(\"appointment:booked\", ({ appointment, patientName }) => {\n\neventEntries.unshift({ ... });\n\n});\n\n```\n\n---\n\nApplication Context & Usage Flow\n**Zustand Store (`src/store/useClinicStore.ts`)**: `bookAppointment` calls `checkAppointment(referral, clinician, slotId, state.actor)`, which mutates the clinician slot's `bookedReferralId` prior to Zustand updating its store state (`appointments`, `referrals`, and `clinicians`).\n**Automated Tests (`src/tests/scheduling.test.ts`)**: The test suite relies on this state mutation, asserting `expect(slot.bookedReferralId).toBe(referral.id)` immediately after invoking `checkAppointment`.",
+   "toolEvidence": [
+    {
+     "rank": 1,
+     "path": "src/store/useClinicStore.ts",
+     "score": 0.64
+    },
+    {
+     "rank": 2,
+     "path": "src/tests/scheduling.test.ts",
+     "score": 0.64
+    },
+    {
+     "rank": 3,
+     "path": "src/triage/validation.ts",
+     "score": 0.64
+    },
+    {
+     "rank": 4,
+     "path": "src/components/SlotPicker.tsx",
+     "score": 0.59
+    },
+    {
+     "rank": 5,
+     "path": "src/events/types.ts",
+     "score": 0.59
+    },
+    {
+     "rank": 6,
+     "path": "src/hooks/useReferralFilters.ts",
+     "score": 0.59
+    },
+    {
+     "rank": 7,
+     "path": "src/jobs/nightlyReverification.ts",
+     "score": 0.59
+    },
+    {
+     "rank": 8,
+     "path": "src/pages/AuditLogPage.tsx",
+     "score": 0.59
+    },
+    {
+     "rank": 9,
+     "path": "src/pages/ClinicianOverviewPage.tsx",
+     "score": 0.59
+    },
+    {
+     "rank": 10,
+     "path": "src/pages/ReferralDetailPage.tsx",
+     "score": 0.59
+    },
+    {
+     "rank": 11,
+     "path": "src/triage/eligibility.ts",
+     "score": 0.59
+    },
+    {
+     "rank": 12,
+     "path": "src/components/Layout.tsx",
+     "score": 0.46
+    },
+    {
+     "rank": 13,
+     "path": "src/data/seed.ts",
+     "score": 0.46
+    },
+    {
+     "rank": 14,
+     "path": "src/events/channel.ts",
+     "score": 0.46
+    },
+    {
+     "rank": 15,
+     "path": "src/pages/ReferralListPage.tsx",
+     "score": 0.46
+    },
+    {
+     "rank": 16,
+     "path": "src/scheduling/service.ts",
+     "score": 0.46
+    },
+    {
+     "rank": 17,
+     "path": "src/tests/eligibility.test.ts",
+     "score": 0.46
+    },
+    {
+     "rank": 18,
+     "path": "src/triage/banding.ts",
+     "score": 0.46
+    },
+    {
+     "rank": 19,
+     "path": "src/types/domain.ts",
+     "score": 0.46
+    },
+    {
+     "rank": 20,
+     "path": "src/App.tsx",
+     "score": 0.43
+    },
+    {
+     "rank": 21,
+     "path": "src/audit/logger.ts",
+     "score": 0.43
+    },
+    {
+     "rank": 22,
+     "path": "src/components/PriorityPanel.tsx",
+     "score": 0.43
+    },
+    {
+     "rank": 23,
+     "path": "src/triage/routes/loadRoutes.ts",
+     "score": 0.43
+    },
+    {
+     "rank": 24,
+     "path": "src/triage/routes/registry.ts",
+     "score": 0.43
+    },
+    {
+     "rank": 25,
+     "path": "src/utils/format.ts",
+     "score": 0.43
+    },
+    {
+     "rank": 26,
+     "path": "src/api/pipeline/redact-stage.ts",
+     "score": 0.31
+    },
+    {
+     "rank": 27,
+     "path": "src/api/referrals-api.ts",
+     "score": 0.31
+    },
+    {
+     "rank": 28,
+     "path": "src/components/ReferralTable.tsx",
+     "score": 0.31
+    },
+    {
+     "rank": 29,
+     "path": "src/config/priorityRules.ts",
+     "score": 0.31
+    },
+    {
+     "rank": 30,
+     "path": "src/scheduling/eventListener.ts",
+     "score": 0.31
+    },
+    {
+     "rank": 31,
+     "path": "src/scheduling/oldSlotFinder.ts",
+     "score": 0.31
+    },
+    {
+     "rank": 32,
+     "path": "src/scheduling/slotFinder.ts",
+     "score": 0.31
+    },
+    {
+     "rank": 33,
+     "path": "src/scheduling/types.ts",
+     "score": 0.31
+    },
+    {
+     "rank": 34,
+     "path": "src/tests/banding.test.ts",
+     "score": 0.31
+    },
+    {
+     "rank": 35,
+     "path": "src/tests/registry.test.ts",
+     "score": 0.31
+    },
+    {
+     "rank": 36,
+     "path": "src/main.tsx",
+     "score": 0.28
+    },
+    {
+     "rank": 37,
+     "path": "src/triage/routes/followUp.ts",
+     "score": 0.28
+    },
+    {
+     "rank": 38,
+     "path": "src/triage/routes/routine.ts",
+     "score": 0.28
+    },
+    {
+     "rank": 39,
+     "path": "src/triage/routes/safeguarding.ts",
+     "score": 0.28
+    },
+    {
+     "rank": 40,
+     "path": "src/triage/routes/urgent.ts",
+     "score": 0.28
+    },
+    {
+     "rank": 41,
+     "path": "tsconfig.node.json",
+     "score": 0.05
+    },
+    {
+     "rank": 42,
+     "path": "tsconfig.app.json",
+     "score": 0.03
+    },
+    {
+     "rank": 43,
+     "path": "src/styles.css",
+     "score": 0.01
+    },
+    {
+     "rank": 44,
+     "path": "index.html",
+     "score": 0
+    },
+    {
+     "rank": 45,
+     "path": "package.json",
+     "score": 0
+    },
+    {
+     "rank": 46,
+     "path": "README.md",
+     "score": 0
+    },
+    {
+     "rank": 47,
+     "path": "src/api/api-client.ts",
+     "score": 0
+    },
+    {
+     "rank": 48,
+     "path": "src/api/pipeline/auth-stage.ts",
+     "score": 0
+    },
+    {
+     "rank": 49,
+     "path": "src/api/pipeline/trace-stage.ts",
+     "score": 0
+    },
+    {
+     "rank": 50,
+     "path": "src/api/pipeline/types.ts",
+     "score": 0
+    },
+    {
+     "rank": 51,
+     "path": "tsconfig.json",
+     "score": 0
+    },
+    {
+     "rank": 52,
+     "path": "vite.config.ts",
+     "score": 0
+    }
+   ],
+   "toolEvidenceHeading": "Evidence · 52 files retrieved",
+   "toolUnverifiedMentions": [],
+   "toolCoverage": "Searched 52 of 52 eligible repository files. Ranking scores combine retrieval signals and do not measure answer correctness.",
+   "toolScreenshot": "study/gate-screenshots/clinic-triage-q06.png",
+   "toolScreenshotComplete": true,
+   "toolGeneration": {
+    "status": "complete",
+    "finishReason": "STOP",
+    "model": "gemini-3.6-flash",
+    "attempts": 1,
+    "capturedAt": "2026-09-01T11:31:48.778Z",
+    "usageMetadata": {
+     "promptTokenCount": 32945,
+     "candidatesTokenCount": 552,
+     "totalTokenCount": 34520
+    }
+   },
+   "correct": null
   },
   {
    "id": 7,
@@ -115,7 +1801,288 @@
     "src/scheduling/slotFinder.ts:11-14",
     "src/store/useClinicStore.ts:129"
    ],
-   "correctAnswerNotes": "Despite the filename `oldSlotFinder`, this is an intentional live path for follow-up referrals.\n\nThe comment at oldSlotFinder.ts:3 says slots are grouped by site before continuity is\nconsidered. There is no site grouping anywhere in the function. This is the same species of\nmisleading comment as the Internet Explorer shim in Q1.\n\nThe clinician preference never operates, but not because of the trailing sort. `startsAt` is\nderived from `slotIndex` alone in the seed data — `clinicianIndex` affects only\n`durationMinutes` — so two clinicians' slots at the same index carry an identical timestamp. A\nslot's service is `person[3][slotIndex % person[3].length]`, though, so clinicians offering\ndifferent numbers of services match a given service at different indices and coincide only\nsometimes: for a Cardiology referral, `c1` contributes indices 0, 2, 4 and 6 while `c4`\ncontributes 2 and 5, so one pair out of six ties. Ties arise only where two clinicians both\noffer a matching slot at the same index; `sort` is stable, so the preference survives those and\nnever gets a chance to matter elsewhere, where the earlier time simply wins.\n\nWhat makes it inert is that `preferredClinicianId` is `referral.assignedClinicianId`, and that\nfield is undefined at every call site in the repository. It appears three times in `src/`: the\noptional declaration, the read in the scheduling service, and a single write in the store during\nbooking. Every caller of `availableSlots` — the slot picker and three tests — passes a\nseed-derived referral, and no seed referral sets it, so the comparator evaluates 0 for every\npair.\n\nIt is unreachable by construction rather than merely unseeded. The only write sets\n`status: \"booked\"` at the same time; the slot picker renders only while `showBooking` is set or\nthe status is `accepted`; and the Accept button is disabled once the status is `booked`. There\nis no path back into the booking flow for a referral that has an assigned clinician.\n\nUnlike `findSlots`, the legacy finder has no `isAfter(now)` filter, so it can return slots in\nthe past. All seed slots are in the future, so this does not surface, but it is a real\nbehavioural divergence between the two paths."
+   "correctAnswerNotes": "Despite the filename `oldSlotFinder`, this is an intentional live path for follow-up referrals.\n\nThe comment at oldSlotFinder.ts:3 says slots are grouped by site before continuity is\nconsidered. There is no site grouping anywhere in the function. This is the same species of\nmisleading comment as the Internet Explorer shim in Q1.\n\nThe clinician preference never operates, but not because of the trailing sort. `startsAt` is\nderived from `slotIndex` alone in the seed data — `clinicianIndex` affects only\n`durationMinutes` — so two clinicians' slots at the same index carry an identical timestamp. A\nslot's service is `person[3][slotIndex % person[3].length]`, though, so clinicians offering\ndifferent numbers of services match a given service at different indices and coincide only\nsometimes: for a Cardiology referral, `c1` contributes indices 0, 2, 4 and 6 while `c4`\ncontributes 2 and 5, so one pair out of six ties. Ties arise only where two clinicians both\noffer a matching slot at the same index; `sort` is stable, so the preference survives those and\nnever gets a chance to matter elsewhere, where the earlier time simply wins.\n\nWhat makes it inert is that `preferredClinicianId` is `referral.assignedClinicianId`, and that\nfield is undefined at every call site in the repository. It appears three times in `src/`: the\noptional declaration, the read in the scheduling service, and a single write in the store during\nbooking. Every caller of `availableSlots` — the slot picker and three tests — passes a\nseed-derived referral, and no seed referral sets it, so the comparator evaluates 0 for every\npair.\n\nIt is unreachable by construction rather than merely unseeded. The only write sets\n`status: \"booked\"` at the same time; the slot picker renders only while `showBooking` is set or\nthe status is `accepted`; and the Accept button is disabled once the status is `booked`. There\nis no path back into the booking flow for a referral that has an assigned clinician.\n\nUnlike `findSlots`, the legacy finder has no `isAfter(now)` filter, so it can return slots in\nthe past. All seed slots are in the future, so this does not surface, but it is a real\nbehavioural divergence between the two paths.",
+   "toolAnswer": "The **`findContinuitySlots`** implementation (defined in `src/scheduling/oldSlotFinder.ts`) runs for a follow-up referral.\n\nWhy this implementation runs\n\nWhen slots are looked up for a referral:\n\n1. **Policy Lookup (`src/config/priorityRules.ts`)**:\n\n`referralPolicies` maps each referral type (`ReferralType`) to its configuration. For `\"followUp\"`, the policy explicitly sets `finder: \"continuity\"`:\n\n```ts\n\nfollowUp: { basePoints: 1, finder: \"continuity\", targetHours: 168 }\n\n```\n\n2. **Finder Selection (`src/scheduling/service.ts`)**:\n\nIn `availableSlots()`, the referral's type is used to resolve the finder key from `referralPolicies[referral.type].finder`:\n\n```ts\n\nconst finders: Record<string, SlotFinder> = {\n\nstandard: findSlots,\n\ncontinuity: findContinuitySlots,\n\n};\n\nexport function availableSlots(referral: Referral, clinicians: Clinician[]): Slot[] {\n\nconst finder = finders[referralPolicies[referral.type].finder];\n\nreturn finder({\n\nreferral,\n\nclinicians,\n\npreferredClinicianId: referral.assignedClinicianId,\n\n});\n\n}\n\n```\n\nBecause `referralPolicies[\"followUp\"].finder` resolves to `\"continuity\"`, `finders[\"continuity\"]` dispatches the slot search directly to `findContinuitySlots`.",
+   "toolEvidence": [
+    {
+     "rank": 1,
+     "path": "src/components/SlotPicker.tsx",
+     "score": 0.63
+    },
+    {
+     "rank": 2,
+     "path": "src/pages/ReferralDetailPage.tsx",
+     "score": 0.63
+    },
+    {
+     "rank": 3,
+     "path": "src/scheduling/service.ts",
+     "score": 0.62
+    },
+    {
+     "rank": 4,
+     "path": "src/scheduling/types.ts",
+     "score": 0.62
+    },
+    {
+     "rank": 5,
+     "path": "src/components/ReferralTable.tsx",
+     "score": 0.6
+    },
+    {
+     "rank": 6,
+     "path": "src/hooks/useReferralFilters.ts",
+     "score": 0.6
+    },
+    {
+     "rank": 7,
+     "path": "src/pages/ReferralListPage.tsx",
+     "score": 0.6
+    },
+    {
+     "rank": 8,
+     "path": "src/scheduling/oldSlotFinder.ts",
+     "score": 0.6
+    },
+    {
+     "rank": 9,
+     "path": "src/scheduling/slotFinder.ts",
+     "score": 0.6
+    },
+    {
+     "rank": 10,
+     "path": "src/api/pipeline/redact-stage.ts",
+     "score": 0.58
+    },
+    {
+     "rank": 11,
+     "path": "src/api/referrals-api.ts",
+     "score": 0.58
+    },
+    {
+     "rank": 12,
+     "path": "src/App.tsx",
+     "score": 0.58
+    },
+    {
+     "rank": 13,
+     "path": "src/components/PriorityPanel.tsx",
+     "score": 0.58
+    },
+    {
+     "rank": 14,
+     "path": "src/config/priorityRules.ts",
+     "score": 0.58
+    },
+    {
+     "rank": 15,
+     "path": "src/data/seed.ts",
+     "score": 0.58
+    },
+    {
+     "rank": 16,
+     "path": "src/jobs/nightlyReverification.ts",
+     "score": 0.58
+    },
+    {
+     "rank": 17,
+     "path": "src/store/useClinicStore.ts",
+     "score": 0.58
+    },
+    {
+     "rank": 18,
+     "path": "src/tests/registry.test.ts",
+     "score": 0.58
+    },
+    {
+     "rank": 19,
+     "path": "src/triage/banding.ts",
+     "score": 0.58
+    },
+    {
+     "rank": 20,
+     "path": "src/triage/eligibility.ts",
+     "score": 0.58
+    },
+    {
+     "rank": 21,
+     "path": "src/triage/routes/followUp.ts",
+     "score": 0.58
+    },
+    {
+     "rank": 22,
+     "path": "src/triage/routes/registry.ts",
+     "score": 0.58
+    },
+    {
+     "rank": 23,
+     "path": "src/triage/validation.ts",
+     "score": 0.58
+    },
+    {
+     "rank": 24,
+     "path": "src/utils/format.ts",
+     "score": 0.58
+    },
+    {
+     "rank": 25,
+     "path": "src/triage/routes/loadRoutes.ts",
+     "score": 0.46
+    },
+    {
+     "rank": 26,
+     "path": "src/types/domain.ts",
+     "score": 0.46
+    },
+    {
+     "rank": 27,
+     "path": "src/tests/scheduling.test.ts",
+     "score": 0.44
+    },
+    {
+     "rank": 28,
+     "path": "src/api/api-client.ts",
+     "score": 0.42
+    },
+    {
+     "rank": 29,
+     "path": "src/api/pipeline/types.ts",
+     "score": 0.42
+    },
+    {
+     "rank": 30,
+     "path": "src/audit/logger.ts",
+     "score": 0.42
+    },
+    {
+     "rank": 31,
+     "path": "src/components/Layout.tsx",
+     "score": 0.42
+    },
+    {
+     "rank": 32,
+     "path": "src/events/channel.ts",
+     "score": 0.42
+    },
+    {
+     "rank": 33,
+     "path": "src/main.tsx",
+     "score": 0.42
+    },
+    {
+     "rank": 34,
+     "path": "src/pages/AuditLogPage.tsx",
+     "score": 0.42
+    },
+    {
+     "rank": 35,
+     "path": "src/pages/ClinicianOverviewPage.tsx",
+     "score": 0.42
+    },
+    {
+     "rank": 36,
+     "path": "src/scheduling/eventListener.ts",
+     "score": 0.42
+    },
+    {
+     "rank": 37,
+     "path": "src/tests/banding.test.ts",
+     "score": 0.42
+    },
+    {
+     "rank": 38,
+     "path": "src/tests/eligibility.test.ts",
+     "score": 0.42
+    },
+    {
+     "rank": 39,
+     "path": "src/triage/routes/routine.ts",
+     "score": 0.42
+    },
+    {
+     "rank": 40,
+     "path": "src/triage/routes/safeguarding.ts",
+     "score": 0.42
+    },
+    {
+     "rank": 41,
+     "path": "src/triage/routes/urgent.ts",
+     "score": 0.42
+    },
+    {
+     "rank": 42,
+     "path": "src/events/types.ts",
+     "score": 0.3
+    },
+    {
+     "rank": 43,
+     "path": "src/api/pipeline/auth-stage.ts",
+     "score": 0.28
+    },
+    {
+     "rank": 44,
+     "path": "src/api/pipeline/trace-stage.ts",
+     "score": 0.28
+    },
+    {
+     "rank": 45,
+     "path": "src/styles.css",
+     "score": 0.28
+    },
+    {
+     "rank": 46,
+     "path": "index.html",
+     "score": 0
+    },
+    {
+     "rank": 47,
+     "path": "package.json",
+     "score": 0
+    },
+    {
+     "rank": 48,
+     "path": "README.md",
+     "score": 0
+    },
+    {
+     "rank": 49,
+     "path": "tsconfig.app.json",
+     "score": 0
+    },
+    {
+     "rank": 50,
+     "path": "tsconfig.json",
+     "score": 0
+    },
+    {
+     "rank": 51,
+     "path": "tsconfig.node.json",
+     "score": 0
+    },
+    {
+     "rank": 52,
+     "path": "vite.config.ts",
+     "score": 0
+    }
+   ],
+   "toolEvidenceHeading": "Evidence · 52 files retrieved",
+   "toolUnverifiedMentions": [],
+   "toolCoverage": "Searched 52 of 52 eligible repository files. Ranking scores combine retrieval signals and do not measure answer correctness.",
+   "toolScreenshot": "study/gate-screenshots/clinic-triage-q07.png",
+   "toolScreenshotComplete": true,
+   "toolGeneration": {
+    "status": "complete",
+    "finishReason": "STOP",
+    "model": "gemini-3.6-flash",
+    "attempts": 1,
+    "capturedAt": "2026-09-01T11:32:36.353Z",
+    "usageMetadata": {
+     "promptTokenCount": 32948,
+     "candidatesTokenCount": 337,
+     "totalTokenCount": 34374
+    }
+   },
+   "correct": null
   },
   {
    "id": 8,
@@ -130,7 +2097,288 @@
     "src/pages/AuditLogPage.tsx:15",
     "src/App.tsx:7-8"
    ],
-   "correctAnswerNotes": "Event delivery is synchronous. `App` imports both listener modules for their registration side\neffects.\n\nThe two listeners differ in whether their work is ever used. The audit logger's list is read by\nthe audit log page through `getEventAudit`, so it reaches the screen. The scheduling listener's\n`recentlyBooked` set is only readable through `wasRecentlyBooked`, which has no callers — the\nlistener writes to a set nothing reads."
+   "correctAnswerNotes": "Event delivery is synchronous. `App` imports both listener modules for their registration side\neffects.\n\nThe two listeners differ in whether their work is ever used. The audit logger's list is read by\nthe audit log page through `getEventAudit`, so it reaches the screen. The scheduling listener's\n`recentlyBooked` set is only readable through `wasRecentlyBooked`, which has no callers — the\nlistener writes to a set nothing reads.",
+   "toolAnswer": "When the scheduling event **`appointment:booked`** is emitted, two event listeners react. Both are registered on the `clinicEvents` singleton bus (`src/events/channel.ts`) during top-level module import in `src/App.tsx`.\n\n---\n\n1. `src/scheduling/eventListener.ts`\n**Reaction**: Listens to `\"appointment:booked\"` and adds `appointment.slotId` to an in-memory `Set<string>` called `recentlyBooked`.\n**State / Runtime Effect**: Updates the set checked by the exported `wasRecentlyBooked(slotId)` helper function. *(Note: While `wasRecentlyBooked` is exported, it is not currently invoked by any UI component or store selector elsewhere in the application).*\n2. `src/audit/logger.ts`\n**Reaction**: Listens to `\"appointment:booked\"` and creates a new `AuditEntry` object with:\n\n* `id`: `event-${appointment.id}`\n\n* `action`: `\"Appointment booked\"`\n\n* `actor`: `appointment.bookedBy`\n\n* `referralId`: `appointment.referralId`\n\n* `detail`: `Booked ${patientName} with clinician ${appointment.clinicianId}`\n\n* `severity`: `\"info\"`\n\n* `occurredAt`: current ISO timestamp\n\nIt prepends this entry to an internal `eventEntries` array.\n\n**State / UI Effect**: The `getEventAudit()` export returns a copy of `eventEntries`. `AuditLogPage` (`src/pages/AuditLogPage.tsx`) invokes `getEventAudit()` inside a `useMemo` hook, combining these event-based log entries with store-managed audit records for rendering in the Audit Log view.\n\n---\n\nHow the Event is Triggered\n\n1. A user confirms a slot via `SlotPicker` (`src/components/SlotPicker.tsx`), calling `bookAppointment` in `useClinicStore` (`src/store/useClinicStore.ts`).\n\n2. `useClinicStore.bookAppointment` executes `checkAppointment()` in `src/triage/validation.ts`.\n\n3. After validating eligibility and clinician coverage, `checkAppointment()` calls `clinicEvents.emit(\"appointment:booked\", { appointment, patientName: referral.patient.name })`.\n\nOther Events\n\nThe `ClinicEvents` interface (`src/events/types.ts`) also defines `\"referral:accepted\"` and `\"eligibility:failed\"`, but no event listeners are registered for either of those events in the codebase.",
+   "toolEvidence": [
+    {
+     "rank": 1,
+     "path": "src/App.tsx",
+     "score": 0.65
+    },
+    {
+     "rank": 2,
+     "path": "src/tests/scheduling.test.ts",
+     "score": 0.63
+    },
+    {
+     "rank": 3,
+     "path": "src/audit/logger.ts",
+     "score": 0.6
+    },
+    {
+     "rank": 4,
+     "path": "src/components/SlotPicker.tsx",
+     "score": 0.6
+    },
+    {
+     "rank": 5,
+     "path": "src/events/channel.ts",
+     "score": 0.6
+    },
+    {
+     "rank": 6,
+     "path": "src/pages/AuditLogPage.tsx",
+     "score": 0.6
+    },
+    {
+     "rank": 7,
+     "path": "src/scheduling/eventListener.ts",
+     "score": 0.6
+    },
+    {
+     "rank": 8,
+     "path": "src/scheduling/oldSlotFinder.ts",
+     "score": 0.58
+    },
+    {
+     "rank": 9,
+     "path": "src/scheduling/service.ts",
+     "score": 0.58
+    },
+    {
+     "rank": 10,
+     "path": "src/scheduling/slotFinder.ts",
+     "score": 0.58
+    },
+    {
+     "rank": 11,
+     "path": "src/scheduling/types.ts",
+     "score": 0.58
+    },
+    {
+     "rank": 12,
+     "path": "src/components/Layout.tsx",
+     "score": 0.47
+    },
+    {
+     "rank": 13,
+     "path": "src/main.tsx",
+     "score": 0.47
+    },
+    {
+     "rank": 14,
+     "path": "src/pages/ClinicianOverviewPage.tsx",
+     "score": 0.47
+    },
+    {
+     "rank": 15,
+     "path": "src/pages/ReferralDetailPage.tsx",
+     "score": 0.47
+    },
+    {
+     "rank": 16,
+     "path": "src/pages/ReferralListPage.tsx",
+     "score": 0.47
+    },
+    {
+     "rank": 17,
+     "path": "src/data/seed.ts",
+     "score": 0.45
+    },
+    {
+     "rank": 18,
+     "path": "src/triage/validation.ts",
+     "score": 0.45
+    },
+    {
+     "rank": 19,
+     "path": "src/events/types.ts",
+     "score": 0.43
+    },
+    {
+     "rank": 20,
+     "path": "src/jobs/nightlyReverification.ts",
+     "score": 0.43
+    },
+    {
+     "rank": 21,
+     "path": "src/store/useClinicStore.ts",
+     "score": 0.43
+    },
+    {
+     "rank": 22,
+     "path": "src/types/domain.ts",
+     "score": 0.43
+    },
+    {
+     "rank": 23,
+     "path": "src/utils/format.ts",
+     "score": 0.43
+    },
+    {
+     "rank": 24,
+     "path": "src/config/priorityRules.ts",
+     "score": 0.41
+    },
+    {
+     "rank": 25,
+     "path": "src/components/PriorityPanel.tsx",
+     "score": 0.31
+    },
+    {
+     "rank": 26,
+     "path": "src/components/ReferralTable.tsx",
+     "score": 0.31
+    },
+    {
+     "rank": 27,
+     "path": "src/hooks/useReferralFilters.ts",
+     "score": 0.31
+    },
+    {
+     "rank": 28,
+     "path": "src/styles.css",
+     "score": 0.31
+    },
+    {
+     "rank": 29,
+     "path": "src/triage/routes/loadRoutes.ts",
+     "score": 0.31
+    },
+    {
+     "rank": 30,
+     "path": "src/triage/routes/registry.ts",
+     "score": 0.31
+    },
+    {
+     "rank": 31,
+     "path": "src/tests/banding.test.ts",
+     "score": 0.3
+    },
+    {
+     "rank": 32,
+     "path": "src/tests/eligibility.test.ts",
+     "score": 0.3
+    },
+    {
+     "rank": 33,
+     "path": "src/tests/registry.test.ts",
+     "score": 0.3
+    },
+    {
+     "rank": 34,
+     "path": "src/triage/eligibility.ts",
+     "score": 0.3
+    },
+    {
+     "rank": 35,
+     "path": "src/api/pipeline/redact-stage.ts",
+     "score": 0.29
+    },
+    {
+     "rank": 36,
+     "path": "src/api/referrals-api.ts",
+     "score": 0.29
+    },
+    {
+     "rank": 37,
+     "path": "src/triage/banding.ts",
+     "score": 0.29
+    },
+    {
+     "rank": 38,
+     "path": "src/api/api-client.ts",
+     "score": 0.04
+    },
+    {
+     "rank": 39,
+     "path": "index.html",
+     "score": 0
+    },
+    {
+     "rank": 40,
+     "path": "package.json",
+     "score": 0
+    },
+    {
+     "rank": 41,
+     "path": "README.md",
+     "score": 0
+    },
+    {
+     "rank": 42,
+     "path": "src/api/pipeline/auth-stage.ts",
+     "score": 0
+    },
+    {
+     "rank": 43,
+     "path": "src/api/pipeline/trace-stage.ts",
+     "score": 0
+    },
+    {
+     "rank": 44,
+     "path": "src/api/pipeline/types.ts",
+     "score": 0
+    },
+    {
+     "rank": 45,
+     "path": "src/triage/routes/followUp.ts",
+     "score": 0
+    },
+    {
+     "rank": 46,
+     "path": "src/triage/routes/routine.ts",
+     "score": 0
+    },
+    {
+     "rank": 47,
+     "path": "src/triage/routes/safeguarding.ts",
+     "score": 0
+    },
+    {
+     "rank": 48,
+     "path": "src/triage/routes/urgent.ts",
+     "score": 0
+    },
+    {
+     "rank": 49,
+     "path": "tsconfig.app.json",
+     "score": 0
+    },
+    {
+     "rank": 50,
+     "path": "tsconfig.json",
+     "score": 0
+    },
+    {
+     "rank": 51,
+     "path": "tsconfig.node.json",
+     "score": 0
+    },
+    {
+     "rank": 52,
+     "path": "vite.config.ts",
+     "score": 0
+    }
+   ],
+   "toolEvidenceHeading": "Evidence · 52 files retrieved",
+   "toolUnverifiedMentions": [],
+   "toolCoverage": "Searched 52 of 52 eligible repository files. Ranking scores combine retrieval signals and do not measure answer correctness.",
+   "toolScreenshot": "study/gate-screenshots/clinic-triage-q08.png",
+   "toolScreenshotComplete": true,
+   "toolGeneration": {
+    "status": "complete",
+    "finishReason": "STOP",
+    "model": "gemini-3.6-flash",
+    "attempts": 1,
+    "capturedAt": "2026-09-01T11:33:20.442Z",
+    "usageMetadata": {
+     "promptTokenCount": 32939,
+     "candidatesTokenCount": 557,
+     "totalTokenCount": 35842
+    }
+   },
+   "correct": null
   },
   {
    "id": 9,
@@ -151,7 +2399,288 @@
     "src/styles.css:936-939",
     "src/styles.css:940-951"
    ],
-   "correctAnswerNotes": "The `TypeFilter` union in `useReferralFilters.ts:9` derives from `ReferralType` and widens\nautomatically, so the hook itself needs no change — only the hardcoded options it drives.\n\nThe styling consequence is subtler than \"unstyled\". There is no `.type-badge.type-routine`\nrule at all: routine already relies on the base `.type-badge`, so a new type would receive the\nsame green badge and be indistinguishable from routine. The dot behaves differently — routine\nhas its own green rule, so a new type would fall back to the base grey, a colour no existing\ntype uses. The badge collides; the dot is merely meaningless."
+   "correctAnswerNotes": "The `TypeFilter` union in `useReferralFilters.ts:9` derives from `ReferralType` and widens\nautomatically, so the hook itself needs no change — only the hardcoded options it drives.\n\nThe styling consequence is subtler than \"unstyled\". There is no `.type-badge.type-routine`\nrule at all: routine already relies on the base `.type-badge`, so a new type would receive the\nsame green badge and be indistinguishable from routine. The dot behaves differently — routine\nhas its own green rule, so a new type would fall back to the base grey, a colour no existing\ntype uses. The badge collides; the dot is merely meaningless.",
+   "toolAnswer": "To add a new referral type, the primary definition is updated in the `ReferralType` union type in **`src/types/domain.ts`**.\n\n---\n\nDirect Codebase Changes Required\n\nTo fully integrate a new referral type across the application runtime and prevent build/runtime errors, updates are required in the following locations:\n\n#### 1. Type Union Definition\n\n**`src/types/domain.ts`**: Add the new string literal to the `ReferralType` union (`\"routine\" | \"urgent\" | \"followUp\" | \"safeguarding\"`).\n\n#### 2. Policy & Priority Configuration\n\n**`src/config/priorityRules.ts`**: Add an entry for the new type to `referralPolicies`, which is typed as `Record<ReferralType, ReferralPolicy>`.\n\n* TypeScript will raise a type error if the new type key is missing. The policy must define `basePoints`, `finder` (`\"standard\"` or `\"continuity\"`), and `targetHours`.\n\n* *Runtime Flow:* `calculateBand` in `src/triage/banding.ts` and `availableSlots` in `src/scheduling/service.ts` index `referralPolicies[referral.type]` directly at runtime.\n\n#### 3. Display Helper\n\n**`src/utils/format.ts`**: Add a key for the new type in `humaniseType(type: ReferralType)`. The record inside `humaniseType` maps `ReferralType` to human-readable strings, so TypeScript will mandate an entry for the new union member.\n\n#### 4. Pathway Route Handler\n\n**`src/triage/routes/`**: Create a new route handler file in the `src/triage/routes/` directory (patterned after existing modules `src/triage/routes/routine.ts`, `src/triage/routes/urgent.ts`, `src/triage/routes/followUp.ts`, and `src/triage/routes/safeguarding.ts`) that calls `registerRoute(type, handler)` from `src/triage/routes/registry.ts`.\n\n* *Runtime Flow:* `loadRoutes` in `src/triage/routes/loadRoutes.ts` dynamically imports all `.ts` files in `src/triage/routes/` (excluding `registry.ts` and `loadRoutes.ts`). When `ReferralDetailPage.tsx` loads, it executes `routeReferral(referral)` from `src/triage/routes/registry.ts`. If no handler is registered for `referral.type`, `routeReferral` throws `No routing handler registered for ${referral.type}`.\n\n#### 5. User Interface & Filtering\n\n**`src/pages/ReferralListPage.tsx`**: Add an `<option>` element for the new type to the pathway `<select>` dropdown (`aria-label=\"Filter referral type\"`), so users can filter the worklist by the new type.\n**`src/components/ReferralTable.tsx` & `src/pages/ReferralDetailPage.tsx`**: These components dynamically apply CSS classes using `type-${referral.type}` (e.g., `type-dot.type-${referral.type}` and `type-badge.type-${referral.type}`).\n**`src/styles.css`**: Add CSS selectors for `.type-dot.type-<newType>` and `.type-badge.type-<newType>` to set badge and dot styling, matching existing definitions like `.type-dot.type-urgent` or `.type-badge.type-routine`.\n\n#### 6. Route Registry Test\n\n**`src/tests/registry.test.ts`**: Update `registeredRouteCount()` assertion in the test `\"loads four handlers dynamically\"` from `4` to `5` (or the updated count).\n\n---\n\nDomain-Specific & Contextual Considerations\n\nDepending on the business logic of the new referral type, additional changes may be necessary:\n\n**`src/pages/ReferralListPage.tsx`**: Update the `urgent` metric summary count if the new type should count toward \"Time sensitive\" referrals (`item.type === \"urgent\" || item.type === \"safeguarding\"`).\n**`src/triage/eligibility.ts`**: Add custom eligibility checks inside `checkEligibility(referral)` if the new referral type has specialized rules (similar to existing age restrictions for `safeguarding`).\n**`src/api/pipeline/redact-stage.ts`**: Add redaction rules to `redactBody(body)` if patient data or clinical notes for the new referral type require privacy masking.\n**`src/data/seed.ts`**: Update mock seed data scenarios to include examples of the new type for development and testing.",
+   "toolEvidence": [
+    {
+     "rank": 1,
+     "path": "src/components/ReferralTable.tsx",
+     "score": 0.63
+    },
+    {
+     "rank": 2,
+     "path": "src/hooks/useReferralFilters.ts",
+     "score": 0.63
+    },
+    {
+     "rank": 3,
+     "path": "src/pages/ReferralDetailPage.tsx",
+     "score": 0.63
+    },
+    {
+     "rank": 4,
+     "path": "src/api/pipeline/redact-stage.ts",
+     "score": 0.62
+    },
+    {
+     "rank": 5,
+     "path": "src/api/referrals-api.ts",
+     "score": 0.62
+    },
+    {
+     "rank": 6,
+     "path": "src/components/PriorityPanel.tsx",
+     "score": 0.62
+    },
+    {
+     "rank": 7,
+     "path": "src/components/SlotPicker.tsx",
+     "score": 0.62
+    },
+    {
+     "rank": 8,
+     "path": "src/config/priorityRules.ts",
+     "score": 0.62
+    },
+    {
+     "rank": 9,
+     "path": "src/data/seed.ts",
+     "score": 0.62
+    },
+    {
+     "rank": 10,
+     "path": "src/jobs/nightlyReverification.ts",
+     "score": 0.62
+    },
+    {
+     "rank": 11,
+     "path": "src/scheduling/service.ts",
+     "score": 0.62
+    },
+    {
+     "rank": 12,
+     "path": "src/scheduling/types.ts",
+     "score": 0.62
+    },
+    {
+     "rank": 13,
+     "path": "src/store/useClinicStore.ts",
+     "score": 0.62
+    },
+    {
+     "rank": 14,
+     "path": "src/triage/banding.ts",
+     "score": 0.62
+    },
+    {
+     "rank": 15,
+     "path": "src/triage/eligibility.ts",
+     "score": 0.62
+    },
+    {
+     "rank": 16,
+     "path": "src/triage/routes/registry.ts",
+     "score": 0.62
+    },
+    {
+     "rank": 17,
+     "path": "src/triage/validation.ts",
+     "score": 0.62
+    },
+    {
+     "rank": 18,
+     "path": "src/utils/format.ts",
+     "score": 0.62
+    },
+    {
+     "rank": 19,
+     "path": "src/pages/ReferralListPage.tsx",
+     "score": 0.6
+    },
+    {
+     "rank": 20,
+     "path": "src/api/api-client.ts",
+     "score": 0.58
+    },
+    {
+     "rank": 21,
+     "path": "src/api/pipeline/auth-stage.ts",
+     "score": 0.58
+    },
+    {
+     "rank": 22,
+     "path": "src/api/pipeline/trace-stage.ts",
+     "score": 0.58
+    },
+    {
+     "rank": 23,
+     "path": "src/App.tsx",
+     "score": 0.58
+    },
+    {
+     "rank": 24,
+     "path": "src/audit/logger.ts",
+     "score": 0.58
+    },
+    {
+     "rank": 25,
+     "path": "src/events/channel.ts",
+     "score": 0.58
+    },
+    {
+     "rank": 26,
+     "path": "src/events/types.ts",
+     "score": 0.58
+    },
+    {
+     "rank": 27,
+     "path": "src/scheduling/oldSlotFinder.ts",
+     "score": 0.58
+    },
+    {
+     "rank": 28,
+     "path": "src/scheduling/slotFinder.ts",
+     "score": 0.58
+    },
+    {
+     "rank": 29,
+     "path": "src/tests/registry.test.ts",
+     "score": 0.58
+    },
+    {
+     "rank": 30,
+     "path": "src/triage/routes/loadRoutes.ts",
+     "score": 0.46
+    },
+    {
+     "rank": 31,
+     "path": "src/types/domain.ts",
+     "score": 0.46
+    },
+    {
+     "rank": 32,
+     "path": "src/api/pipeline/types.ts",
+     "score": 0.44
+    },
+    {
+     "rank": 33,
+     "path": "src/components/Layout.tsx",
+     "score": 0.44
+    },
+    {
+     "rank": 34,
+     "path": "src/pages/AuditLogPage.tsx",
+     "score": 0.44
+    },
+    {
+     "rank": 35,
+     "path": "src/pages/ClinicianOverviewPage.tsx",
+     "score": 0.44
+    },
+    {
+     "rank": 36,
+     "path": "src/tests/banding.test.ts",
+     "score": 0.44
+    },
+    {
+     "rank": 37,
+     "path": "src/tests/eligibility.test.ts",
+     "score": 0.44
+    },
+    {
+     "rank": 38,
+     "path": "src/tests/scheduling.test.ts",
+     "score": 0.44
+    },
+    {
+     "rank": 39,
+     "path": "src/triage/routes/followUp.ts",
+     "score": 0.44
+    },
+    {
+     "rank": 40,
+     "path": "src/triage/routes/routine.ts",
+     "score": 0.44
+    },
+    {
+     "rank": 41,
+     "path": "src/triage/routes/safeguarding.ts",
+     "score": 0.44
+    },
+    {
+     "rank": 42,
+     "path": "src/triage/routes/urgent.ts",
+     "score": 0.44
+    },
+    {
+     "rank": 43,
+     "path": "src/main.tsx",
+     "score": 0.42
+    },
+    {
+     "rank": 44,
+     "path": "src/scheduling/eventListener.ts",
+     "score": 0.42
+    },
+    {
+     "rank": 45,
+     "path": "src/styles.css",
+     "score": 0.28
+    },
+    {
+     "rank": 46,
+     "path": "index.html",
+     "score": 0.03
+    },
+    {
+     "rank": 47,
+     "path": "package.json",
+     "score": 0.02
+    },
+    {
+     "rank": 48,
+     "path": "README.md",
+     "score": 0
+    },
+    {
+     "rank": 49,
+     "path": "tsconfig.app.json",
+     "score": 0
+    },
+    {
+     "rank": 50,
+     "path": "tsconfig.json",
+     "score": 0
+    },
+    {
+     "rank": 51,
+     "path": "tsconfig.node.json",
+     "score": 0
+    },
+    {
+     "rank": 52,
+     "path": "vite.config.ts",
+     "score": 0
+    }
+   ],
+   "toolEvidenceHeading": "Evidence · 52 files retrieved",
+   "toolUnverifiedMentions": [],
+   "toolCoverage": "Searched 52 of 52 eligible repository files. Ranking scores combine retrieval signals and do not measure answer correctness.",
+   "toolScreenshot": "study/gate-screenshots/clinic-triage-q09.png",
+   "toolScreenshotComplete": true,
+   "toolGeneration": {
+    "status": "complete",
+    "finishReason": "STOP",
+    "model": "gemini-3.6-flash",
+    "attempts": 1,
+    "capturedAt": "2026-09-01T11:34:52.201Z",
+    "usageMetadata": {
+     "promptTokenCount": 66828,
+     "candidatesTokenCount": 1877,
+     "totalTokenCount": 72372
+    }
+   },
+   "correct": null
   },
   {
    "id": 10,
@@ -171,7 +2700,288 @@
     "src/tests/banding.test.ts:9",
     "src/tests/banding.test.ts:13"
    ],
-   "correctAnswerNotes": "`PriorityPanel.tsx:16` is where `calculateBand` is actually called; a citation starting at 18\nshows only the consumption of the result.\n\nThe precise claim is that the stored band is always the panel's local state and never the\ncomputed one — not that it is always green. Green is the particular outcome when an operator\naccepts an unbanded referral without touching the panel, which is the case worth citing because\n`PriorityPanel` labels the calculated band \"Suggested\" against a control that was never\npreselected from it.\n\n`calculateBand` does determine a stored band in exactly one place in the repository:\n`eligibility.test.ts:11` calls `acceptReferral` without the override argument. No UI path does.\n\nNo seed referral carries a `priority`, so on a first visit `referral?.priority ?? \"green\"`\nresolves to green and an operator who presses Accept without touching the panel stores green\neven when the suggestion is red. That is as far as the claim goes. The `useState` initialiser\nruns once per mount, so after a band has been stored, navigating away and back re-seeds the\nlocal state from it.\n\n(The supporting grep is case-sensitive: `grep -ci priority src/data/seed.ts` returns 1, matching\nan audit fixture reading \"Priority set to green\". The conclusion stands on the referral\nfixtures, not on the command.)\n\nAn earlier version of this Note claimed `setPriority` offered another route to a stored band.\nIt does not: the store action has no callers, and the route that does exist is the Accept\nbutton. See Q2."
+   "correctAnswerNotes": "`PriorityPanel.tsx:16` is where `calculateBand` is actually called; a citation starting at 18\nshows only the consumption of the result.\n\nThe precise claim is that the stored band is always the panel's local state and never the\ncomputed one — not that it is always green. Green is the particular outcome when an operator\naccepts an unbanded referral without touching the panel, which is the case worth citing because\n`PriorityPanel` labels the calculated band \"Suggested\" against a control that was never\npreselected from it.\n\n`calculateBand` does determine a stored band in exactly one place in the repository:\n`eligibility.test.ts:11` calls `acceptReferral` without the override argument. No UI path does.\n\nNo seed referral carries a `priority`, so on a first visit `referral?.priority ?? \"green\"`\nresolves to green and an operator who presses Accept without touching the panel stores green\neven when the suggestion is red. That is as far as the claim goes. The `useState` initialiser\nruns once per mount, so after a band has been stored, navigating away and back re-seeds the\nlocal state from it.\n\n(The supporting grep is case-sensitive: `grep -ci priority src/data/seed.ts` returns 1, matching\nan audit fixture reading \"Priority set to green\". The conclusion stands on the referral\nfixtures, not on the command.)\n\nAn earlier version of this Note claimed `setPriority` offered another route to a stored band.\nIt does not: the store action has no callers, and the route that does exist is the Accept\nbutton. See Q2.",
+   "toolAnswer": "Changing the priority rules (in `src/config/priorityRules.ts`) would directly affect clinical triage scoring, priority band assignment, scheduling strategy dispatches, UI displays, audit severity, and unit tests.\n\n---\n\nDirect Calculation Impact (`src/triage/banding.ts`)\n\nModifying `priorityRules`, `bandThresholds`, or `referralPolicies` alters `calculateBand(referral)` output:\n\n**Score (`score`)**: Sum of `referralPolicies[referral.type].basePoints` and points from matched `priorityRules`.\n**Band (`band`)**: Evaluated against `bandThresholds` (e.g., score $\\ge 9 \\rightarrow$ `\"red\"`, $\\ge 4 \\rightarrow$ `\"amber\"`, else `\"green\"`).\n**Target hours (`targetHours`)**: Pulled from `referralPolicies[referral.type].targetHours`.\n**Matched rules (`matchedRules`)**: Array of matched rule IDs based on `rule.matches(context)`.\n\n---\n\nAffected Application Components & Workflows\n\n#### 1. Scheduling Strategy Dispatch (`src/scheduling/service.ts` & `src/components/SlotPicker.tsx`)\n\n`availableSlots()` looks up `referralPolicies[referral.type].finder` (`\"standard\"` vs `\"continuity\"`).\nChanging `finder` in policy configuration changes which slot search algorithm executes (`findSlots` in `src/scheduling/slotFinder.ts` vs `findContinuitySlots` in `src/scheduling/oldSlotFinder.ts`), which directly changes available slot results shown in `<SlotPicker />`.\n\n#### 2. Clinical Triage UI (`src/components/PriorityPanel.tsx`)\n\n`<PriorityPanel />` invokes `calculateBand(referral)` to render:\n\nTotal calculated score (\"Score X\").\nTarget response guidance (\"Target response within X hours\").\nThe **Suggested** priority option button tag (`decision.band === band`).\nList of matched risk signals under \"Signals considered\" (`decision.matchedRules`).\n\n#### 3. State Management & Audit Logging (`src/store/useClinicStore.ts`)\n\nWhen accepting a referral without a manual override (`acceptReferral(id)`):\n\n**Default Priority**: Defaults to `calculateBand(referral).band`.\n**Audit Entry Severity**: Sets audit entry severity to `\"critical\"` if `band === \"red\"`, otherwise `\"info\"`.\n**Event Emission**: Emits `referral:accepted` via `clinicEvents` containing the assigned `band`.\n\n#### 4. Referral Worklist & Navigation (`src/components/ReferralTable.tsx`, `src/pages/ReferralListPage.tsx`, `src/hooks/useReferralFilters.ts`)\n\nChanging assigned bands downstream updates:\n\n**Table Badges**: Priority pill styling and label (`bandLabel(referral.priority)`) in `<ReferralTable />`.\n**Metrics**: The \"Time sensitive\" metric on the referral workspace page (which counts referrals where `priority === \"red\"`).\n**Filters**: Worklist filtering via `useReferralFilters` when filtering by priority band (`\"red\" | \"amber\" | \"green\" | \"unbanded\"`).\n\n#### 5. Automated Tests (`src/tests/banding.test.ts` & `src/tests/scheduling.test.ts`)\n\n`src/tests/banding.test.ts` asserts safeguarding referrals evaluate to `\"red\"`, routine referrals target `336` hours, and signal rule IDs are populated.\n`src/tests/scheduling.test.ts` relies on `availableSlots` policy routing.\n\n---\n\nGrounding & Evidence Summary\n**Direct Evidence**: `src/config/priorityRules.ts`, `src/triage/banding.ts`, `src/scheduling/service.ts`, `src/components/PriorityPanel.tsx`, `src/store/useClinicStore.ts`, `src/tests/banding.test.ts`.\n**Inference**: UI rendering updates (such as metric counters and table pills) rely on state mutations committed when `acceptReferral` persists the calculated priority band into the Zustand store.",
+   "toolEvidence": [
+    {
+     "rank": 1,
+     "path": "src/config/priorityRules.ts",
+     "score": 0.68
+    },
+    {
+     "rank": 2,
+     "path": "src/scheduling/service.ts",
+     "score": 0.64
+    },
+    {
+     "rank": 3,
+     "path": "src/triage/banding.ts",
+     "score": 0.64
+    },
+    {
+     "rank": 4,
+     "path": "src/components/PriorityPanel.tsx",
+     "score": 0.61
+    },
+    {
+     "rank": 5,
+     "path": "src/events/types.ts",
+     "score": 0.59
+    },
+    {
+     "rank": 6,
+     "path": "src/hooks/useReferralFilters.ts",
+     "score": 0.59
+    },
+    {
+     "rank": 7,
+     "path": "src/pages/ReferralDetailPage.tsx",
+     "score": 0.59
+    },
+    {
+     "rank": 8,
+     "path": "src/store/useClinicStore.ts",
+     "score": 0.59
+    },
+    {
+     "rank": 9,
+     "path": "src/utils/format.ts",
+     "score": 0.59
+    },
+    {
+     "rank": 10,
+     "path": "src/types/domain.ts",
+     "score": 0.49
+    },
+    {
+     "rank": 11,
+     "path": "src/components/SlotPicker.tsx",
+     "score": 0.46
+    },
+    {
+     "rank": 12,
+     "path": "src/scheduling/oldSlotFinder.ts",
+     "score": 0.46
+    },
+    {
+     "rank": 13,
+     "path": "src/scheduling/slotFinder.ts",
+     "score": 0.46
+    },
+    {
+     "rank": 14,
+     "path": "src/scheduling/types.ts",
+     "score": 0.46
+    },
+    {
+     "rank": 15,
+     "path": "src/tests/banding.test.ts",
+     "score": 0.46
+    },
+    {
+     "rank": 16,
+     "path": "src/tests/scheduling.test.ts",
+     "score": 0.46
+    },
+    {
+     "rank": 17,
+     "path": "src/App.tsx",
+     "score": 0.43
+    },
+    {
+     "rank": 18,
+     "path": "src/components/Layout.tsx",
+     "score": 0.43
+    },
+    {
+     "rank": 19,
+     "path": "src/components/ReferralTable.tsx",
+     "score": 0.43
+    },
+    {
+     "rank": 20,
+     "path": "src/data/seed.ts",
+     "score": 0.43
+    },
+    {
+     "rank": 21,
+     "path": "src/events/channel.ts",
+     "score": 0.43
+    },
+    {
+     "rank": 22,
+     "path": "src/pages/AuditLogPage.tsx",
+     "score": 0.43
+    },
+    {
+     "rank": 23,
+     "path": "src/pages/ClinicianOverviewPage.tsx",
+     "score": 0.43
+    },
+    {
+     "rank": 24,
+     "path": "src/pages/ReferralListPage.tsx",
+     "score": 0.43
+    },
+    {
+     "rank": 25,
+     "path": "src/tests/eligibility.test.ts",
+     "score": 0.43
+    },
+    {
+     "rank": 26,
+     "path": "src/triage/eligibility.ts",
+     "score": 0.43
+    },
+    {
+     "rank": 27,
+     "path": "src/triage/routes/loadRoutes.ts",
+     "score": 0.43
+    },
+    {
+     "rank": 28,
+     "path": "src/triage/routes/registry.ts",
+     "score": 0.43
+    },
+    {
+     "rank": 29,
+     "path": "src/triage/validation.ts",
+     "score": 0.43
+    },
+    {
+     "rank": 30,
+     "path": "src/api/pipeline/redact-stage.ts",
+     "score": 0.33
+    },
+    {
+     "rank": 31,
+     "path": "src/api/referrals-api.ts",
+     "score": 0.33
+    },
+    {
+     "rank": 32,
+     "path": "src/audit/logger.ts",
+     "score": 0.33
+    },
+    {
+     "rank": 33,
+     "path": "src/jobs/nightlyReverification.ts",
+     "score": 0.33
+    },
+    {
+     "rank": 34,
+     "path": "src/main.tsx",
+     "score": 0.28
+    },
+    {
+     "rank": 35,
+     "path": "src/scheduling/eventListener.ts",
+     "score": 0.28
+    },
+    {
+     "rank": 36,
+     "path": "src/tests/registry.test.ts",
+     "score": 0.28
+    },
+    {
+     "rank": 37,
+     "path": "src/triage/routes/followUp.ts",
+     "score": 0.28
+    },
+    {
+     "rank": 38,
+     "path": "src/triage/routes/routine.ts",
+     "score": 0.28
+    },
+    {
+     "rank": 39,
+     "path": "src/triage/routes/safeguarding.ts",
+     "score": 0.28
+    },
+    {
+     "rank": 40,
+     "path": "src/triage/routes/urgent.ts",
+     "score": 0.28
+    },
+    {
+     "rank": 41,
+     "path": "README.md",
+     "score": 0.03
+    },
+    {
+     "rank": 42,
+     "path": "src/styles.css",
+     "score": 0.02
+    },
+    {
+     "rank": 43,
+     "path": "index.html",
+     "score": 0
+    },
+    {
+     "rank": 44,
+     "path": "package.json",
+     "score": 0
+    },
+    {
+     "rank": 45,
+     "path": "src/api/api-client.ts",
+     "score": 0
+    },
+    {
+     "rank": 46,
+     "path": "src/api/pipeline/auth-stage.ts",
+     "score": 0
+    },
+    {
+     "rank": 47,
+     "path": "src/api/pipeline/trace-stage.ts",
+     "score": 0
+    },
+    {
+     "rank": 48,
+     "path": "src/api/pipeline/types.ts",
+     "score": 0
+    },
+    {
+     "rank": 49,
+     "path": "tsconfig.app.json",
+     "score": 0
+    },
+    {
+     "rank": 50,
+     "path": "tsconfig.json",
+     "score": 0
+    },
+    {
+     "rank": 51,
+     "path": "tsconfig.node.json",
+     "score": 0
+    },
+    {
+     "rank": 52,
+     "path": "vite.config.ts",
+     "score": 0
+    }
+   ],
+   "toolEvidenceHeading": "Evidence · 52 files retrieved",
+   "toolUnverifiedMentions": [],
+   "toolCoverage": "Searched 52 of 52 eligible repository files. Ranking scores combine retrieval signals and do not measure answer correctness.",
+   "toolScreenshot": "study/gate-screenshots/clinic-triage-q10.png",
+   "toolScreenshotComplete": true,
+   "toolGeneration": {
+    "status": "complete",
+    "finishReason": "STOP",
+    "model": "gemini-3.6-flash",
+    "attempts": 1,
+    "capturedAt": "2026-09-01T11:35:22.711Z",
+    "usageMetadata": {
+     "promptTokenCount": 32942,
+     "candidatesTokenCount": 900,
+     "totalTokenCount": 35657
+    }
+   },
+   "correct": null
   },
   {
    "id": 11,
@@ -187,7 +2997,288 @@
     "src/api/pipeline/redact-stage.ts:17-18",
     "src/pages/ReferralListPage.tsx:10-15"
    ],
-   "correctAnswerNotes": "A non-safeguarding referral can still match the safeguarding-signal priority rule if its signal\nis set; the eligibility and redaction branches check the referral type specifically.\n\n\"Five places\" counts behavioural branches. A reader counting presentational differences reaches\nsix, because `styles.css` groups safeguarding with urgent for both badge and dot colour — that\nis shared styling rather than safeguarding-specific handling, which is why it is not in the\nlist.\n\nThe route handler's text reads \"Community nursing\" with a lowercase n."
+   "correctAnswerNotes": "A non-safeguarding referral can still match the safeguarding-signal priority rule if its signal\nis set; the eligibility and redaction branches check the referral type specifically.\n\n\"Five places\" counts behavioural branches. A reader counting presentational differences reaches\nsix, because `styles.css` groups safeguarding with urgent for both badge and dot colour — that\nis shared styling rather than safeguarding-specific handling, which is why it is not in the\nlist.\n\nThe route handler's text reads \"Community nursing\" with a lowercase n.",
+   "toolAnswer": "Yes, safeguarding referrals (`type: \"safeguarding\"` or `signals.safeguardingConcern: true`) are treated differently across **priority calculation**, **eligibility checks**, **pathway routing**, **API data redaction**, and **UI reporting/styling**.\n\n---\n\n1. Priority Banding and SLA Policy\n**Base Points & Response Target**: In `src/config/priorityRules.ts`, `referralPolicies.safeguarding` grants a base score of 8 points (vs 0 for routine, 5 for urgent) and sets the tightest response target of 4 hours (vs 24 for urgent, 336 for routine).\n**Clinical Signal Rule**: The `safeguarding-signal` rule in `src/config/priorityRules.ts` adds 10 points whenever `signals.safeguardingConcern` is `true`. In `src/triage/banding.ts`, this score surpasses the minimum threshold of 9 required to assign a `\"red\"` (Priority 1) band.\n\n---\n\n2. Age-Based Eligibility Validation\n**Child Safeguarding Restriction**: In `src/triage/eligibility.ts` (`checkEligibility`), if `referral.type === \"safeguarding\"` and the patient is under 16 years old (`age < 16`), validation fails with `\"Child safeguarding team must coordinate this referral\"`.\n**Runtime Impact**: This blocks acceptance in `acceptReferral` (`src/store/useClinicStore.ts`) and booking in `checkAppointment` (`src/triage/validation.ts`), emitting an `eligibility:failed` event on `clinicEvents` (`src/events/channel.ts`).\n\n---\n\n3. Dedicated Routing Pathway\n**Custom Route Handler**: `src/triage/routes/safeguarding.ts` registers a handler specifically for `\"safeguarding\"` referrals.\n**Pathway Directives**: When dynamically loaded by `loadRoutes()` and rendered on `ReferralDetailPage.tsx`:\n\n* Sets `recommendedService` to `\"Community nursing\"`.\n\n* Sets `requiresPhoneCall: true`, displaying a warning notice on the detail page.\n\n* Supplies specific contact instructions: `\"Do not leave a voicemail\"`, `\"Check safe contact method\"`, and `\"Notify safeguarding lead\"`.\n\n---\n\n4. API Redaction Pipeline\n**Sensitive Field Redaction**: In `src/api/pipeline/redact-stage.ts` (`redactStage`), any outgoing HTTP request via `apiRequest` (`src/api/api-client.ts`) containing a `safeguarding` referral redacts patient contact information before sending:\n\n* `notes` $\\rightarrow$ `\"[restricted clinical note]\"`\n\n* `patient.phone` $\\rightarrow$ `\"[safe contact required]\"`\n\n* `patient.postcode` $\\rightarrow$ `\"[restricted]\"`\n\n---\n\n5. Workspace Metrics & Visual Indicators\n**Workspace Metrics**: In `src/pages/ReferralListPage.tsx`, safeguarding referrals are filtered into the **\"Time sensitive\"** dashboard card alongside `urgent` and `red` priority referrals.\n**UI Badging**: In `src/styles.css` (lines 587–589 and 706–708), safeguarding type badges and indicators use red styling (`.type-dot.type-safeguarding`, `.type-badge.type-safeguarding`), matching urgent referrals.",
+   "toolEvidence": [
+    {
+     "rank": 1,
+     "path": "src/data/seed.ts",
+     "score": 0.59
+    },
+    {
+     "rank": 2,
+     "path": "src/store/useClinicStore.ts",
+     "score": 0.59
+    },
+    {
+     "rank": 3,
+     "path": "src/tests/banding.test.ts",
+     "score": 0.59
+    },
+    {
+     "rank": 4,
+     "path": "src/tests/eligibility.test.ts",
+     "score": 0.59
+    },
+    {
+     "rank": 5,
+     "path": "src/tests/registry.test.ts",
+     "score": 0.59
+    },
+    {
+     "rank": 6,
+     "path": "src/tests/scheduling.test.ts",
+     "score": 0.59
+    },
+    {
+     "rank": 7,
+     "path": "src/api/referrals-api.ts",
+     "score": 0.57
+    },
+    {
+     "rank": 8,
+     "path": "src/triage/routes/safeguarding.ts",
+     "score": 0.57
+    },
+    {
+     "rank": 9,
+     "path": "src/components/Layout.tsx",
+     "score": 0.43
+    },
+    {
+     "rank": 10,
+     "path": "src/events/channel.ts",
+     "score": 0.43
+    },
+    {
+     "rank": 11,
+     "path": "src/pages/AuditLogPage.tsx",
+     "score": 0.43
+    },
+    {
+     "rank": 12,
+     "path": "src/pages/ClinicianOverviewPage.tsx",
+     "score": 0.43
+    },
+    {
+     "rank": 13,
+     "path": "src/pages/ReferralDetailPage.tsx",
+     "score": 0.43
+    },
+    {
+     "rank": 14,
+     "path": "src/pages/ReferralListPage.tsx",
+     "score": 0.43
+    },
+    {
+     "rank": 15,
+     "path": "src/scheduling/service.ts",
+     "score": 0.43
+    },
+    {
+     "rank": 16,
+     "path": "src/triage/banding.ts",
+     "score": 0.43
+    },
+    {
+     "rank": 17,
+     "path": "src/triage/eligibility.ts",
+     "score": 0.43
+    },
+    {
+     "rank": 18,
+     "path": "src/triage/routes/loadRoutes.ts",
+     "score": 0.43
+    },
+    {
+     "rank": 19,
+     "path": "src/triage/routes/registry.ts",
+     "score": 0.43
+    },
+    {
+     "rank": 20,
+     "path": "src/triage/validation.ts",
+     "score": 0.43
+    },
+    {
+     "rank": 21,
+     "path": "src/types/domain.ts",
+     "score": 0.43
+    },
+    {
+     "rank": 22,
+     "path": "src/api/api-client.ts",
+     "score": 0.41
+    },
+    {
+     "rank": 23,
+     "path": "src/api/pipeline/redact-stage.ts",
+     "score": 0.28
+    },
+    {
+     "rank": 24,
+     "path": "src/App.tsx",
+     "score": 0.28
+    },
+    {
+     "rank": 25,
+     "path": "src/audit/logger.ts",
+     "score": 0.28
+    },
+    {
+     "rank": 26,
+     "path": "src/components/PriorityPanel.tsx",
+     "score": 0.28
+    },
+    {
+     "rank": 27,
+     "path": "src/components/ReferralTable.tsx",
+     "score": 0.28
+    },
+    {
+     "rank": 28,
+     "path": "src/components/SlotPicker.tsx",
+     "score": 0.28
+    },
+    {
+     "rank": 29,
+     "path": "src/config/priorityRules.ts",
+     "score": 0.28
+    },
+    {
+     "rank": 30,
+     "path": "src/events/types.ts",
+     "score": 0.28
+    },
+    {
+     "rank": 31,
+     "path": "src/hooks/useReferralFilters.ts",
+     "score": 0.28
+    },
+    {
+     "rank": 32,
+     "path": "src/jobs/nightlyReverification.ts",
+     "score": 0.28
+    },
+    {
+     "rank": 33,
+     "path": "src/scheduling/eventListener.ts",
+     "score": 0.28
+    },
+    {
+     "rank": 34,
+     "path": "src/scheduling/oldSlotFinder.ts",
+     "score": 0.28
+    },
+    {
+     "rank": 35,
+     "path": "src/scheduling/slotFinder.ts",
+     "score": 0.28
+    },
+    {
+     "rank": 36,
+     "path": "src/scheduling/types.ts",
+     "score": 0.28
+    },
+    {
+     "rank": 37,
+     "path": "src/triage/routes/followUp.ts",
+     "score": 0.28
+    },
+    {
+     "rank": 38,
+     "path": "src/triage/routes/routine.ts",
+     "score": 0.28
+    },
+    {
+     "rank": 39,
+     "path": "src/triage/routes/urgent.ts",
+     "score": 0.28
+    },
+    {
+     "rank": 40,
+     "path": "src/utils/format.ts",
+     "score": 0.28
+    },
+    {
+     "rank": 41,
+     "path": "src/api/pipeline/auth-stage.ts",
+     "score": 0.27
+    },
+    {
+     "rank": 42,
+     "path": "src/api/pipeline/trace-stage.ts",
+     "score": 0.27
+    },
+    {
+     "rank": 43,
+     "path": "src/api/pipeline/types.ts",
+     "score": 0.27
+    },
+    {
+     "rank": 44,
+     "path": "README.md",
+     "score": 0.03
+    },
+    {
+     "rank": 45,
+     "path": "src/styles.css",
+     "score": 0
+    },
+    {
+     "rank": 46,
+     "path": "index.html",
+     "score": 0
+    },
+    {
+     "rank": 47,
+     "path": "package.json",
+     "score": 0
+    },
+    {
+     "rank": 48,
+     "path": "src/main.tsx",
+     "score": 0
+    },
+    {
+     "rank": 49,
+     "path": "tsconfig.app.json",
+     "score": 0
+    },
+    {
+     "rank": 50,
+     "path": "tsconfig.json",
+     "score": 0
+    },
+    {
+     "rank": 51,
+     "path": "tsconfig.node.json",
+     "score": 0
+    },
+    {
+     "rank": 52,
+     "path": "vite.config.ts",
+     "score": 0
+    }
+   ],
+   "toolEvidenceHeading": "Evidence · 52 files retrieved",
+   "toolUnverifiedMentions": [],
+   "toolCoverage": "Searched 52 of 52 eligible repository files. Ranking scores combine retrieval signals and do not measure answer correctness.",
+   "toolScreenshot": "study/gate-screenshots/clinic-triage-q11.png",
+   "toolScreenshotComplete": true,
+   "toolGeneration": {
+    "status": "complete",
+    "finishReason": "STOP",
+    "model": "gemini-3.6-flash",
+    "attempts": 1,
+    "capturedAt": "2026-09-01T11:35:49.241Z",
+    "usageMetadata": {
+     "promptTokenCount": 32939,
+     "candidatesTokenCount": 747,
+     "totalTokenCount": 35473
+    }
+   },
+   "correct": null
   },
   {
    "id": 12,
@@ -200,10 +3291,293 @@
     "src/store/useClinicStore.ts:108-142",
     "src/scheduling/service.ts:21-25"
    ],
-   "correctAnswerNotes": "The clinician array is shallow-copied in the store at useClinicStore.ts:122, after\n`checkAppointment` has already mutated the nested slot object at validation.ts:36 — so the copy\ndoes not isolate the mutation."
+   "correctAnswerNotes": "The clinician array is shallow-copied in the store at useClinicStore.ts:122, after\n`checkAppointment` has already mutated the nested slot object at validation.ts:36 — so the copy\ndoes not isolate the mutation.",
+   "toolAnswer": "A slot is actually booked inside **`checkAppointment()` in `src/triage/validation.ts`**, where the selected slot's property is directly mutated: `slot.bookedReferralId = referral.id`.\n\n---\n\nStep-by-Step Runtime Call Flow\n\n1. **User Action (UI):**\n\nIn `SlotPicker` (`src/components/SlotPicker.tsx`), clicking the **Confirm appointment** button triggers `submit()`, which calls `onBook(slot.clinicianId, slot.id)`.\n\n2. **Page Handler:**\n\n`ReferralDetailPage` (`src/pages/ReferralDetailPage.tsx`) receives `onBook` and invokes `bookAppointment(referral.id, clinicianId, slotId)` from the Zustand store.\n\n3. **Store Dispatch:**\n\n`bookAppointment` in `useClinicStore` (`src/store/useClinicStore.ts`) looks up the `referral` and `clinician` objects from state and delegates validation and slot marking to `checkAppointment()`.\n\n4. **Slot Marking & Validation:**\n\n`checkAppointment` in `src/triage/validation.ts`:\n\n- Validates referral eligibility via `checkEligibility(referral)`.\n\n- Ensures the slot exists, is not already booked, and matches the referral service.\n\n- **Mutates the slot in place:** `slot.bookedReferralId = referral.id`.\n\n- Creates and returns an `Appointment` object (`APT-${Date.now()}`).\n\n- Emits the `appointment:booked` event over `clinicEvents` (`src/events/channel.ts`).\n\n5. **State Updates & Side Effects:**\n\n- **Store (`useClinicStore.ts`):** Updates Zustand state by appending the appointment to `appointments`, updating `referral.status` to `\"booked\"`, setting `referral.appointmentId` and `referral.assignedClinicianId`, and appending an entry to `audit`.\n\n- **Event Listeners:**\n\n- `src/scheduling/eventListener.ts` listens to `appointment:booked` and adds `appointment.slotId` to `recentlyBooked`.\n\n- `src/audit/logger.ts` listens to `appointment:booked` and prepends an entry to `eventEntries`.\n\n---\n\nUnused/Helper Functions (Distinction)\n**`reserveSlot` in `src/scheduling/service.ts`:** An exported function that returns a cloned slot with `bookedReferralId`. It is never called by the store, UI, or tests.\n**`recordBooking` in `src/api/referrals-api.ts`:** An exported API request helper, but not called anywhere in the active application code.",
+   "toolEvidence": [
+    {
+     "rank": 1,
+     "path": "src/components/SlotPicker.tsx",
+     "score": 0.66
+    },
+    {
+     "rank": 2,
+     "path": "src/scheduling/oldSlotFinder.ts",
+     "score": 0.66
+    },
+    {
+     "rank": 3,
+     "path": "src/scheduling/slotFinder.ts",
+     "score": 0.66
+    },
+    {
+     "rank": 4,
+     "path": "src/pages/ReferralDetailPage.tsx",
+     "score": 0.63
+    },
+    {
+     "rank": 5,
+     "path": "src/scheduling/eventListener.ts",
+     "score": 0.63
+    },
+    {
+     "rank": 6,
+     "path": "src/scheduling/service.ts",
+     "score": 0.63
+    },
+    {
+     "rank": 7,
+     "path": "src/scheduling/types.ts",
+     "score": 0.63
+    },
+    {
+     "rank": 8,
+     "path": "src/types/domain.ts",
+     "score": 0.48
+    },
+    {
+     "rank": 9,
+     "path": "src/utils/format.ts",
+     "score": 0.48
+    },
+    {
+     "rank": 10,
+     "path": "src/App.tsx",
+     "score": 0.45
+    },
+    {
+     "rank": 11,
+     "path": "src/components/PriorityPanel.tsx",
+     "score": 0.45
+    },
+    {
+     "rank": 12,
+     "path": "src/config/priorityRules.ts",
+     "score": 0.45
+    },
+    {
+     "rank": 13,
+     "path": "src/events/channel.ts",
+     "score": 0.45
+    },
+    {
+     "rank": 14,
+     "path": "src/store/useClinicStore.ts",
+     "score": 0.45
+    },
+    {
+     "rank": 15,
+     "path": "src/tests/scheduling.test.ts",
+     "score": 0.45
+    },
+    {
+     "rank": 16,
+     "path": "src/triage/routes/loadRoutes.ts",
+     "score": 0.45
+    },
+    {
+     "rank": 17,
+     "path": "src/triage/routes/registry.ts",
+     "score": 0.45
+    },
+    {
+     "rank": 18,
+     "path": "src/triage/validation.ts",
+     "score": 0.4
+    },
+    {
+     "rank": 19,
+     "path": "src/api/pipeline/redact-stage.ts",
+     "score": 0.32
+    },
+    {
+     "rank": 20,
+     "path": "src/api/referrals-api.ts",
+     "score": 0.32
+    },
+    {
+     "rank": 21,
+     "path": "src/audit/logger.ts",
+     "score": 0.32
+    },
+    {
+     "rank": 22,
+     "path": "src/components/Layout.tsx",
+     "score": 0.32
+    },
+    {
+     "rank": 23,
+     "path": "src/components/ReferralTable.tsx",
+     "score": 0.32
+    },
+    {
+     "rank": 24,
+     "path": "src/data/seed.ts",
+     "score": 0.32
+    },
+    {
+     "rank": 25,
+     "path": "src/events/types.ts",
+     "score": 0.32
+    },
+    {
+     "rank": 26,
+     "path": "src/hooks/useReferralFilters.ts",
+     "score": 0.32
+    },
+    {
+     "rank": 27,
+     "path": "src/jobs/nightlyReverification.ts",
+     "score": 0.32
+    },
+    {
+     "rank": 28,
+     "path": "src/pages/AuditLogPage.tsx",
+     "score": 0.32
+    },
+    {
+     "rank": 29,
+     "path": "src/pages/ClinicianOverviewPage.tsx",
+     "score": 0.32
+    },
+    {
+     "rank": 30,
+     "path": "src/triage/banding.ts",
+     "score": 0.32
+    },
+    {
+     "rank": 31,
+     "path": "src/triage/eligibility.ts",
+     "score": 0.32
+    },
+    {
+     "rank": 32,
+     "path": "src/main.tsx",
+     "score": 0.3
+    },
+    {
+     "rank": 33,
+     "path": "src/pages/ReferralListPage.tsx",
+     "score": 0.3
+    },
+    {
+     "rank": 34,
+     "path": "src/tests/eligibility.test.ts",
+     "score": 0.3
+    },
+    {
+     "rank": 35,
+     "path": "src/tests/registry.test.ts",
+     "score": 0.3
+    },
+    {
+     "rank": 36,
+     "path": "src/triage/routes/followUp.ts",
+     "score": 0.3
+    },
+    {
+     "rank": 37,
+     "path": "src/triage/routes/routine.ts",
+     "score": 0.3
+    },
+    {
+     "rank": 38,
+     "path": "src/triage/routes/safeguarding.ts",
+     "score": 0.3
+    },
+    {
+     "rank": 39,
+     "path": "src/triage/routes/urgent.ts",
+     "score": 0.3
+    },
+    {
+     "rank": 40,
+     "path": "src/styles.css",
+     "score": 0.02
+    },
+    {
+     "rank": 41,
+     "path": "index.html",
+     "score": 0
+    },
+    {
+     "rank": 42,
+     "path": "package.json",
+     "score": 0
+    },
+    {
+     "rank": 43,
+     "path": "README.md",
+     "score": 0
+    },
+    {
+     "rank": 44,
+     "path": "src/api/api-client.ts",
+     "score": 0
+    },
+    {
+     "rank": 45,
+     "path": "src/api/pipeline/auth-stage.ts",
+     "score": 0
+    },
+    {
+     "rank": 46,
+     "path": "src/api/pipeline/trace-stage.ts",
+     "score": 0
+    },
+    {
+     "rank": 47,
+     "path": "src/api/pipeline/types.ts",
+     "score": 0
+    },
+    {
+     "rank": 48,
+     "path": "src/tests/banding.test.ts",
+     "score": 0
+    },
+    {
+     "rank": 49,
+     "path": "tsconfig.app.json",
+     "score": 0
+    },
+    {
+     "rank": 50,
+     "path": "tsconfig.json",
+     "score": 0
+    },
+    {
+     "rank": 51,
+     "path": "tsconfig.node.json",
+     "score": 0
+    },
+    {
+     "rank": 52,
+     "path": "vite.config.ts",
+     "score": 0
+    }
+   ],
+   "toolEvidenceHeading": "Evidence · 52 files retrieved",
+   "toolUnverifiedMentions": [],
+   "toolCoverage": "Searched 52 of 52 eligible repository files. Ranking scores combine retrieval signals and do not measure answer correctness.",
+   "toolScreenshot": "study/gate-screenshots/clinic-triage-q12.png",
+   "toolScreenshotComplete": true,
+   "toolGeneration": {
+    "status": "complete",
+    "finishReason": "STOP",
+    "model": "gemini-3.6-flash",
+    "attempts": 1,
+    "capturedAt": "2026-09-01T11:36:35.867Z",
+    "usageMetadata": {
+     "promptTokenCount": 32937,
+     "candidatesTokenCount": 593,
+     "totalTokenCount": 34914
+    }
+   },
+   "correct": null
   }
  ],
  "notes": "QUESTION STEMS ONLY. correctAnswer must be written by the researcher from reading the code, BEFORE the tool is asked anything. toolAnswer is pasted verbatim from the tool afterwards. 'correct' is the researcher's marking. Questions may be reworded or replaced; they are drafted to cover each architectural pattern once so the gate exercises the same structures the study tasks will target.",
  "capturedFrom": "https://repo-comprehension-system.vercel.app/",
- "capturedRepository": "https://github.com/ionuthub/clinic-triage"
+ "capturedRepository": "https://github.com/ionuthub/clinic-triage",
+ "capturedAt": "2026-09-01T11:36:36.400Z",
+ "groundTruthProvenance": "Ground truth verified by machine review (caller counts, re-counted quantifiers, and a citation checker that reported zero failures; NOTE results were not structurally validated) rather than read line by line by the researcher. Disclose in the methodology; see study/AI-DISCLOSURE.md."
 }

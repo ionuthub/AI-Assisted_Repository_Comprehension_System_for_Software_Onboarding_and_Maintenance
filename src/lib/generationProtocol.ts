@@ -11,9 +11,9 @@ export interface GenerationUsageMetadata {
 
 /** Shared by the deployed proxy and local Vite middleware so captures are reproducible. */
 export const GENERATION_CONFIG = {
-  // Gemini 3.5 Flash defaults to medium reasoning. Low retains reasoning while reducing the
-  // latency and cost of the full-context draft and independent review passes.
-  thinkingConfig: { thinkingLevel: "low" },
+  // One medium-reasoning pass avoids sending the full repository context twice while retaining
+  // enough reasoning depth for the exhaustive semantic checklist in the system prompt.
+  thinkingConfig: { thinkingLevel: "medium" },
   maxOutputTokens: MODEL_BUDGET.MAX_OUTPUT_TOKENS,
 } as const;
 

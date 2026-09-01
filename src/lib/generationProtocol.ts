@@ -11,8 +11,8 @@ export interface GenerationUsageMetadata {
 
 /** Shared by the deployed proxy and local Vite middleware so captures are reproducible. */
 export const GENERATION_CONFIG = {
-  // One medium-reasoning pass avoids sending the full repository context twice while retaining
-  // enough reasoning depth for the exhaustive semantic checklist in the system prompt.
+  // Both draft and semantic-audit calls use medium reasoning. The audit re-solves the question
+  // against the same evidence before any answer is released.
   thinkingConfig: { thinkingLevel: "medium" },
   maxOutputTokens: MODEL_BUDGET.MAX_OUTPUT_TOKENS,
 } as const;

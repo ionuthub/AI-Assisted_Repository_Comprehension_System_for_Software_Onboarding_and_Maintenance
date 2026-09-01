@@ -2,6 +2,7 @@ import { defineConfig, loadEnv } from "vite";
 import react from "@vitejs/plugin-react-swc";
 import path from "path";
 import {
+  ADJUDICATION_GENERATION_CONFIG,
   AUDIT_GENERATION_CONFIG,
   DEFAULT_GEMINI_MODEL,
   encodeGenerationEvent,
@@ -15,9 +16,11 @@ import {
   systemContextFitsBudget,
 } from "./src/lib/promptBuilder";
 import {
+  buildAnswerAdjudicationPrompt,
   buildAnswerAuditPrompt,
   buildAnswerRepairPrompt,
   extractEvidencePathsFromContext,
+  requiresSemanticAdjudication,
   verifyGeneratedAnswer,
 } from "./src/lib/answerVerification";
 import { MODEL_BUDGET } from "./src/constants/appConstants";
@@ -76,7 +79,7 @@ async function callDevGemini(
   model: string,
   apiKey: string,
   signal: AbortSignal,
-  generationConfig: typeof GENERATION_CONFIG | typeof AUDIT_GENERATION_CONFIG = GENERATION_CONFIG
+  generationConfig: typeof GENERATION_CONFIG | typeof AUDIT_GENERATION_CONFIG | typeof ADJUDICATION_GENERATION_CONFIG = GENERATION_CONFIG
 ): Promise<DevGeminiResult> {
   const response = await fetch(
     `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`,
@@ -152,6 +155,18 @@ async function generateVerifiedDevAnswer(
     AUDIT_GENERATION_CONFIG
   );
   addUsage(reviewed.usageMetadata);
+
+  if (requiresSemanticAdjudication(question)) {
+    reviewed = await callDevGemini(
+      [{ role: 'user', content: buildAnswerAdjudicationPrompt(question, reviewed.text) }],
+      systemPrompt,
+      model,
+      apiKey,
+      signal,
+      ADJUDICATION_GENERATION_CONFIG
+    );
+    addUsage(reviewed.usageMetadata);
+  }
 
   let verification = verifyGeneratedAnswer(reviewed.text, evidence);
   for (

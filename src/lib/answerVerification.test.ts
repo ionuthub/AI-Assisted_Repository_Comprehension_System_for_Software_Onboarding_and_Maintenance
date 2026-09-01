@@ -1,8 +1,10 @@
 import { describe, expect, it } from "vitest";
 import {
+  buildAnswerAdjudicationPrompt,
   buildAnswerAuditPrompt,
   buildAnswerRepairPrompt,
   buildAnswerReviewPrompt,
+  requiresSemanticAdjudication,
   verifyGeneratedAnswer,
 } from "@/lib/answerVerification";
 import type { RetrievedEvidence } from "@/components/EvidencePanel";
@@ -149,6 +151,26 @@ describe("verification prompts", () => {
     expect(prompt).toContain("One listener creates a notification.");
   });
 
+  it("targets causal, exhaustive, and special-case questions for adjudication", () => {
+    expect(requiresSemanticAdjudication("If the routing rules changed, what else would be affected?")).toBe(true);
+    expect(requiresSemanticAdjudication("Are restricted records treated differently anywhere?")).toBe(true);
+    expect(requiresSemanticAdjudication("Which pricing implementation runs for a bulk request?")).toBe(true);
+    expect(requiresSemanticAdjudication("Where does execution start?")).toBe(false);
+  });
+
+  it("requires an independent claim-ledger adjudication", () => {
+    const prompt = buildAnswerAdjudicationPrompt(
+      "If configuration changes, what is affected?",
+      "A bypassed fallback changes every downstream screen."
+    );
+    expect(prompt).toContain("Treat the proposed answer as untrusted");
+    expect(prompt).toContain("guards and early exits");
+    expect(prompt).toContain("preference map does not restrict candidates");
+    expect(prompt).toContain("skips a callback");
+    expect(prompt).toContain("do not stack mutually exclusive branch effects");
+    expect(prompt).toContain("remove every claim that changing it alters live stored state");
+    expect(prompt).toContain("A bypassed fallback changes every downstream screen.");
+  });
   it("includes release-gate findings in a repair prompt", () => {
     const prompt = buildAnswerRepairPrompt(
       "Where does execution start?",

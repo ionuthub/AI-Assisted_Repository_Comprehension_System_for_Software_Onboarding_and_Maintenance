@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  AUDIT_GENERATION_CONFIG,
   consumeGenerationStream,
   DEFAULT_GEMINI_MODEL,
   encodeGenerationEvent,
@@ -30,6 +31,12 @@ describe("Gemini stream parsing", () => {
   it("uses medium reasoning for verified generation without a custom temperature", () => {
     expect(GENERATION_CONFIG.thinkingConfig.thinkingLevel).toBe("medium");
     expect(GENERATION_CONFIG).not.toHaveProperty("temperature");
+  });
+
+  it("uses a focused low-reasoning semantic audit within the request deadline", () => {
+    expect(AUDIT_GENERATION_CONFIG.thinkingConfig.thinkingLevel).toBe("low");
+    expect(AUDIT_GENERATION_CONFIG.maxOutputTokens).toBe(GENERATION_CONFIG.maxOutputTokens);
+    expect(AUDIT_GENERATION_CONFIG).not.toHaveProperty("temperature");
   });
 
   it("allows verified generation to outlive the former 90-second abort", () => {

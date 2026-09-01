@@ -1,5 +1,6 @@
 import { Redis } from '@upstash/redis';
 import {
+  AUDIT_GENERATION_CONFIG,
   DEFAULT_GEMINI_MODEL,
   encodeGenerationEvent,
   GENERATION_CONFIG,
@@ -211,7 +212,8 @@ async function callGemini(
   messages: Message[],
   systemPrompt: string,
   apiKey: string,
-  signal: AbortSignal
+  signal: AbortSignal,
+  generationConfig: typeof GENERATION_CONFIG | typeof AUDIT_GENERATION_CONFIG = GENERATION_CONFIG
 ): Promise<GeminiResult> {
   const url = `https://generativelanguage.googleapis.com/v1beta/models/${getGeminiModel()}:generateContent?key=${apiKey}`;
   const response = await fetchGeminiWithRetry(url, {
@@ -220,7 +222,7 @@ async function callGemini(
     body: JSON.stringify({
       contents: toGeminiContents(messages),
       systemInstruction: { parts: [{ text: systemPrompt }] },
-      generationConfig: GENERATION_CONFIG,
+      generationConfig,
     }),
   }, signal, 'Model request');
 
@@ -284,7 +286,8 @@ async function generateVerifiedAnswer(
     [{ role: 'user', content: buildAnswerAuditPrompt(question, draft.text) }],
     systemPrompt,
     apiKey,
-    signal
+    signal,
+    AUDIT_GENERATION_CONFIG
   );
   addUsage(usage, reviewed.usageMetadata);
 

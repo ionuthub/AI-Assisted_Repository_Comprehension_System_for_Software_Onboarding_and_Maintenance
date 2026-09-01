@@ -147,6 +147,7 @@ jobs:
                   'thinkingLevel': 'low',
                   'maxOutputTokens': 8192,
                   'semanticReviewPasses': 1,
+                  'semanticAuditChecklist': True,
                   'maxEvidenceRepairAttempts': 2,
               }
               gate['retrieval'] = {
@@ -169,7 +170,7 @@ jobs:
             --truth study/ground-truth.clinic-triage.md \
             --accept-tool-verified \
             --url https://repo-comprehension-system.vercel.app/ \
-            --tool-version b8f9d3c
+            --tool-version 756d6cf
 
       - name: Checkpoint completed clinic evidence
         run: |
@@ -199,7 +200,7 @@ jobs:
             --truth study/ground-truth.warehouse-dispatch.md \
             --accept-tool-verified \
             --url https://repo-comprehension-system.vercel.app/ \
-            --tool-version b8f9d3c
+            --tool-version 756d6cf
 
       - name: Build bound marking sheets
         run: |

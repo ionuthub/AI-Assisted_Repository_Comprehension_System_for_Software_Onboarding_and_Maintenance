@@ -82,7 +82,7 @@ The edge function:
 - applies request and context limits;
 - applies rate limiting when Upstash Redis is configured;
 - reads the Gemini API key from the server environment;
-- calls `gemini-3.5-flash` by default unless `GEMINI_MODEL` overrides it;
+- calls `gemini-3.6-flash` by default unless `GEMINI_MODEL` overrides it;
 - streams the response back to the browser.
 
 The prompt requires repository-specific claims to be grounded in the supplied context, file paths to be cited and direct evidence to be distinguished from inference. If evidence is insufficient, the model is instructed to say so rather than invent repository behaviour.

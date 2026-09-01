@@ -1,6 +1,6 @@
 # Marking sheet, clinic-triage
 
-<!-- accuracy-gate-binding: e2b85c8cde26e1b57e2d4b5e1456d52f84e9d11ca095bc9c318d84591d1f780f -->
+<!-- accuracy-gate-binding: 057fe8c9816a26b89baffc3f4d8430badb72067a357d67d3cf407b039c2289af -->
 
 12 questions. For each one, decide whether the tool's answer says the same thing as the ground
 truth, and write `correct` or `incorrect` on the verdict line.
@@ -65,54 +65,45 @@ Evidence panel: Evidence · 52 files retrieved
 Retrieved: src/main.tsx (0.9), src/App.tsx (0.68), src/styles.css (0.65), package.json (0.64), src/data/seed.ts (0.61), src/audit/logger.ts (0.49), src/components/Layout.tsx (0.49), src/pages/AuditLogPage.tsx (0.49), src/pages/ClinicianOverviewPage.tsx (0.49), src/pages/ReferralDetailPage.tsx (0.49), src/pages/ReferralListPage.tsx (0.49), src/scheduling/eventListener.ts (0.49), src/store/useClinicStore.ts (0.44), src/tests/banding.test.ts (0.44), src/tests/eligibility.test.ts (0.44), src/tests/registry.test.ts (0.44), src/tests/scheduling.test.ts (0.44), src/types/domain.ts (0.44), src/components/PriorityPanel.tsx (0.33), src/components/ReferralTable.tsx (0.33), src/components/SlotPicker.tsx (0.33), src/events/channel.ts (0.33), src/hooks/useReferralFilters.ts (0.33), src/jobs/nightlyReverification.ts (0.33), src/triage/routes/loadRoutes.ts (0.33), src/triage/routes/registry.ts (0.33), src/utils/format.ts (0.33), src/api/pipeline/redact-stage.ts (0.29), src/api/referrals-api.ts (0.29), src/config/priorityRules.ts (0.29), src/events/types.ts (0.29), src/scheduling/service.ts (0.29), src/scheduling/types.ts (0.29), src/triage/banding.ts (0.29), src/triage/eligibility.ts (0.29), src/triage/validation.ts (0.29), index.html (0), README.md (0), src/api/api-client.ts (0), src/api/pipeline/auth-stage.ts (0), src/api/pipeline/trace-stage.ts (0), src/api/pipeline/types.ts (0), src/scheduling/oldSlotFinder.ts (0), src/scheduling/slotFinder.ts (0), src/triage/routes/followUp.ts (0), src/triage/routes/routine.ts (0), src/triage/routes/safeguarding.ts (0), src/triage/routes/urgent.ts (0), tsconfig.app.json (0), tsconfig.json (0), tsconfig.node.json (0), vite.config.ts (0)
 
 ```
-Execution in this project starts at **`index.html`**, which serves as the HTML document entry point and loads the primary ES module **`src/main.tsx`** via a `<script type="module">` tag.
+Execution starts at **`index.html`**, which serves as the HTML entry point loading `/src/main.tsx` as an ECMAScript module.
 
 ---
 
-Sequential Execution Flow
+Execution Flow Details
 
-1. **HTML Document Initialization (`index.html`)**
+1. **HTML Entry Point (`index.html`)**
 
-- The browser loads `index.html`, creates `<div id="root"></div>`, and initiates module loading via `<script type="module" src="/src/main.tsx"></script>`.
+- The browser parses `index.html` (`index.html`, lines 1–3), creating the `<div id="root"></div>` root container and executing `<script type="module" src="/src/main.tsx"></script>`.
 
-2. **Module Graph Evaluation & Initial State Setup**
+2. **Main Module Evaluation (`src/main.tsx`)**
 
-Before executing top-level code in `src/main.tsx`, the JavaScript engine resolves and evaluates imported modules depth-first:
+- The module loader evaluates `src/main.tsx` (`src/main.tsx`, lines 1–11), which imports `styles.css` and the root component `App` from `src/App.tsx`.
 
-- **`src/main.tsx`** imports `src/App.tsx`.
+3. **Module-Scope Side Effects (`src/App.tsx`, `src/scheduling/eventListener.ts`, `src/audit/logger.ts`, `src/store/useClinicStore.ts`)**
 
-- **`src/App.tsx`** imports route components and layout (`src/components/Layout.tsx`), alongside two side-effect modules: `./scheduling/eventListener` (`src/scheduling/eventListener.ts`) and `./audit/logger` (`src/audit/logger.ts`).
+- Importing `src/App.tsx` (`src/App.tsx`, lines 1–8) triggers top-level module evaluation for its imports prior to rendering:
 
-- **Store Creation (`src/store/useClinicStore.ts`)**: As `Layout.tsx` imports `useClinicStore`, the Zustand `create(...)` call runs at module evaluation scope, synchronously initializing in-memory store state with cloned seed records from `src/data/seed.ts` (`seedReferrals`, `seedClinicians`, `seedAudit`).
+- `src/scheduling/eventListener.ts` (`src/scheduling/eventListener.ts`, lines 1–9) registers a listener on `clinicEvents` for `"appointment:booked"`.
 
-- **Global Listener Subscriptions**:
+- `src/audit/logger.ts` (`src/audit/logger.ts`, lines 1–18) registers a listener on `clinicEvents` for `"appointment:booked"`.
 
-- `src/scheduling/eventListener.ts` registers a top-level `clinicEvents.on("appointment:booked", ...)` listener to track recently booked slots in memory.
+- `src/components/Layout.tsx` imports `useClinicStore` from `src/store/useClinicStore.ts` (`src/components/Layout.tsx`, line 3), which evaluates `useClinicStore.ts` (`src/store/useClinicStore.ts`, lines 24–30) and synchronously initializes store state by cloning data from `src/data/seed.ts`.
 
-- `src/audit/logger.ts` registers a top-level `clinicEvents.on("appointment:booked", ...)` listener to prepend appointment log entries to an in-memory audit list.
+4. **React DOM Render (`src/main.tsx` & `src/App.tsx`)**
 
-3. **DOM Mounting & React Tree Construction (`src/main.tsx`)**
+- `ReactDOM.createRoot(document.getElementById("root")!).render(...)` (`src/main.tsx`, lines 6–10) mounts the React tree.
 
-- After module evaluation finishes, top-level code in `src/main.tsx` executes: `ReactDOM.createRoot(document.getElementById("root")!).render(...)`.
+- `App` initializes `BrowserRouter` with routes inside `Layout` (`src/App.tsx`, lines 9–23; `src/components/Layout.tsx`, lines 1–68).
 
-- React creates the DOM root targeting `#root` and renders `<App />` wrapped in `<React.StrictMode>`.
+5. **Asynchronous Initialization Timing (`src/pages/ReferralDetailPage.tsx`)**
 
-4. **Router & View Rendering (`src/App.tsx`)**
-
-- `App` renders `<BrowserRouter>` and configures `<Routes>`.
-
-- On initial navigation to `/`, React renders `<Layout />` (`src/components/Layout.tsx`) containing the primary sidebar and navigation shell, alongside the index page `<ReferralListPage />` (`src/pages/ReferralListPage.tsx`).
+- Dynamic route loading does not occur at application startup. When a user navigates to `ReferralDetailPage` (`src/pages/ReferralDetailPage.tsx`, lines 31–33), a React `useEffect` hook fires post-mount, invoking `loadRoutes()` (`src/triage/routes/loadRoutes.ts`, lines 1–12) to dynamically import pathway routing modules.
 
 ---
 
-Supporting Repository Evidence
-**`index.html`**: Declares root element `<div id="root">` and entry script `/src/main.tsx`.
-**`src/main.tsx`**: Imports `src/App.tsx` and calls `ReactDOM.createRoot`.
-**`src/App.tsx`**: Defines top-level router routes and imports `./scheduling/eventListener` and `./audit/logger`.
-**`src/scheduling/eventListener.ts`**: Contains module-scope subscription to `clinicEvents`.
-**`src/audit/logger.ts`**: Contains module-scope subscription to `clinicEvents`.
-**`src/store/useClinicStore.ts`**: Evaluates Zustand store creation and clones `seedReferrals`, `seedClinicians`, and `seedAudit` from `src/data/seed.ts` during module loading.
-**`src/components/Layout.tsx`**: Consumes `useClinicStore` hook for sidebar indicators and user context.
+Evidence Distinction
+**Direct Evidence**: Module scripts, import declarations, event subscriptions, store setup, and React render/effect calls present in `index.html`, `src/main.tsx`, `src/App.tsx`, `src/scheduling/eventListener.ts`, `src/audit/logger.ts`, `src/store/useClinicStore.ts`, `src/components/Layout.tsx`, `src/pages/ReferralDetailPage.tsx`, and `src/triage/routes/loadRoutes.ts`.
+**Inference**: ECMAScript module dependency resolution and execution order according to standard browser runtime specifications.
 ```
 
 **Verdict:** <!-- correct | incorrect -->
@@ -178,82 +169,77 @@ Evidence panel: Evidence · 52 files retrieved
 Retrieved: src/components/PriorityPanel.tsx (0.78), src/config/priorityRules.ts (0.76), src/hooks/useReferralFilters.ts (0.76), src/pages/ReferralDetailPage.tsx (0.76), src/store/useClinicStore.ts (0.73), src/triage/banding.ts (0.73), src/utils/format.ts (0.73), src/components/ReferralTable.tsx (0.7), src/events/types.ts (0.67), src/scheduling/service.ts (0.67), src/pages/ReferralListPage.tsx (0.64), src/api/pipeline/redact-stage.ts (0.61), src/api/referrals-api.ts (0.61), src/App.tsx (0.61), src/components/SlotPicker.tsx (0.61), src/data/seed.ts (0.61), src/jobs/nightlyReverification.ts (0.61), src/scheduling/types.ts (0.61), src/tests/banding.test.ts (0.61), src/tests/registry.test.ts (0.61), src/triage/eligibility.ts (0.61), src/triage/routes/registry.ts (0.61), src/triage/validation.ts (0.61), src/types/domain.ts (0.56), src/triage/routes/loadRoutes.ts (0.55), src/components/Layout.tsx (0.53), src/events/channel.ts (0.53), src/pages/AuditLogPage.tsx (0.53), src/pages/ClinicianOverviewPage.tsx (0.53), src/tests/eligibility.test.ts (0.53), src/scheduling/oldSlotFinder.ts (0.48), src/scheduling/slotFinder.ts (0.48), src/tests/scheduling.test.ts (0.48), src/api/api-client.ts (0.44), src/api/pipeline/types.ts (0.44), src/audit/logger.ts (0.44), src/main.tsx (0.44), src/scheduling/eventListener.ts (0.44), src/triage/routes/followUp.ts (0.44), src/triage/routes/routine.ts (0.44), src/triage/routes/safeguarding.ts (0.44), src/triage/routes/urgent.ts (0.44), src/api/pipeline/auth-stage.ts (0.29), src/api/pipeline/trace-stage.ts (0.29), src/styles.css (0.29), README.md (0.05), index.html (0), package.json (0), tsconfig.app.json (0), tsconfig.json (0), tsconfig.node.json (0), vite.config.ts (0)
 
 ```
-A referral's priority band (`red` / Priority 1, `amber` / Priority 2, or `green` / Priority 3) is calculated by a point-scoring algorithm based on referral type and clinical signals, and is formally assigned to the referral's state when a user accepts or updates the referral in the detail view.
+A referral is assigned its priority band (`"red"`, `"amber"`, or `"green"`) when a user accepts or updates a referral in `src/pages/ReferralDetailPage.tsx`, which passes a chosen or default band from React component state into the store action `acceptReferral(id, priority)` in `src/store/useClinicStore.ts`. In the live UI, the selected band defaults to the referral's existing `priority` or `"green"`, while the UI component `PriorityPanel` (`src/components/PriorityPanel.tsx`) concurrently runs `calculateBand(referral)` (`src/triage/banding.ts`) to display a calculated point score, rule signals, and a suggested band recommendation.
 
 ---
 
-1. Priority Band Calculation (`calculateBand`)
+1. Automated Priority Calculation (`calculateBand`)
 
-The function `calculateBand(referral)` in [`src/triage/banding.ts`](src/triage/banding.ts) evaluates a referral object against configured rules and thresholds to return a `BandingDecision` object (`{ band, score, matchedRules, targetHours }`):
+The suggestion engine in `src/triage/banding.ts` evaluates a referral using rules and policies defined in `src/config/priorityRules.ts`.
 
-1. **Base Points & Target Hours**: The algorithm retrieves base points and target response hours for the referral's `type` from `referralPolicies` in [`src/config/priorityRules.ts`](src/config/priorityRules.ts):
+#### Step A: Base Points by Referral Pathway
 
-- `routine`: `0` base points, target response `336` hours (14 days).
+`calculateBand` looks up `referralPolicies[referral.type]` in `src/config/priorityRules.ts`:
 
-- `followUp`: `1` base point, target response `168` hours (7 days).
+**`safeguarding`**: 8 base points (target response: 4 hours)
+**`urgent`**: 5 base points (target response: 24 hours)
+**`followUp`**: 1 base point (target response: 168 hours)
+**`routine`**: 0 base points (target response: 336 hours)
 
-- `urgent`: `5` base points, target response `24` hours.
+#### Step B: Clinical Signal Rule Matching
 
-- `safeguarding`: `8` base points, target response `4` hours.
+`calculateBand` constructs a context object `{ ...referral.signals, type: referral.type }` and filters all rules in `priorityRules` (`src/config/priorityRules.ts`) whose `matches(context)` predicate returns `true`:
 
-2. **Matched Clinical Signals**: It evaluates context (`{ ...referral.signals, type: referral.type }`) against array `priorityRules` in [`src/config/priorityRules.ts`](src/config/priorityRules.ts) and adds points for each matching rule:
+**`safeguarding-signal`** (+10 points): `safeguardingConcern === true`
+**`rapid-deterioration`** (+7 points): `deterioration === true && painScore >= 7`
+**`severe-pain`** (+4 points): `painScore >= 7`
+**`post-discharge`** (+3 points): `recentDischarge === true`
+**`mobility`** (+2 points): `mobilityRisk === true`
+**`persistent-symptoms`** (+1 point): `symptomDays > 21`
 
-- `safeguarding-signal` (`10` points): `safeguardingConcern === true`
+#### Step C: Score Threshold Mapping
 
-- `rapid-deterioration` (`7` points): `deterioration === true` AND `painScore >= 7`
+The total score (`basePoints + matched points`) is evaluated against `bandThresholds` (`src/config/priorityRules.ts`) in descending minimum order:
 
-- `severe-pain` (`4` points): `painScore >= 7`
+**Score $\ge$ 9**: `"red"` (Priority 1)
+**Score $\ge$ 4**: `"amber"` (Priority 2)
+**Score $<$ 4**: `"green"` (Priority 3, default fallback)
 
-- `post-discharge` (`3` points): `recentDischarge === true`
-
-- `mobility` (`2` points): `mobilityRisk === true`
-
-- `persistent-symptoms` (`1` point): `symptomDays > 21`
-
-3. **Threshold Evaluation**: Total `score` (base points plus matched rule points) is compared against `bandThresholds` in [`src/config/priorityRules.ts`](src/config/priorityRules.ts):
-
-- Score $\ge 9 \rightarrow$ **`red`**
-
-- Score $\ge 4 \rightarrow$ **`amber`**
-
-- Score $\ge 0 \rightarrow$ **`green`** (fallback default)
+`calculateBand` returns a decision object containing `{ band, score, matchedRules, targetHours }`.
 
 ---
 
-2. UI Selection Workflow
-**Displaying Suggestions**: On `ReferralDetailPage` ([`src/pages/ReferralDetailPage.tsx`](src/pages/ReferralDetailPage.tsx)), local component state `priority` is initialized to `referral?.priority ?? "green"`. `ReferralDetailPage` renders `PriorityPanel` ([`src/components/PriorityPanel.tsx`](src/components/PriorityPanel.tsx)), which executes `calculateBand(referral)` to present:
+2. UI Presentation & User Selection
 
-- Total calculated score.
+1. **Local State Initialization**: In `ReferralDetailPage` (`src/pages/ReferralDetailPage.tsx`), React state `priority` is initialized to `referral?.priority ?? "green"`.
 
-- Suggested band label formatted via `bandLabel(decision.band)` ([`src/utils/format.ts`](src/utils/format.ts)).
+2. **Displaying Recommendations**: `ReferralDetailPage` passes `priority` and `setPriority` to `PriorityPanel` (`src/components/PriorityPanel.tsx`). `PriorityPanel` calls `calculateBand(referral)` to render the total score, human-readable suggested band label via `bandLabel` (`src/utils/format.ts`), target response hours, matched rule IDs, and highlights the suggested option button.
 
-- Target response time in hours.
-
-- Selectable radio options (`red` / Priority 1, `amber` / Priority 2, `green` / Priority 3) with a "Suggested" tag on `decision.band`.
-
-- Matched signal rule IDs with hyphens converted to spaces (`rule.replaceAll("-", " ")`).
-
-**User Selection**: Clicking a band option calls `setPriority` (the React `useState` setter in `ReferralDetailPage.tsx`), updating local selection state.
+3. **User Selection**: Clicking any of the three priority buttons ("Priority 1", "Priority 2", "Priority 3") in `PriorityPanel` invokes `setPriority(band)`, updating `ReferralDetailPage`'s local React state.
 
 ---
 
-3. Store Mutation, Eligibility, Audit, and Events
+3. Store State Mutation, Persistence, and Side Effects
 
-When the user clicks **Accept referral** or **Update priority** in `ReferralDetailPage.tsx`:
+1. **Action Trigger**: When the user clicks "Accept referral" or "Update priority" in `ReferralDetailPage`, `onAccept` executes `accept(referral.id, priority)`, calling `acceptReferral` in `src/store/useClinicStore.ts`.
 
-1. `ReferralDetailPage.tsx` executes `accept(referral.id, priority)` from `useClinicStore` ([`src/store/useClinicStore.ts`](src/store/useClinicStore.ts)).
+2. **Eligibility Guard**: `acceptReferral` evaluates `checkEligibility(referral)` (`src/triage/eligibility.ts`). If the referral is ineligible (`!eligibility.eligible`), it emits `eligibility:failed` on `clinicEvents` (`src/events/channel.ts`) and throws an error without updating state.
 
-2. `useClinicStore.acceptReferral` runs `checkEligibility(referral)` ([`src/triage/eligibility.ts`](src/triage/eligibility.ts)):
+3. **State Persistence**: If eligible, `acceptReferral`:
 
-- **Ineligible**: If validation fails (e.g., out-of-area postcode, invalid DOB, missing registered practice, or child safeguarding), `clinicEvents.emit("eligibility:failed", ...)` is called on `EventChannel` ([`src/events/channel.ts`](src/events/channel.ts)) with `phase: "acceptance"`, and an error is thrown without updating state.
+* Resolves the target band as `override ?? calculateBand(referral).band`. *(Note: All live application UI calls pass `priority` as `override`. Direct callers that omit the second argument, such as tests in `src/tests/eligibility.test.ts`, fall back to `calculateBand(referral).band`)*.
 
-- **Eligible**: The store updates the referral in `state.referrals`, setting `status: "accepted"` and assigning `priority` to the passed `override` parameter (`priority` state supplied by `ReferralDetailPage.tsx`). If called without an override argument, it falls back to `calculateBand(referral).band`.
+* Mutates the Zustand store `referrals` array, setting `status = "accepted"` and `priority = band` for the referral.
 
-3. **Audit Logging**: `acceptReferral` calls `addAudit` in `useClinicStore.ts` to prepend an entry to `state.audit` (`action: "Referral accepted"`, `detail: "Priority assigned: <band>"`, severity `"critical"` for `red` or `"info"` otherwise).
+* Records an audit log entry via `addAudit` with action `"Referral accepted"`, detail `"Priority assigned: ${band}"`, and severity `"critical"` if `band === "red"` else `"info"`.
 
-4. **Event Emission**: `acceptReferral` emits `clinicEvents.emit("referral:accepted", { referralId: id, band, actor })` via [`src/events/channel.ts`](src/events/channel.ts).
+* Emits the `referral:accepted` event with `{ referralId, band, actor }` on `clinicEvents` (`src/events/channel.ts`). Currently, no registered event listener subscribes to `referral:accepted`.
 
-*(Note: `useClinicStore` also exports a standalone `setPriority(id, band)` store action that updates `referral.priority` and logs an audit entry with `action: "Priority changed"`, but this action is not called by any UI component).*
+---
+
+4. Unused Store Action
+
+`useClinicStore` (`src/store/useClinicStore.ts`) also exports a `setPriority(id, band)` store action that directly sets `referral.priority = band` and writes an audit entry `"Priority changed"`. This store action is not called anywhere in the active application UI (where `setPriority` in `ReferralDetailPage.tsx` refers strictly to React's local state setter).
 ```
 
 **Verdict:** <!-- correct | incorrect -->
@@ -290,74 +276,54 @@ Evidence panel: Evidence · 52 files retrieved
 Retrieved: src/components/ReferralTable.tsx (0.66), src/hooks/useReferralFilters.ts (0.66), src/pages/ReferralDetailPage.tsx (0.66), src/api/pipeline/redact-stage.ts (0.64), src/api/referrals-api.ts (0.64), src/components/PriorityPanel.tsx (0.64), src/components/SlotPicker.tsx (0.64), src/config/priorityRules.ts (0.64), src/data/seed.ts (0.64), src/jobs/nightlyReverification.ts (0.64), src/scheduling/service.ts (0.64), src/scheduling/types.ts (0.64), src/store/useClinicStore.ts (0.64), src/triage/banding.ts (0.64), src/triage/eligibility.ts (0.64), src/triage/routes/registry.ts (0.64), src/triage/validation.ts (0.64), src/utils/format.ts (0.64), src/pages/ReferralListPage.tsx (0.61), src/api/api-client.ts (0.59), src/api/pipeline/auth-stage.ts (0.59), src/api/pipeline/trace-stage.ts (0.59), src/App.tsx (0.59), src/audit/logger.ts (0.59), src/events/channel.ts (0.59), src/events/types.ts (0.59), src/scheduling/oldSlotFinder.ts (0.59), src/scheduling/slotFinder.ts (0.59), src/tests/registry.test.ts (0.59), src/triage/routes/loadRoutes.ts (0.47), src/types/domain.ts (0.47), src/api/pipeline/types.ts (0.46), src/components/Layout.tsx (0.46), src/pages/AuditLogPage.tsx (0.46), src/pages/ClinicianOverviewPage.tsx (0.46), src/tests/banding.test.ts (0.46), src/tests/eligibility.test.ts (0.46), src/tests/scheduling.test.ts (0.46), src/triage/routes/followUp.ts (0.46), src/triage/routes/routine.ts (0.46), src/triage/routes/safeguarding.ts (0.46), src/triage/routes/urgent.ts (0.46), src/main.tsx (0.43), src/scheduling/eventListener.ts (0.43), src/styles.css (0.28), index.html (0.06), package.json (0.03), README.md (0), tsconfig.app.json (0), tsconfig.json (0), tsconfig.node.json (0), vite.config.ts (0)
 
 ```
-Processing logic for a given referral type (`routine`, `urgent`, `followUp`, or `safeguarding`) is determined across six functional areas based on `referral.type`:
+Processing logic for each referral type (`routine`, `urgent`, `followUp`, `safeguarding`) is determined by four key areas in the codebase: central policy configuration, dynamic pathway route handlers, domain eligibility rules, and API transmission middleware.
 
-1. **Pathway Routing Guidance (`src/triage/routes/`)**: `routeReferral()` in `src/triage/routes/registry.ts` dispatches to type-specific route handlers loaded by `src/triage/routes/loadRoutes.ts`.
+1. Central Policy Mapping: Scoring, Target Timeframes, and Slot Strategy
 
-2. **Priority Banding & Response Targets (`src/config/priorityRules.ts` & `src/triage/banding.ts`)**: `referralPolicies` configures base points, target hours, and slot finder keys per referral type.
+`src/config/priorityRules.ts` defines `referralPolicies`, mapping each `ReferralType` to specific policy parameters:
 
-3. **Slot Search Strategy (`src/scheduling/service.ts`)**: `availableSlots()` dispatches to either standard or continuity slot finders based on `referralPolicies[referral.type].finder`.
+`routine`: `basePoints: 0`, `targetHours: 336`, `finder: "standard"`
+`urgent`: `basePoints: 5`, `targetHours: 24`, `finder: "standard"`
+`followUp`: `basePoints: 1`, `targetHours: 168`, `finder: "continuity"`
+`safeguarding`: `basePoints: 8`, `targetHours: 4`, `finder: "standard"`
+Runtime consumers:
+**Priority Banding (`src/triage/banding.ts`)**: `calculateBand(referral)` reads `referralPolicies[referral.type]` to add `basePoints` to clinical signal points when scoring, derive target response hours, and determine the priority band (`red`, `amber`, or `green`).
+**Slot Finder Strategy (`src/scheduling/service.ts`)**: `availableSlots(referral, clinicians)` uses `referralPolicies[referral.type].finder` to dispatch slot lookup:
 
-4. **Age-Based Safeguarding Rules (`src/triage/eligibility.ts`)**: `checkEligibility()` enforces age restrictions specifically for safeguarding referrals.
+* `"standard"` routes to `findSlots` (`src/scheduling/slotFinder.ts`), which filters active clinicians matching `referral.service`, matches unbooked future slots (`isAfter`), and sorts chronologically.
 
-5. **Data Redaction Pipeline (`src/api/pipeline/redact-stage.ts`)**: `redactStage` restricts patient contact details and notes for safeguarding referrals during API requests.
+* `"continuity"` routes to `findContinuitySlots` (`src/scheduling/oldSlotFinder.ts`), which filters active service clinicians, prioritizes `referral.assignedClinicianId` first, filters unbooked matching slots, and sorts chronologically.
 
-6. **UI Filtering & Labels (`src/hooks/useReferralFilters.ts`, `src/utils/format.ts`, `src/pages/ReferralListPage.tsx`)**: Controls filtering, urgent metrics calculation, and human-readable type display.
+2. Pathway Routing Registry and Handlers
+
+`src/triage/routes/registry.ts` maintains a dynamic map (`handlers`) connecting each `ReferralType` to a `RouteHandler` that returns pathway guidance (`RouteOutcome` containing summary, recommended service, phone call requirement, and instructions):
+
+`src/triage/routes/routine.ts`: Recommends `referral.service`, `requiresPhoneCall: false`, provides standard demographic and booking instructions.
+`src/triage/routes/urgent.ts`: Recommends `referral.service`, `requiresPhoneCall: true`, instructs contact within two hours and escalation if red flags appear.
+`src/triage/routes/followUp.ts`: Recommends `referral.service`, `requiresPhoneCall: false`, instructs review of previous clinical letters and team preference.
+`src/triage/routes/safeguarding.ts`: Overrides service to `"Community nursing"`, `requiresPhoneCall: true`, requires discreet contact and lead notification.
+Runtime consumers:
+Modules are loaded by `loadRoutes()` (`src/triage/routes/loadRoutes.ts`).
+`src/pages/ReferralDetailPage.tsx` executes `routeReferral(referral)` to display the recommended pathway cards and warning banners in the UI.
+3. Safeguarding-Specific Eligibility Rule
+
+`src/triage/eligibility.ts` executes `checkEligibility(referral)`, which checks if `referral.type === "safeguarding"` and the patient's age is under 16. If true, it marks the referral ineligible with the reason `"Child safeguarding team must coordinate this referral"`.
+
+**Runtime consumers:** Called in `useClinicStore.ts` during `acceptReferral`, in `src/triage/validation.ts` during `checkAppointment` booking, and in `src/jobs/nightlyReverification.ts` during automated checks.
+4. API Request Redaction Middleware
+
+`src/api/pipeline/redact-stage.ts` exports `redactStage`, an API pipeline stage that checks `referral.type === "safeguarding"`. When matching, it redacts `notes` to `"[restricted clinical note]"`, `phone` to `"[safe contact required]"`, and `postcode` to `"[restricted]"`.
+
+**Runtime consumers:** Composed in `src/api/api-client.ts` as part of `apiRequest` processing when executing API updates (`submitReferral` or `recordBooking` in `src/api/referrals-api.ts`).
+5. UI Workspace Filtering & Metrics
+`src/pages/ReferralListPage.tsx`: Includes `referral.type === "urgent"` and `referral.type === "safeguarding"` when computing the "Time sensitive" metric count.
+`src/hooks/useReferralFilters.ts`: Filters active referral worklists by selected pathway type using `referral.type === type`.
 
 ---
 
-Supporting Repository Details & Flow
-
-#### 1. Care Pathway & Routing Guidance
-
-**Registry & Dispatch (`src/triage/routes/registry.ts`)**: Manages a `Map<ReferralType, RouteHandler>`. `routeReferral(referral)` resolves the handler for `referral.type` and returns a `RouteOutcome` (containing `summary`, `recommendedService`, `requiresPhoneCall`, and `instructions`).
-**Route Modules**:
-
-* `src/triage/routes/routine.ts`: Standard pathway for `referral.service`; `requiresPhoneCall: false`.
-
-* `src/triage/routes/urgent.ts`: Urgent review for `referral.service`; requires telephone contact (`requiresPhoneCall: true`).
-
-* `src/triage/routes/followUp.ts`: Prefers existing care team and previous letters; `requiresPhoneCall: false`.
-
-* `src/triage/routes/safeguarding.ts`: Recommends `"Community nursing"`, prohibits leaving voicemails, and sets `requiresPhoneCall: true`.
-
-**Loader & Execution (`src/triage/routes/loadRoutes.ts`, `src/pages/ReferralDetailPage.tsx`)**: `loadRoutes()` dynamically imports route modules using `import.meta.glob`. `ReferralDetailPage.tsx` executes `loadRoutes()` within a React `useEffect` hook and invokes `routeReferral(referral)` to populate routing guidance in the UI.
-
-#### 2. Triage Scoring & Time Targets
-
-**Policy Configuration (`src/config/priorityRules.ts`)**: `referralPolicies` defines policies for each `ReferralType`:
-
-* `routine`: `basePoints: 0`, `finder: "standard"`, `targetHours: 336` (14 days)
-
-* `urgent`: `basePoints: 5`, `finder: "standard"`, `targetHours: 24` (1 day)
-
-* `followUp`: `basePoints: 1`, `finder: "continuity"`, `targetHours: 168` (7 days)
-
-* `safeguarding`: `basePoints: 8`, `finder: "standard"`, `targetHours: 4`
-
-**Score Calculation (`src/triage/banding.ts`)**: `calculateBand(referral)` fetches `referralPolicies[referral.type]`. It adds `basePoints` to points from matched rules in `priorityRules`, evaluates against `bandThresholds` (`>=9` -> `red`, `>=4` -> `amber`, `>=0` -> `green`), and returns the decision along with `targetHours`.
-
-#### 3. Capacity & Slot Search Strategy
-
-**Finder Dispatch (`src/scheduling/service.ts`)**: `availableSlots(referral, clinicians)` reads `referralPolicies[referral.type].finder` to pick a `SlotFinder`:
-
-* `"standard"` -> `findSlots` (`src/scheduling/slotFinder.ts`): Filters active clinicians covering `referral.service`, selects unbooked future slots for that service, and sorts them chronologically.
-
-* `"continuity"` -> `findContinuitySlots` (`src/scheduling/oldSlotFinder.ts`): Filters active clinicians covering `referral.service`, sorts clinicians to prioritize `referral.assignedClinicianId` (`preferredClinicianId`), collects unbooked matching slots, and sorts them chronologically.
-
-#### 4. Eligibility Restrictions
-
-**Age Check (`src/triage/eligibility.ts`)**: `checkEligibility(referral)` checks if `referral.type === "safeguarding"`. If the patient's calculated age is under 16, it adds `"Child safeguarding team must coordinate this referral"` to `reasons` and sets `eligible: false`. Called during acceptance (`useClinicStore.ts`), booking (`src/triage/validation.ts`), and reverification jobs (`src/jobs/nightlyReverification.ts`).
-
-#### 5. API Data Redaction
-
-**Middleware Pipeline (`src/api/pipeline/redact-stage.ts`)**: `redactStage` inspects `request.body`. If `referral.type === "safeguarding"`, it redacts `notes` to `"[restricted clinical note]"`, `phone` to `"[safe contact required]"`, and `postcode` to `"[restricted]"`.
-
-#### 6. UI Presentation & List Filtering
-
-**Filter State (`src/hooks/useReferralFilters.ts`)**: `useReferralFilters` allows filtering list items by pathway via `type === "all" || referral.type === type`.
-**Metric Calculation (`src/pages/ReferralListPage.tsx`)**: Counts time-sensitive referrals where `priority === "red" || type === "urgent" || type === "safeguarding"`.
-**Type Formatting (`src/utils/format.ts`)**: `humaniseType(type)` converts type strings to printable labels (`Routine`, `Urgent`, `Follow-up`, `Safeguarding`).
+Direct Evidence vs. Inference
+**Direct Evidence**: `referralPolicies` in `src/config/priorityRules.ts`, route handlers in `src/triage/routes/*.ts`, eligibility logic in `src/triage/eligibility.ts`, pipeline middleware in `src/api/pipeline/redact-stage.ts`, and workspace metrics in `src/pages/ReferralListPage.tsx` explicitly branch on `referral.type`.
+**Inference**: The route handler files self-register when dynamically imported via Vite's `import.meta.glob` in `src/triage/routes/loadRoutes.ts`, which is triggered upon rendering `ReferralDetailPage.tsx` or executing unit tests in `src/tests/registry.test.ts`.
 ```
 
 **Verdict:** <!-- correct | incorrect -->
@@ -403,71 +369,49 @@ Evidence panel: Evidence · 52 files retrieved
 Retrieved: src/pages/ReferralListPage.tsx (0.61), src/triage/eligibility.ts (0.61), src/App.tsx (0.59), src/jobs/nightlyReverification.ts (0.59), src/store/useClinicStore.ts (0.59), src/triage/validation.ts (0.59), src/tests/eligibility.test.ts (0.57), src/components/ReferralTable.tsx (0.44), src/hooks/useReferralFilters.ts (0.44), src/types/domain.ts (0.44), src/audit/logger.ts (0.43), src/components/Layout.tsx (0.43), src/data/seed.ts (0.43), src/events/channel.ts (0.43), src/main.tsx (0.43), src/pages/AuditLogPage.tsx (0.43), src/pages/ClinicianOverviewPage.tsx (0.43), src/pages/ReferralDetailPage.tsx (0.43), src/scheduling/eventListener.ts (0.43), src/tests/scheduling.test.ts (0.43), src/triage/banding.ts (0.43), src/api/pipeline/redact-stage.ts (0.29), src/api/referrals-api.ts (0.29), src/components/PriorityPanel.tsx (0.29), src/components/SlotPicker.tsx (0.29), src/config/priorityRules.ts (0.29), src/events/types.ts (0.29), src/scheduling/service.ts (0.29), src/scheduling/types.ts (0.29), src/triage/routes/registry.ts (0.29), src/utils/format.ts (0.29), src/styles.css (0.28), src/tests/banding.test.ts (0.28), src/tests/registry.test.ts (0.28), src/triage/routes/loadRoutes.ts (0.28), index.html (0), package.json (0), README.md (0), src/api/api-client.ts (0), src/api/pipeline/auth-stage.ts (0), src/api/pipeline/trace-stage.ts (0), src/api/pipeline/types.ts (0), src/scheduling/oldSlotFinder.ts (0), src/scheduling/slotFinder.ts (0), src/triage/routes/followUp.ts (0), src/triage/routes/routine.ts (0), src/triage/routes/safeguarding.ts (0), src/triage/routes/urgent.ts (0), tsconfig.app.json (0), tsconfig.json (0), tsconfig.node.json (0), vite.config.ts (0)
 
 ```
-Eligibility is evaluated by `checkEligibility` defined in `src/triage/eligibility.ts` (lines 4–26). The check occurs in **3 places** across the repository codebase:
+Eligibility is directly checked in **3 production call sites** across the codebase, all executing `checkEligibility(referral)` defined in `src/triage/eligibility.ts`:
+
+1. **`src/store/useClinicStore.ts`** inside `acceptReferral`
+
+2. **`src/triage/validation.ts`** inside `checkAppointment`
+
+3. **`src/jobs/nightlyReverification.ts`** inside `runNightlyReverification`
+
+In addition, automated tests indirectly trigger two of these call sites (`src/tests/eligibility.test.ts` via `acceptReferral` and `src/tests/scheduling.test.ts` via `checkAppointment`), while `src/pages/ReferralDetailPage.tsx` renders an un-wired UI button that does not execute an eligibility check.
 
 ---
 
-1. Store action: `acceptReferral`
-**File:** `src/store/useClinicStore.ts` (lines 48–56)
-**Code:**
+Production Call Sites
 
-```ts
+#### 1. Referral Acceptance Triage
 
-const eligibility = checkEligibility(referral);
+**File:** `src/store/useClinicStore.ts` (inside `acceptReferral`)
+**Trigger Path:** User clicks **"Accept referral"** or **"Update priority"** on `src/pages/ReferralDetailPage.tsx` (`onAccept`), which calls the `acceptReferral` store action.
+**Control & Data Flow:** `acceptReferral` retrieves the target referral from state and executes `checkEligibility(referral)`. If `!eligibility.eligible`, it emits `eligibility:failed` on `clinicEvents` (`src/events/channel.ts`) with `{ referralId: id, reasons: eligibility.reasons, phase: "acceptance" }` and throws an `Error`, halting the status change to `"accepted"`.
 
-```
+#### 2. Appointment Booking Validation
 
-**Execution & Flow:**
+**File:** `src/triage/validation.ts` (inside `checkAppointment`)
+**Trigger Path:** User selects a slot in `src/components/SlotPicker.tsx` and clicks **"Confirm appointment"**, calling `onBook` in `src/pages/ReferralDetailPage.tsx` $\rightarrow$ `bookAppointment` in `src/store/useClinicStore.ts` $\rightarrow$ `checkAppointment`.
+**Control & Data Flow:** `checkAppointment` executes `checkEligibility(referral)` prior to slot assignment checks. If ineligible, it emits `eligibility:failed` on `clinicEvents` with `{ referralId: referral.id, reasons: eligibility.reasons, phase: "booking" }` and throws an `Error`, preventing slot reservation and appointment creation.
 
-* **Production entry point:** Triggered from `ReferralDetailPage` (`src/pages/ReferralDetailPage.tsx`, lines 49–57) via `onAccept()`, which runs when a user clicks the **"Accept referral"** or **"Update priority"** button.
+#### 3. Nightly Reverification Job
 
-* **Behavior:** If `!eligibility.eligible`, it emits an `eligibility:failed` event with `phase: "acceptance"` to `clinicEvents` (`src/events/channel.ts`) and throws an `Error` containing joined reasons, halting the store update.
-
-* **Test invocation:** Exercised via store actions in `src/tests/eligibility.test.ts` (lines 11, 20, 30).
-
----
-
-2. Validation helper: `checkAppointment`
-**File:** `src/triage/validation.ts` (lines 12–20)
-**Code:**
-
-```ts
-
-const eligibility = checkEligibility(referral);
-
-```
-
-**Execution & Flow:**
-
-* **Production entry point:** Called inside the `bookAppointment` store action (`src/store/useClinicStore.ts`, lines 115–123). This store action is called by `onBook` on `ReferralDetailPage` (`src/pages/ReferralDetailPage.tsx`, lines 66–70) when submitting a slot selection from `SlotPicker` (`src/components/SlotPicker.tsx`, line 78).
-
-* **Behavior:** If `!eligibility.eligible`, it emits an `eligibility:failed` event with `phase: "booking"` to `clinicEvents` (`src/events/channel.ts`) and throws an `Error` containing joined reasons, preventing appointment creation.
-
-* **Test invocation:** Called directly in `src/tests/scheduling.test.ts` (lines 18, 32).
+**File:** `src/jobs/nightlyReverification.ts` (inside `runNightlyReverification`)
+**Trigger Path:** User clicks **"Run eligibility check"** on `src/pages/AuditLogPage.tsx` (`verify`), which invokes `runNightlyReverification(referrals)`.
+**Control & Data Flow:** `runNightlyReverification` filters the provided referrals list for items with status `"accepted"` or `"booked"`, then iterates over each candidate to run `checkEligibility(referral)`. For any ineligible referral, it records the failure in its returned report object and emits `eligibility:failed` on `clinicEvents` with `{ referralId: referral.id, reasons: result.reasons, phase: "nightly" }`.
 
 ---
 
-3. Verification job: `runNightlyReverification`
-**File:** `src/jobs/nightlyReverification.ts` (lines 18–26)
-**Code:**
-
-```ts
-
-const result = checkEligibility(referral);
-
-```
-
-**Execution & Flow:**
-
-* **Production entry point:** Triggered on the Audit Log page (`src/pages/AuditLogPage.tsx`, lines 24–30) via `verify()`, which runs when a user clicks the **"Run eligibility check"** button.
-
-* **Behavior:** Iterates through all referrals with status `"accepted"` or `"booked"`. If a referral is ineligible (`!result.eligible`), it appends the failure details to the output report object and emits an `eligibility:failed` event with `phase: "nightly"` to `clinicEvents` (`src/events/channel.ts`).
+Test-Only Call Paths (Indirect Execution)
+**`src/tests/eligibility.test.ts`**: Invokes `useClinicStore.getState().acceptReferral(...)`, which executes the eligibility check inside `acceptReferral`.
+**`src/tests/scheduling.test.ts`**: Invokes `checkAppointment(...)`, which executes the eligibility check inside `checkAppointment`.
 
 ---
 
-Direct Evidence vs. Inference Summary
-**Direct Evidence:** The function `checkEligibility` is directly imported and called in `src/store/useClinicStore.ts`, `src/triage/validation.ts`, and `src/jobs/nightlyReverification.ts`. Each call site emits an `eligibility:failed` payload to `clinicEvents` on failure.
-**Direct Evidence:** No listener is registered for `eligibility:failed` in `src/audit/logger.ts` or `src/scheduling/eventListener.ts` (listeners exist only for `appointment:booked`).
+Non-Executing UI Element & Definition Source
+**Un-wired UI Button:** `src/pages/ReferralDetailPage.tsx` renders `<button className="button secondary full">Verify demographics</button>`, but direct evidence shows it has no attached `onClick` handler and does not invoke `checkEligibility` or any other check logic.
+**Core Rule Definition:** The business rules evaluated during every eligibility check are centrally defined in `checkEligibility` (`src/triage/eligibility.ts`), which validates patient date of birth, postcode prefix (`LS`), registered practice presence, non-declined status, and age constraints for safeguarding referrals (<16 years).
 ```
 
 **Verdict:** <!-- correct | incorrect -->
@@ -516,98 +460,78 @@ Evidence panel: Evidence · 52 files retrieved
 Retrieved: src/api/pipeline/types.ts (0.69), src/api/api-client.ts (0.66), src/api/referrals-api.ts (0.66), src/api/pipeline/auth-stage.ts (0.61), src/api/pipeline/redact-stage.ts (0.61), src/api/pipeline/trace-stage.ts (0.61), src/tests/eligibility.test.ts (0.59), src/tests/registry.test.ts (0.59), src/types/domain.ts (0.47), src/data/seed.ts (0.43), src/store/useClinicStore.ts (0.43), src/triage/routes/loadRoutes.ts (0.43), src/triage/routes/registry.ts (0.43), src/audit/logger.ts (0.32), src/components/PriorityPanel.tsx (0.32), src/components/ReferralTable.tsx (0.32), src/components/SlotPicker.tsx (0.32), src/config/priorityRules.ts (0.32), src/events/types.ts (0.32), src/hooks/useReferralFilters.ts (0.32), src/jobs/nightlyReverification.ts (0.32), src/pages/ReferralDetailPage.tsx (0.32), src/scheduling/service.ts (0.32), src/scheduling/types.ts (0.32), src/triage/banding.ts (0.32), src/triage/eligibility.ts (0.32), src/triage/validation.ts (0.32), src/utils/format.ts (0.32), src/components/Layout.tsx (0.28), src/events/channel.ts (0.28), src/pages/AuditLogPage.tsx (0.28), src/pages/ClinicianOverviewPage.tsx (0.28), src/pages/ReferralListPage.tsx (0.28), src/tests/banding.test.ts (0.28), src/tests/scheduling.test.ts (0.28), src/triage/routes/followUp.ts (0.28), src/triage/routes/routine.ts (0.28), src/triage/routes/safeguarding.ts (0.28), src/triage/routes/urgent.ts (0.28), src/scheduling/oldSlotFinder.ts (0.04), src/styles.css (0), index.html (0), package.json (0), README.md (0), src/App.tsx (0), src/main.tsx (0), src/scheduling/eventListener.ts (0), src/scheduling/slotFinder.ts (0), tsconfig.app.json (0), tsconfig.json (0), tsconfig.node.json (0), vite.config.ts (0)
 
 ```
-Before an outgoing API request is passed to the transport handler, `apiRequest()` initializes optional request headers and passes the request through a composed pipeline of three asynchronous middleware stages in order: **`traceStage` → `authStage` → `redactStage`** (`src/api/api-client.ts`).
+Before an outgoing API request reaches the terminal transport, it passes sequentially through a three-stage middleware pipeline in left-to-right order: **`traceStage` → `authStage` → `redactStage`** (`src/api/api-client.ts`). During this pipeline execution, default headers are initialized, a unique trace identifier is added, static authentication and staff role headers are appended, and sensitive patient information in safeguarding referrals is redacted.
 
 ---
 
-Pipeline Composition & Execution Flow
+Pipeline Execution & Transformations
 
-API requests formatted via helpers like `submitReferral` or `recordBooking` in `src/api/referrals-api.ts` call `apiRequest()` in `src/api/api-client.ts`.
+#### 1. Request Initialization
 
-`src/api/api-client.ts` composes the stages using `reduceRight`:
+**File:** `src/api/api-client.ts`
+`apiRequest()` normalizes the input request payload by defaulting `headers` to `{}` if `request.headers` is undefined.
+The stage handlers array `[traceStage, authStage, redactStage]` is composed right-to-left using `Array.prototype.reduceRight`, which chains `next` functions so that invocation proceeds left-to-right from `traceStage` through `redactStage` down to `transport`.
 
-```ts
+#### 2. Trace Identification (`traceStage`)
 
-const stages: ApiStage[] = [traceStage, authStage, redactStage];
+**File:** `src/api/pipeline/trace-stage.ts`
+Generates a trace identifier string formatted as `trace-<timestamp>-<randomHex>` (using `Date.now()` and `Math.random().toString(16).slice(2)`).
+Adds or overwrites the `X-Trace-Id` header on `request.headers` and calls `next()`.
 
-const composed = stages.reduceRight<ApiNext>(
+#### 3. Authentication & Staff Headers (`authStage`)
 
-(next, stage) => (request) => stage(request, next),
+**File:** `src/api/pipeline/auth-stage.ts`
+Merges authorization and staff role headers into `request.headers`:
 
-transport,
+* `Authorization`: `"Bearer clinic-session"`
 
-);
+* `X-Staff-Role`: `"triage"`
 
-```
+Passes the enriched request object to `next()`.
 
-Because `reduceRight` wraps `transport` first with `redactStage`, then `authStage`, and finally `traceStage`, executing `composed(request)` invokes the pipeline in forward sequence: `traceStage` → `authStage` → `redactStage` → `transport`.
+#### 4. Body Redaction (`redactStage`)
 
----
+**File:** `src/api/pipeline/redact-stage.ts`
+Inspects `request.body` (cast as `Partial<Referral>`).
+**Predicate:** If `body` is present, `body.type === "safeguarding"`, and `body.patient` exists, it creates a copy of the request body with the following fields modified:
 
-Step-by-Step Transformations Before Transmission
+* `notes`: replaced with `"[restricted clinical note]"`
 
-1. **Header Defaulting** (`src/api/api-client.ts`)
+* `patient.phone`: replaced with `"[safe contact required]"`
 
-- `apiRequest()` accepts a request object where `headers` is optional and initializes it as `{ ...request, headers: request.headers ?? {} }`.
+* `patient.postcode`: replaced with `"[restricted]"`
 
-2. **Trace Stage** (`src/api/pipeline/trace-stage.ts`)
+**Otherwise:** Passes `request.body` through unmodified to `next()`.
 
-- Generates a unique string formatted as `trace-${Date.now()}-${Math.random().toString(16).slice(2)}`.
+#### 5. Terminal Transport
 
-- Injects `"X-Trace-Id": traceId` into the request headers object and invokes `next()`.
+**File:** `src/api/api-client.ts`
+Receives the fully transformed request and resolves a promise mock response containing:
 
-3. **Auth Stage** (`src/api/pipeline/auth-stage.ts`)
+* `status`: `200`
 
-- Appends clinic session headers to the request:
+* `data`: `request.body ?? { ok: true }`
 
-- `Authorization: "Bearer clinic-session"`
-
-- `"X-Staff-Role": "triage"`
-
-- Invokes `next()` with the enriched request.
-
-4. **Redact Stage** (`src/api/pipeline/redact-stage.ts`)
-
-- Inspects `request.body`.
-
-- If `body` is present, has `type === "safeguarding"`, and includes a `patient` object, it shallow-copies the body and updates specific fields:
-
-- `notes`: `"[restricted clinical note]"`
-
-- `patient.phone`: `"[safe contact required]"`
-
-- `patient.postcode`: `"[restricted]"`
-
-- If `body` is missing, not a safeguarding referral, or lacks a `patient` field, `request.body` is forwarded without modification.
-
-5. **Transport Resolution** (`src/api/api-client.ts`)
-
-- The fully processed `ApiRequest` reaches `transport`, which acts as the mock network adapter. It returns a resolved promise containing:
-
-- `status`: `200`
-
-- `data`: `request.body ?? { ok: true }`
-
-- `requestId`: `request.headers["X-Trace-Id"] ?? "local"`
+* `requestId`: `request.headers["X-Trace-Id"] ?? "local"`
 
 ---
 
-Code Evidence & Distinction
-**Direct Evidence**:
+Direct Evidence vs. Inference
+**Direct Evidence:**
 
-- `src/api/api-client.ts`: `apiRequest` header defaulting, right-to-left pipeline composition (`[traceStage, authStage, redactStage]`), and mock `transport` handler definition.
+* Request header initialization and pipeline composition via `reduceRight` in `src/api/api-client.ts`.
 
-- `src/api/pipeline/trace-stage.ts`: `"X-Trace-Id"` generation logic.
+* Format of `X-Trace-Id` in `src/api/pipeline/trace-stage.ts`.
 
-- `src/api/pipeline/auth-stage.ts`: Insertion of `"Authorization"` and `"X-Staff-Role"` headers.
+* Hardcoded authentication headers in `src/api/pipeline/auth-stage.ts`.
 
-- `src/api/pipeline/redact-stage.ts`: `redactBody` predicate check (`referral.type === "safeguarding"`) and payload redaction.
+* Redaction conditions and exact replacement strings in `src/api/pipeline/redact-stage.ts`.
 
-- `src/api/referrals-api.ts`: API entry points (`submitReferral` using `PATCH`, `recordBooking` using `POST`).
+* Wrapper functions `submitReferral` and `recordBooking` calling `apiRequest` in `src/api/referrals-api.ts`.
 
-**Inference**:
+**Inference:**
 
-- `transport` in `src/api/api-client.ts` serves as a local mock transport returning simulated response objects rather than dispatching HTTP requests via `fetch` or `XMLHttpRequest`. This is supported by the comment in `src/api/api-client.ts` regarding replacing the temporary gateway token upon completion of the regional identity programme.
+* The `transport` function in `src/api/api-client.ts` acts as a local stub for an HTTP client (`fetch`/`axios`) until integration with a backend remote gateway is completed.
 ```
 
 **Verdict:** <!-- correct | incorrect -->
@@ -642,13 +566,12 @@ Evidence panel: Evidence · 52 files retrieved
 Retrieved: src/store/useClinicStore.ts (0.64), src/tests/scheduling.test.ts (0.64), src/triage/validation.ts (0.64), src/components/SlotPicker.tsx (0.59), src/events/types.ts (0.59), src/hooks/useReferralFilters.ts (0.59), src/jobs/nightlyReverification.ts (0.59), src/pages/AuditLogPage.tsx (0.59), src/pages/ClinicianOverviewPage.tsx (0.59), src/pages/ReferralDetailPage.tsx (0.59), src/triage/eligibility.ts (0.59), src/components/Layout.tsx (0.46), src/data/seed.ts (0.46), src/events/channel.ts (0.46), src/pages/ReferralListPage.tsx (0.46), src/scheduling/service.ts (0.46), src/tests/eligibility.test.ts (0.46), src/triage/banding.ts (0.46), src/types/domain.ts (0.46), src/App.tsx (0.43), src/audit/logger.ts (0.43), src/components/PriorityPanel.tsx (0.43), src/triage/routes/loadRoutes.ts (0.43), src/triage/routes/registry.ts (0.43), src/utils/format.ts (0.43), src/api/pipeline/redact-stage.ts (0.31), src/api/referrals-api.ts (0.31), src/components/ReferralTable.tsx (0.31), src/config/priorityRules.ts (0.31), src/scheduling/eventListener.ts (0.31), src/scheduling/oldSlotFinder.ts (0.31), src/scheduling/slotFinder.ts (0.31), src/scheduling/types.ts (0.31), src/tests/banding.test.ts (0.31), src/tests/registry.test.ts (0.31), src/main.tsx (0.28), src/triage/routes/followUp.ts (0.28), src/triage/routes/routine.ts (0.28), src/triage/routes/safeguarding.ts (0.28), src/triage/routes/urgent.ts (0.28), tsconfig.node.json (0.05), tsconfig.app.json (0.03), src/styles.css (0.01), index.html (0), package.json (0), README.md (0), src/api/api-client.ts (0), src/api/pipeline/auth-stage.ts (0), src/api/pipeline/trace-stage.ts (0), src/api/pipeline/types.ts (0), tsconfig.json (0), vite.config.ts (0)
 
 ```
-No, `checkAppointment` does not only check; it directly mutates in-memory object state and emits side-effect events.
+`checkAppointment` does not only check—it actively mutates state and triggers side effects.
+Direct State Mutations and Side Effects in `checkAppointment`
 
----
+1. **Direct In-Memory Object Mutation (`slot.bookedReferralId`)**
 
-1. In-Memory Object Mutation
-
-In `src/triage/validation.ts` (line 36), `checkAppointment` mutates the selected `Slot` object on the passed `Clinician` instance:
+- After validating eligibility, slot existence, slot availability, and service coverage, `checkAppointment` mutates the matching `slot` object inside the passed `clinician` parameter by setting its `bookedReferralId` property (`src/triage/validation.ts`, line 35):
 
 ```ts
 
@@ -656,29 +579,23 @@ slot.bookedReferralId = referral.id;
 
 ```
 
-This updates the `bookedReferralId` property on the `slot` found inside `clinician.slots` (`src/triage/validation.ts`, lines 24 & 36).
+- When invoked via the Zustand store action `bookAppointment` (`src/store/useClinicStore.ts`, lines 112-117), this mutates the `clinician` slot object in the store state prior to Zustand updating `appointments`, `clinicians`, `referrals`, and `audit`.
 
----
+- Direct unit tests also verify this mutation (`src/tests/scheduling.test.ts`, line 24).
 
-2. Event Emissions & Listener Side Effects
+2. **Module State Mutations via Event Listeners (`appointment:booked`)**
 
-`checkAppointment` emits events via `clinicEvents.emit` (`src/triage/validation.ts`, lines 17–21 & 37–40):
+- On successful booking, `checkAppointment` emits the `"appointment:booked"` event on `clinicEvents` (`src/triage/validation.ts`, lines 36-39).
 
-**`"appointment:booked"` (Emitted on successful check/booking):**
+- This event synchronously executes two registered event listeners that update module-level state:
 
-* **`src/audit/logger.ts` (lines 5–15):** Registered listener unshifts a new `AuditEntry` into the module-scoped `eventEntries` array.
+- **`src/scheduling/eventListener.ts` (lines 3-5)**: Adds `appointment.slotId` to the `recentlyBooked` module-level `Set<string>`.
 
-* **`src/scheduling/eventListener.ts` (lines 3–5):** Registered listener adds `appointment.slotId` to the module-scoped `recentlyBooked` `Set`.
+- **`src/audit/logger.ts` (lines 4-13)**: Unshifts a generated `AuditEntry` object into the module-level `eventEntries` array (which is later merged and rendered in `AuditLogPage.tsx`, line 16).
 
-**`"eligibility:failed"` (Emitted when `checkEligibility(referral)` fails):**
+3. **Event Emission on Failed Eligibility (`eligibility:failed`)**
 
-* Emits `{ referralId, reasons, phase: "booking" }` (`src/triage/validation.ts`, lines 17–21). In the repository codebase, there are **no registered listeners** for the `"eligibility:failed"` event type (`src/events/types.ts`).
-
----
-
-3. Usage by Callers
-**Zustand Clinic Store (`src/store/useClinicStore.ts`, lines 105–142):** `bookAppointment` calls `checkAppointment(referral, clinician, slotId, state.actor)`. Relying on `checkAppointment`'s mutation and validation, `bookAppointment` then updates Zustand store state (`appointments`, `clinicians`, and setting `referrals` status to `"booked"`, `appointmentId`, and `assignedClinicianId`) and records a store audit entry via `addAudit`.
-**Unit Tests (`src/tests/scheduling.test.ts`, lines 19–37):** Direct call sites in `scheduling.test.ts` rely on `checkAppointment` setting `slot.bookedReferralId` on the passed clinician slot and throwing an error when attempting to book an already marked slot.
+- If `checkEligibility(referral)` fails, `checkAppointment` emits an `"eligibility:failed"` event payload with `phase: "booking"` (`src/triage/validation.ts`, lines 13-17) before throwing an error. Currently, no active listeners are registered for `"eligibility:failed"`.
 ```
 
 **Verdict:** <!-- correct | incorrect -->
@@ -744,31 +661,35 @@ Evidence panel: Evidence · 52 files retrieved
 Retrieved: src/components/SlotPicker.tsx (0.63), src/pages/ReferralDetailPage.tsx (0.63), src/scheduling/service.ts (0.62), src/scheduling/types.ts (0.62), src/components/ReferralTable.tsx (0.6), src/hooks/useReferralFilters.ts (0.6), src/pages/ReferralListPage.tsx (0.6), src/scheduling/oldSlotFinder.ts (0.6), src/scheduling/slotFinder.ts (0.6), src/api/pipeline/redact-stage.ts (0.58), src/api/referrals-api.ts (0.58), src/App.tsx (0.58), src/components/PriorityPanel.tsx (0.58), src/config/priorityRules.ts (0.58), src/data/seed.ts (0.58), src/jobs/nightlyReverification.ts (0.58), src/store/useClinicStore.ts (0.58), src/tests/registry.test.ts (0.58), src/triage/banding.ts (0.58), src/triage/eligibility.ts (0.58), src/triage/routes/followUp.ts (0.58), src/triage/routes/registry.ts (0.58), src/triage/validation.ts (0.58), src/utils/format.ts (0.58), src/triage/routes/loadRoutes.ts (0.46), src/types/domain.ts (0.46), src/tests/scheduling.test.ts (0.44), src/api/api-client.ts (0.42), src/api/pipeline/types.ts (0.42), src/audit/logger.ts (0.42), src/components/Layout.tsx (0.42), src/events/channel.ts (0.42), src/main.tsx (0.42), src/pages/AuditLogPage.tsx (0.42), src/pages/ClinicianOverviewPage.tsx (0.42), src/scheduling/eventListener.ts (0.42), src/tests/banding.test.ts (0.42), src/tests/eligibility.test.ts (0.42), src/triage/routes/routine.ts (0.42), src/triage/routes/safeguarding.ts (0.42), src/triage/routes/urgent.ts (0.42), src/events/types.ts (0.3), src/api/pipeline/auth-stage.ts (0.28), src/api/pipeline/trace-stage.ts (0.28), src/styles.css (0.28), index.html (0), package.json (0), README.md (0), tsconfig.app.json (0), tsconfig.json (0), tsconfig.node.json (0), vite.config.ts (0)
 
 ```
-For a follow-up referral (`referral.type === "followUp"`), the **`findContinuitySlots`** slot-finding implementation in `src/scheduling/oldSlotFinder.ts` runs.
+For a follow-up referral (`referral.type === "followUp"`), the **`findContinuitySlots`** implementation (declared in `src/scheduling/oldSlotFinder.ts`) runs.
 
----
+Why `findContinuitySlots` Runs
 
-Why this implementation runs
+1. **Policy Configuration**:
 
-1. **Live entry point and call site:**
+In `src/config/priorityRules.ts`, the `referralPolicies` object maps each `ReferralType` to a policy. For `"followUp"`, the policy assigns `finder: "continuity"`:
 
-When rendering slot choices in `SlotPicker` (`src/components/SlotPicker.tsx`), the component calls `availableSlots(referral, clinicians)` from `src/scheduling/service.ts`.
+```typescript
 
-2. **Policy lookup by referral type:**
+export const referralPolicies: Record<ReferralType, ReferralPolicy> = {
 
-In `src/config/priorityRules.ts`, the `referralPolicies` object maps referral types to their policy configurations. For `type: "followUp"`, the configuration sets `finder` to `"continuity"`:
+routine: { basePoints: 0, finder: "standard", targetHours: 336 },
 
-```ts
+urgent: { basePoints: 5, finder: "standard", targetHours: 24 },
 
-followUp: { basePoints: 1, finder: "continuity", targetHours: 168 }
+followUp: { basePoints: 1, finder: "continuity", targetHours: 168 },
+
+safeguarding: { basePoints: 8, finder: "standard", targetHours: 4 },
+
+};
 
 ```
 
-3. **Finder strategy dispatch:**
+2. **Dispatch Mapping in Scheduling Service**:
 
-In `src/scheduling/service.ts`, `availableSlots` indexes into the `finders` lookup map using `referralPolicies[referral.type].finder`:
+In `src/scheduling/service.ts`, `availableSlots` reads `referralPolicies[referral.type].finder` to resolve the lookup key `"continuity"` against the local `finders` object, which points to `findContinuitySlots`:
 
-```ts
+```typescript
 
 const finders: Record<string, SlotFinder> = {
 
@@ -778,20 +699,62 @@ continuity: findContinuitySlots,
 
 };
 
+export function availableSlots(
+
+referral: Referral,
+
+clinicians: Clinician[],
+
+): Slot[] {
+
+const finder = finders[referralPolicies[referral.type].finder];
+
+return finder({
+
+referral,
+
+clinicians,
+
+preferredClinicianId: referral.assignedClinicianId,
+
+});
+
+}
+
 ```
 
-Because `referralPolicies.followUp.finder` evaluates to `"continuity"`, `finders["continuity"]` resolves to `findContinuitySlots`.
+3. **Application Call Site**:
+
+When rendering `SlotPicker` (`src/components/SlotPicker.tsx`) on the referral detail page (`src/pages/ReferralDetailPage.tsx`), `useMemo` calls `availableSlots(referral, clinicians)`, triggering the lookup for the given referral.
 
 ---
 
-Selected implementation behaviour (`findContinuitySlots`)
+What `findContinuitySlots` Does
 
-`findContinuitySlots` (`src/scheduling/oldSlotFinder.ts`) executes the following steps on the provided clinicians and referral:
+When `findContinuitySlots` executes in `src/scheduling/oldSlotFinder.ts`, it filters and sorts slots using the following sequence:
 
-**Clinician filtering:** Selects clinicians who are active (`active === true`) and offer the requested service (`clinician.services.includes(referral.service)`).
-**Continuity ordering:** Passes `preferredClinicianId` (populated with `referral.assignedClinicianId` by `availableSlots` in `src/scheduling/service.ts`) and sorts the filtered clinicians so that any matching preferred clinician is placed first.
-**Slot extraction and filtering:** Collects slots for the matching service that are currently unbooked (`!slot.bookedReferralId` and `slot.service === referral.service`).
-**Temporal sorting:** Sorts the gathered slots in ascending order by start time (`startsAt`) using `compareAsc`.
+1. **Clinician Filtering**: Filters `clinicians` to include only those who are active (`active: true`) and whose `services` array includes the referral's requested service (`referral.service`).
+
+2. **Preferred Clinician Prioritisation**: Sorts matching clinicians so that any clinician matching `preferredClinicianId` (`referral.assignedClinicianId`) appears first.
+
+3. **Slot Extraction**: Flat-maps slots across matching clinicians, retaining only slots that are unbooked (`!slot.bookedReferralId`) and match `referral.service`.
+
+4. **Chronological Sorting**: Sorts the resulting slots in ascending order by start time (`startsAt`) using `date-fns` `compareAsc`.
+
+---
+
+Repository Grounding
+**Direct Evidence**:
+
+* `src/config/priorityRules.ts`: Direct evidence that `referralPolicies.followUp.finder` is configured as `"continuity"`.
+
+* `src/scheduling/service.ts`: Direct evidence that `availableSlots` passes `referral.assignedClinicianId` to `finders["continuity"]`, which resolves to `findContinuitySlots`.
+
+* `src/scheduling/oldSlotFinder.ts`: Direct evidence for the implementation details of `findContinuitySlots`.
+
+* `src/components/SlotPicker.tsx`: Direct evidence that the UI calculates available options by calling `availableSlots(referral, clinicians)`.
+
+**Inference**: None. The configuration, dispatch mechanism, and runtime flow are explicitly wired in code.
 ```
 
 **Verdict:** <!-- correct | incorrect -->
@@ -832,136 +795,41 @@ Evidence panel: Evidence · 52 files retrieved
 Retrieved: src/App.tsx (0.65), src/tests/scheduling.test.ts (0.63), src/audit/logger.ts (0.6), src/components/SlotPicker.tsx (0.6), src/events/channel.ts (0.6), src/pages/AuditLogPage.tsx (0.6), src/scheduling/eventListener.ts (0.6), src/scheduling/oldSlotFinder.ts (0.58), src/scheduling/service.ts (0.58), src/scheduling/slotFinder.ts (0.58), src/scheduling/types.ts (0.58), src/components/Layout.tsx (0.47), src/main.tsx (0.47), src/pages/ClinicianOverviewPage.tsx (0.47), src/pages/ReferralDetailPage.tsx (0.47), src/pages/ReferralListPage.tsx (0.47), src/data/seed.ts (0.45), src/triage/validation.ts (0.45), src/events/types.ts (0.43), src/jobs/nightlyReverification.ts (0.43), src/store/useClinicStore.ts (0.43), src/types/domain.ts (0.43), src/utils/format.ts (0.43), src/config/priorityRules.ts (0.41), src/components/PriorityPanel.tsx (0.31), src/components/ReferralTable.tsx (0.31), src/hooks/useReferralFilters.ts (0.31), src/styles.css (0.31), src/triage/routes/loadRoutes.ts (0.31), src/triage/routes/registry.ts (0.31), src/tests/banding.test.ts (0.3), src/tests/eligibility.test.ts (0.3), src/tests/registry.test.ts (0.3), src/triage/eligibility.ts (0.3), src/api/pipeline/redact-stage.ts (0.29), src/api/referrals-api.ts (0.29), src/triage/banding.ts (0.29), src/api/api-client.ts (0.04), index.html (0), package.json (0), README.md (0), src/api/pipeline/auth-stage.ts (0), src/api/pipeline/trace-stage.ts (0), src/api/pipeline/types.ts (0), src/triage/routes/followUp.ts (0), src/triage/routes/routine.ts (0), src/triage/routes/safeguarding.ts (0), src/triage/routes/urgent.ts (0), tsconfig.app.json (0), tsconfig.json (0), tsconfig.node.json (0), vite.config.ts (0)
 
 ```
-Direct Answer
+When the scheduling event **`"appointment:booked"`** is emitted, two listeners registered on the central event channel `clinicEvents` (`src/events/channel.ts`) react to it:
 
-When a scheduling or booking event (`"appointment:booked"`) is emitted, two listeners registered on the `clinicEvents` bus (`src/events/channel.ts`) react:
+1. **`src/scheduling/eventListener.ts`**
 
-1. **`src/scheduling/eventListener.ts`**: Adds the booked slot's `slotId` to an in-memory `recentlyBooked` `Set<string>`.
+* **Reaction:** Receives `{ appointment }` from the event payload and adds `appointment.slotId` to its module-level `recentlyBooked` `Set<string>`.
 
-2. **`src/audit/logger.ts`**: Prepends a formatted `AuditEntry` (`action: "Appointment booked"`) to a module-scoped `eventEntries` array, which is fetched by `getEventAudit()` and displayed on the **Audit log** page (`src/pages/AuditLogPage.tsx`).
+* **Runtime Reach:** Defines and exports `wasRecentlyBooked(slotId)` to query whether a slot ID is stored in `recentlyBooked`. No UI component or store action currently calls `wasRecentlyBooked`.
 
-If scheduling fails during eligibility validation in `checkAppointment` (`src/triage/validation.ts`), an `"eligibility:failed"` event with `phase: "booking"` is emitted before throwing an error, but **no listeners are registered** for this event in the repository.
+2. **`src/audit/logger.ts`**
 
----
+* **Reaction:** Receives `{ appointment, patientName }` from the event payload and unshifts an `AuditEntry` object into its module-level `eventEntries` array with:
 
-Control and Data Flow Details
+* `id`: `event-${appointment.id}`
 
-#### 1. Registration Timing
+* `occurredAt`: current ISO string timestamp
 
-Both listeners are registered during module evaluation at application startup via side-effect imports in `src/App.tsx` [lines 8–9]:
+* `actor`: `appointment.bookedBy`
 
-```ts
+* `action`: `"Appointment booked"`
 
-import "./scheduling/eventListener";
+* `referralId`: `appointment.referralId`
 
-import "./audit/logger";
+* `detail`: `"Booked ${patientName} with clinician ${appointment.clinicianId}"`
 
-```
+* `severity`: `"info"`
 
-#### 2. Event Emission Site
-
-Appointment booking is initiated via `useClinicStore.getState().bookAppointment(...)` (`src/store/useClinicStore.ts` [lines 108–143]), which invokes `checkAppointment(...)` in `src/triage/validation.ts` [lines 5–42]:
-
-**Success Path**: `checkAppointment` updates `slot.bookedReferralId` and emits `"appointment:booked"` [lines 37–40]:
-
-```ts
-
-clinicEvents.emit("appointment:booked", {
-
-appointment,
-
-patientName: referral.patient.name,
-
-});
-
-```
-
-**Failure Path**: If `checkEligibility(referral)` fails, `checkAppointment` emits `"eligibility:failed"` [lines 14–18] before throwing an error.
+* **Runtime Reach:** `getEventAudit()` returns a copy of `eventEntries`. `AuditLogPage` (`src/pages/AuditLogPage.tsx`) calls `getEventAudit()` during render, concatenates the entries with `useClinicStore` state (`[...getEventAudit(), ...audit]`), filters by search query, and displays the entries in the audit UI list.
 
 ---
 
-Registered Handlers and Downstream Effects
-
-#### Listener 1: Slot Tracking (`src/scheduling/eventListener.ts`, lines 4–6)
-
-```ts
-
-clinicEvents.on("appointment:booked", ({ appointment }) => {
-
-recentlyBooked.add(appointment.slotId);
-
-});
-
-```
-
-**Immediate Effect**: Adds `appointment.slotId` to the module-level `recentlyBooked` `Set`.
-**Downstream Reach**: The state is exposed via `wasRecentlyBooked(slotId)` [line 8]. Direct evidence shows no UI components or other modules call `wasRecentlyBooked`, so this state change remains isolated to module memory.
-
-#### Listener 2: Audit Logging (`src/audit/logger.ts`, lines 4–14)
-
-```ts
-
-clinicEvents.on("appointment:booked", ({ appointment, patientName }) => {
-
-eventEntries.unshift({
-
-id: `event-${appointment.id}`,
-
-occurredAt: new Date().toISOString(),
-
-actor: appointment.bookedBy,
-
-action: "Appointment booked",
-
-referralId: appointment.referralId,
-
-detail: `Booked ${patientName} with clinician ${appointment.clinicianId}`,
-
-severity: "info",
-
-});
-
-});
-
-```
-
-**Immediate Effect**: Prepends an `AuditEntry` record to the module-level `eventEntries` array.
-**Downstream Reach**: `getEventAudit()` [line 16] exposes a copy of `eventEntries`. `src/pages/AuditLogPage.tsx` [line 13] calls `getEventAudit()` inside `useMemo` and merges it with store audit entries (`[...getEventAudit(), ...audit]`) to render the live audit log list.
-
----
-
-Registered Event Summary
-
-| Event Name | Emission Source | Registered Listener Path | Effect / Action Taken |
-
-| :--- | :--- | :--- | :--- |
-
-| `"appointment:booked"` | `src/triage/validation.ts` [line 37] | `src/scheduling/eventListener.ts` [line 4] | Adds `slotId` to `recentlyBooked` `Set` |
-
-| `"appointment:booked"` | `src/triage/validation.ts` [line 37] | `src/audit/logger.ts` [line 4] | Prepends audit record read by `AuditLogPage` |
-
-| `"eligibility:failed"` | `src/triage/validation.ts` [line 14] | *None* | Emitted with no registered listeners |
-
-| `"referral:accepted"` | `src/store/useClinicStore.ts` [line 75] | *None* | Emitted with no registered listeners |
-
----
-
-Evidence vs. Inference
-**Direct Evidence**:
-
-* Listener registrations in `src/scheduling/eventListener.ts` [lines 4–6] and `src/audit/logger.ts` [lines 4–14].
-
-* Registration triggering via module imports in `src/App.tsx` [lines 8–9].
-
-* Event dispatch in `src/triage/validation.ts` [lines 14–18, 37–40].
-
-* Event payload types in `src/events/types.ts` [lines 3–15].
-
-* Live UI rendering of event audit entries in `src/pages/AuditLogPage.tsx` [lines 12–24].
-
-**Inference**:
-
-* `wasRecentlyBooked` in `src/scheduling/eventListener.ts` was likely intended for slot reservation checks or UI styling, but is currently uncalled in production code.
+Execution and Event Context
+**Initialization Timing:** Both listener modules are loaded at module evaluation start when imported in `src/App.tsx` (`import "./scheduling/eventListener";` and `import "./audit/logger";`), ensuring subscriptions are registered on `clinicEvents` before any booking action runs.
+**Emission Source:** `"appointment:booked"` is emitted in `src/triage/validation.ts` inside `checkAppointment(...)` after verifying patient eligibility and slot availability and setting `slot.bookedReferralId = referral.id`.
+**Runtime Callers:** `checkAppointment` is invoked by the `bookAppointment` store action in `src/store/useClinicStore.ts` (triggered when confirming a slot in `src/components/SlotPicker.tsx` on `src/pages/ReferralDetailPage.tsx`) as well as in tests (`src/tests/scheduling.test.ts`).
+**Unlistened Events:** The event payload interface (`src/events/types.ts`) also defines `"referral:accepted"` (emitted in `src/store/useClinicStore.ts`) and `"eligibility:failed"` (emitted in `src/triage/validation.ts`, `src/store/useClinicStore.ts`, and `src/jobs/nightlyReverification.ts`). Neither event has registered listeners on `clinicEvents`.
 ```
 
 **Verdict:** <!-- correct | incorrect -->
@@ -1014,67 +882,121 @@ Evidence panel: Evidence · 52 files retrieved
 Retrieved: src/components/ReferralTable.tsx (0.63), src/hooks/useReferralFilters.ts (0.63), src/pages/ReferralDetailPage.tsx (0.63), src/api/pipeline/redact-stage.ts (0.62), src/api/referrals-api.ts (0.62), src/components/PriorityPanel.tsx (0.62), src/components/SlotPicker.tsx (0.62), src/config/priorityRules.ts (0.62), src/data/seed.ts (0.62), src/jobs/nightlyReverification.ts (0.62), src/scheduling/service.ts (0.62), src/scheduling/types.ts (0.62), src/store/useClinicStore.ts (0.62), src/triage/banding.ts (0.62), src/triage/eligibility.ts (0.62), src/triage/routes/registry.ts (0.62), src/triage/validation.ts (0.62), src/utils/format.ts (0.62), src/pages/ReferralListPage.tsx (0.6), src/api/api-client.ts (0.58), src/api/pipeline/auth-stage.ts (0.58), src/api/pipeline/trace-stage.ts (0.58), src/App.tsx (0.58), src/audit/logger.ts (0.58), src/events/channel.ts (0.58), src/events/types.ts (0.58), src/scheduling/oldSlotFinder.ts (0.58), src/scheduling/slotFinder.ts (0.58), src/tests/registry.test.ts (0.58), src/triage/routes/loadRoutes.ts (0.46), src/types/domain.ts (0.46), src/api/pipeline/types.ts (0.44), src/components/Layout.tsx (0.44), src/pages/AuditLogPage.tsx (0.44), src/pages/ClinicianOverviewPage.tsx (0.44), src/tests/banding.test.ts (0.44), src/tests/eligibility.test.ts (0.44), src/tests/scheduling.test.ts (0.44), src/triage/routes/followUp.ts (0.44), src/triage/routes/routine.ts (0.44), src/triage/routes/safeguarding.ts (0.44), src/triage/routes/urgent.ts (0.44), src/main.tsx (0.42), src/scheduling/eventListener.ts (0.42), src/styles.css (0.28), index.html (0.03), package.json (0.02), README.md (0), tsconfig.app.json (0), tsconfig.json (0), tsconfig.node.json (0), vite.config.ts (0)
 
 ```
-To add a new referral type, the primary change starts in **`src/types/domain.ts`** by updating the `ReferralType` union type definition.
-
-To support the new type across the application without runtime or TypeScript errors, changes are required in configuration, route registration, formatting utilities, UI, styling, and tests.
+To add a new referral type, the primary type definition is added to the `ReferralType` union in **`src/types/domain.ts`**.
 
 ---
 
-Direct Evidence: What Needs Changing
+Required Code Changes
 
-#### 1. Type Definition
+1. **Domain Type Definition** (**`src/types/domain.ts`**)
 
-**`src/types/domain.ts`**
+Update the `ReferralType` union definition:
 
-Add the string literal to the `ReferralType` type definition (`export type ReferralType = "routine" | "urgent" | "followUp" | "safeguarding";`).
+```ts
 
-#### 2. Priority & Policy Configuration
+export type ReferralType = "routine" | "urgent" | "followUp" | "safeguarding" | "yourNewType";
 
-**`src/config/priorityRules.ts`**
+```
 
-`referralPolicies` is typed as `Record<ReferralType, ReferralPolicy>`. TypeScript requires adding a policy entry for the new type specifying `basePoints`, `finder` (`"standard"` | `"continuity"`), and `targetHours`.
+2. **Priority Policy Map** (**`src/config/priorityRules.ts`**)
 
-#### 3. Route Handler Registration
+`referralPolicies` is typed as `Record<ReferralType, ReferralPolicy>`, so TypeScript requires an entry for the new type specifying `basePoints`, `finder` (`"standard"` or `"continuity"`), and `targetHours`:
 
-**`src/triage/routes/registry.ts`** & **`src/triage/routes/loadRoutes.ts`**
+```ts
 
-`routeReferral` in `src/triage/routes/registry.ts` looks up handlers by type and throws `No routing handler registered for ${referral.type}` if missing. `src/triage/routes/loadRoutes.ts` dynamically imports all `.ts` files inside `src/triage/routes/` (excluding `registry.ts` and `loadRoutes.ts`).
+export const referralPolicies: Record<ReferralType, ReferralPolicy> = {
 
-A new file calling `registerRoute` must be created inside `src/triage/routes/` (following existing modules such as `src/triage/routes/routine.ts` or `src/triage/routes/urgent.ts`).
+// ...
 
-#### 4. Display Formatting
+yourNewType: { basePoints: 0, finder: "standard", targetHours: 48 },
 
-**`src/utils/format.ts`**
+};
 
-`humaniseType` maps `ReferralType` values to human-readable strings via an object map. The new type key must be added to prevent `undefined` returns.
+```
 
-#### 5. Worklist UI & Filtering
+3. **Format Mapping** (**`src/utils/format.ts`**)
 
-**`src/pages/ReferralListPage.tsx`**
+Add a display string mapping in `humaniseType`:
 
-* Add a new `<option>` element inside the pathway filter dropdown (`<select aria-label="Filter referral type">`).
+```ts
 
-#### 6. CSS Styling
+export function humaniseType(type: ReferralType): string {
 
-**`src/styles.css`**
+return {
 
-* `src/components/ReferralTable.tsx` uses `clsx("type-dot", \`type-${referral.type}\`)`.
+// ...
 
-* `src/pages/ReferralDetailPage.tsx` uses `clsx("type-badge", \`type-${referral.type}\`)`.
+yourNewType: "Your New Type",
 
-Corresponding `.type-dot.type-<newType>` and `.type-badge.type-<newType>` classes must be added to `src/styles.css`.
+}[type];
 
-#### 7. Test Suite
+}
 
-**`src/tests/registry.test.ts`**
+```
 
-The test `"loads four handlers dynamically"` asserts `expect(registeredRouteCount()).toBe(4)`. Adding a new route file inside `src/triage/routes/` will cause this assertion to fail unless the expected count is updated.
+4. **Triage Route Handler** (**`src/triage/routes/<yourNewType>.ts`**)
+
+Create a new route file under `src/triage/routes/` that invokes `registerRoute`:
+
+```ts
+
+import { registerRoute } from "./registry";
+
+registerRoute("yourNewType", (referral) => ({
+
+summary: `Pathway summary for ${referral.reason}`,
+
+recommendedService: referral.service,
+
+requiresPhoneCall: false,
+
+instructions: ["Instruction 1", "Instruction 2"],
+
+}));
+
+```
+
+*Execution note:* Route files in this folder are auto-loaded by `src/triage/routes/loadRoutes.ts` using `import.meta.glob`. If a referral with the new type is evaluated by `routeReferral` in `src/triage/routes/registry.ts` without a registered route handler, `routeReferral` throws a runtime error.
 
 ---
 
-Inferred / Conditional Changes
-**`src/pages/ReferralListPage.tsx`**: The `urgent` count calculation checks `item.priority === "red" || item.type === "urgent" || item.type === "safeguarding"`. If the new referral type is time-sensitive, this metric filter should be updated.
-**`src/api/pipeline/redact-stage.ts`**: The `redactStage` function specifically checks `referral.type !== "safeguarding"`. If the new referral type contains sensitive clinical notes or demographics requiring API redaction, this guard clause must be updated.
+UI & Styling Updates
+
+1. **Filter Dropdown** (**`src/pages/ReferralListPage.tsx`**)
+
+Add an `<option>` element to the pathway filter `<select>` element:
+
+```tsx
+
+<option value="yourNewType">Your New Type</option>
+
+```
+
+2. **Metric Summary Logic** (**`src/pages/ReferralListPage.tsx`**)
+
+If the new referral type is time-sensitive, update the `urgent` metric filter calculation, which currently checks `item.type === "urgent" || item.type === "safeguarding"`.
+
+3. **CSS Class Rules** (**`src/styles.css`**)
+
+Add styling rules for visual indicators rendered by components:
+
+- `.type-dot.type-yourNewType` (rendered by `ReferralTable` in `src/components/ReferralTable.tsx`)
+
+- `.type-badge.type-yourNewType` (rendered by `ReferralDetailPage` in `src/pages/ReferralDetailPage.tsx`)
+
+---
+
+Test Updates & Domain Checks
+
+1. **Registry Unit Test** (**`src/tests/registry.test.ts`**)
+
+The test checking `registeredRouteCount()` explicitly asserts `expect(registeredRouteCount()).toBe(4)`. Adding a 5th route file requires updating this assertion to `5`.
+
+2. **Conditional Eligibility & Redaction Rules** *(If applicable to the domain type)*
+
+- **Eligibility checks** (**`src/triage/eligibility.ts`**): If special age or practice constraints apply to the new type (similar to the safeguarding rule `referral.type === "safeguarding" && age < 16`), add checks to `checkEligibility`.
+
+- **Data Redaction** (**`src/api/pipeline/redact-stage.ts`**): If API payload fields require redaction for the new type, add checks in `redactBody`.
 ```
 
 **Verdict:** <!-- correct | incorrect -->
@@ -1141,67 +1063,77 @@ Evidence panel: Evidence · 52 files retrieved
 Retrieved: src/config/priorityRules.ts (0.68), src/scheduling/service.ts (0.64), src/triage/banding.ts (0.64), src/components/PriorityPanel.tsx (0.61), src/events/types.ts (0.59), src/hooks/useReferralFilters.ts (0.59), src/pages/ReferralDetailPage.tsx (0.59), src/store/useClinicStore.ts (0.59), src/utils/format.ts (0.59), src/types/domain.ts (0.49), src/components/SlotPicker.tsx (0.46), src/scheduling/oldSlotFinder.ts (0.46), src/scheduling/slotFinder.ts (0.46), src/scheduling/types.ts (0.46), src/tests/banding.test.ts (0.46), src/tests/scheduling.test.ts (0.46), src/App.tsx (0.43), src/components/Layout.tsx (0.43), src/components/ReferralTable.tsx (0.43), src/data/seed.ts (0.43), src/events/channel.ts (0.43), src/pages/AuditLogPage.tsx (0.43), src/pages/ClinicianOverviewPage.tsx (0.43), src/pages/ReferralListPage.tsx (0.43), src/tests/eligibility.test.ts (0.43), src/triage/eligibility.ts (0.43), src/triage/routes/loadRoutes.ts (0.43), src/triage/routes/registry.ts (0.43), src/triage/validation.ts (0.43), src/api/pipeline/redact-stage.ts (0.33), src/api/referrals-api.ts (0.33), src/audit/logger.ts (0.33), src/jobs/nightlyReverification.ts (0.33), src/main.tsx (0.28), src/scheduling/eventListener.ts (0.28), src/tests/registry.test.ts (0.28), src/triage/routes/followUp.ts (0.28), src/triage/routes/routine.ts (0.28), src/triage/routes/safeguarding.ts (0.28), src/triage/routes/urgent.ts (0.28), README.md (0.03), src/styles.css (0.02), index.html (0), package.json (0), src/api/api-client.ts (0), src/api/pipeline/auth-stage.ts (0), src/api/pipeline/trace-stage.ts (0), src/api/pipeline/types.ts (0), tsconfig.app.json (0), tsconfig.json (0), tsconfig.node.json (0), vite.config.ts (0)
 
 ```
-Changing the configuration in `src/config/priorityRules.ts` (`referralPolicies`, `priorityRules`, and `bandThresholds`) affects triage score and band calculations, UI priority suggestions, store audit/event handling, worklist filtering and metrics, slot finder selection for scheduling, and automated test assertions.
+Modifying `src/config/priorityRules.ts` directly impacts triage banding logic (`src/triage/banding.ts`) and slot finder dispatch (`src/scheduling/service.ts`). Downstream, it alters UI suggestions on `PriorityPanel` (`src/components/PriorityPanel.tsx`), appointment slot lists in `SlotPicker` (`src/components/SlotPicker.tsx`), audit log entries and store priority assignments in `useClinicStore` (`src/store/useClinicStore.ts`), referral list metrics and filters (`src/pages/ReferralListPage.tsx`, `src/hooks/useReferralFilters.ts`), and assertions in `src/tests/banding.test.ts` and `src/tests/eligibility.test.ts`.
 
 ---
 
-1. Triage Banding Calculation (`src/triage/banding.ts`)
+Direct Imports of `src/config/priorityRules.ts`
 
-`calculateBand(referral)` directly reads `priorityRules`, `referralPolicies`, and `bandThresholds`:
+1. **Triage Banding (`src/triage/banding.ts`)**
 
-**Matching Rules & Score**: Filters `priorityRules` where `rule.matches(context)` evaluates to true. Sums `referralPolicies[referral.type].basePoints` and matched rule `points`.
-**Target Hours**: Assigns `targetHours` from `referralPolicies[referral.type].targetHours`.
-**Band Thresholding**: Selects the first entry in `bandThresholds` where `score >= threshold.minimum`, falling back to `"green"`.
-**Output Object**: Returns `{ band, score, matchedRules: matched.map((rule) => rule.id), targetHours }`.
+- Imports `priorityRules`, `bandThresholds`, and `referralPolicies`.
 
----
+- `calculateBand(referral)` builds a context object `{ ...referral.signals, type: referral.type }`, filters `priorityRules` where `rule.matches(context)` is true, sums `referralPolicies[referral.type].basePoints` with matched rule points, maps score to a band via `bandThresholds` (falling back to `"green"`), and returns `{ band, score, matchedRules, targetHours }`.
 
-2. UI Priority Guidance (`src/components/PriorityPanel.tsx`)
+2. **Scheduling Service (`src/scheduling/service.ts`)**
 
-During render, `PriorityPanel` invokes `calculateBand(referral)` and updates the displayed UI:
+- Imports `referralPolicies`.
 
-Displays **Score {decision.score}**.
-Displays suggested priority label (`bandLabel(decision.band)`) and SLA window ("Target response within {decision.targetHours} hours.").
-Applies the *Suggested* badge (`<em>Suggested</em>`) to the priority button matching `decision.band`.
-Renders the list of matched rule IDs under "Signals considered" with hyphens replaced by spaces (`decision.matchedRules`).
+- `availableSlots(referral, clinicians)` reads `referralPolicies[referral.type].finder` to select between two strategies in `finders`:
+
+- `"standard"` (`findSlots` in `src/scheduling/slotFinder.ts`): Filters active clinicians matching `referral.service`, collects unbooked future slots (`isAfter(startsAt, now)`), and sorts ascending by start time.
+
+- `"continuity"` (`findContinuitySlots` in `src/scheduling/oldSlotFinder.ts`): Filters active clinicians matching `referral.service`, prioritises the assigned/preferred clinician (`referral.assignedClinicianId`), collects unbooked matching slots, and sorts ascending by start time.
 
 ---
 
-3. Store Actions, Fallback Behavior, Audit Log, and Events (`src/store/useClinicStore.ts`)
-**UI Override vs. Store Fallback**: When `acceptReferral(id, override)` is called, it evaluates `const band = override ?? calculateBand(referral).band`. The live UI caller in `src/pages/ReferralDetailPage.tsx` always supplies `priority` (local React state initialized from `referral.priority`), bypassing the store fallback in production. The fallback is executed when `acceptReferral` is called without an override argument (e.g. in `src/tests/eligibility.test.ts`).
-**State Mutation**: Updates `referral.priority` to the assigned band and changes `referral.status` to `"accepted"`.
-**Audit Logging**: Pushes an entry to `audit` state with `action: "Referral accepted"`, `detail: "Priority assigned: ${band}"`, and `severity: band === "red" ? "critical" : "info"`.
-**Event Emission**: Emits `referral:accepted` via `clinicEvents.emit("referral:accepted", { referralId, band, actor })`. Note that `referral:accepted` has no registered listener in the codebase.
+Downstream UI, Store, Event, and Job Impacts
+
+#### 1. Clinical Priority Suggestions (`src/components/PriorityPanel.tsx`)
+
+**Execution path:** Rendered on `ReferralDetailPage` (`src/pages/ReferralDetailPage.tsx`).
+**UI effect:** Invokes `calculateBand(referral)` during render. Changes to rules, base points, thresholds, or policy targets update:
+
+- Header score text (`Score {decision.score}`).
+
+- Target response time text (`Target response within {decision.targetHours} hours`).
+
+- Suggested band indicator (`<em>Suggested</em>` on the matching priority button).
+
+- List of matched escalation signals (`decision.matchedRules` mapped to list items).
+
+#### 2. Slot Picker Options (`src/components/SlotPicker.tsx`)
+
+**Execution path:** Rendered on `ReferralDetailPage` when accepting or viewing an accepted referral.
+**UI effect:** Calls `availableSlots(referral, clinicians)` inside `useMemo`. If `referralPolicies[type].finder` changes between `"standard"` and `"continuity"`, the displayed appointment choices reflect either general future slot availability or clinician-continuity sorting.
+
+#### 3. Zustand Store Acceptance & Audit Logging (`src/store/useClinicStore.ts`)
+
+**Execution path:** `acceptReferral(id, override)` uses `const band = override ?? calculateBand(referral).band`.
+
+- **Live UI caller:** `ReferralDetailPage` explicitly passes its local `priority` state as `override` (`accept(referral.id, priority)`), bypassing the `calculateBand` fallback branch at runtime unless `override` is omitted.
+
+- **Un-overridden caller / Fallback:** When `override` is not passed (such as in `src/tests/eligibility.test.ts`), `calculateBand(referral).band` determines the assigned priority.
+
+- **Store & Audit effect:** Mutates `referral.priority` in state, creates an audit entry with `severity: band === "red" ? "critical" : "info"` displayed on `AuditLogPage` (`src/pages/AuditLogPage.tsx`), and emits `referral:accepted` via `clinicEvents` (`src/events/channel.ts`).
+
+- **Event listener check:** No listener is registered for `referral:accepted` anywhere in the repository.
+
+#### 4. Referral Worklist Filtering & Metrics (`src/pages/ReferralListPage.tsx`, `src/hooks/useReferralFilters.ts`, `src/components/ReferralTable.tsx`)
+
+**Execution path:** Operates on assigned `referral.priority` values stored in Zustand state.
+
+- **Metrics (`ReferralListPage.tsx`):** The "Time sensitive" metric counts referrals matching `priority === "red" || type === "urgent" || type === "safeguarding"`. Changes in band thresholds that alter assigned priority bands directly affect this metric count.
+
+- **Filters (`useReferralFilters.ts`):** Priority band dropdown filtering matches against `referral.priority`.
+
+- **Table (`ReferralTable.tsx`):** Priority badges display labels via `bandLabel(referral.priority)` (`src/utils/format.ts`).
 
 ---
 
-4. Downstream Referral UI, Filtering, and Metrics
-
-Changes to stored `referral.priority` propagate to:
-
-**Worklist Metrics (`src/pages/ReferralListPage.tsx`)**: The "Time sensitive" summary metric counts referrals where `priority === "red"` (in addition to `type === "urgent"` or `type === "safeguarding"`).
-**Worklist Filtering (`src/hooks/useReferralFilters.ts`)**: Filtering by band checks `referral.priority === band` (or `!referral.priority` for `"unbanded"`).
-**Table Visuals (`src/components/ReferralTable.tsx`)**: Renders priority pills using `bandLabel(referral.priority)` and applies CSS class `priority-${referral.priority}` (`priority-red`, `priority-amber`, or `priority-green`).
-
----
-
-5. Scheduling Finder Strategy & Dispatch (`src/scheduling/service.ts`)
-
-`availableSlots()` inspects `referralPolicies[referral.type].finder`:
-
-**`standard` Strategy (`src/scheduling/slotFinder.ts`)**: Filters active clinicians covering `referral.service`, collects slots matching `referral.service` that are unbooked (`!slot.bookedReferralId`) and in the future (`isAfter(startsAt, now)`), and sorts them ascending by start time (`startsAt`).
-**`continuity` Strategy (`src/scheduling/oldSlotFinder.ts`)**: Filters active clinicians matching `referral.service`, sorts clinicians to prioritize `preferredClinicianId` (`referral.assignedClinicianId`), collects unbooked matching slots, and sorts them ascending by start time.
-**UI Consumer (`src/components/SlotPicker.tsx`)**: Calls `availableSlots(referral, clinicians)` and presents up to the first 12 slots for booking.
-
----
-
-6. Automated Tests (`src/tests/banding.test.ts`)
-
-`src/tests/banding.test.ts` directly asserts results of `calculateBand`:
-
-Verifies safeguarding referrals resolve to `band: "red"`.
-Verifies routine referrals return `targetHours: 336`.
-Verifies deteriorating referrals populate `matchedRules`.
+Test Suite Assertions
+**`src/tests/banding.test.ts`:** Directly calls `calculateBand` and asserts that safeguarding referrals evaluate to band `"red"`, routine referrals yield target hours of `336`, and deterioration signals populate `matchedRules`.
+**`src/tests/eligibility.test.ts`:** Invokes `acceptReferral(id)` without an `override` argument, indirectly relying on `calculateBand` during store status mutations.
 ```
 
 **Verdict:** <!-- correct | incorrect -->
@@ -1247,67 +1179,81 @@ Evidence panel: Evidence · 52 files retrieved
 Retrieved: src/data/seed.ts (0.59), src/store/useClinicStore.ts (0.59), src/tests/banding.test.ts (0.59), src/tests/eligibility.test.ts (0.59), src/tests/registry.test.ts (0.59), src/tests/scheduling.test.ts (0.59), src/api/referrals-api.ts (0.57), src/triage/routes/safeguarding.ts (0.57), src/components/Layout.tsx (0.43), src/events/channel.ts (0.43), src/pages/AuditLogPage.tsx (0.43), src/pages/ClinicianOverviewPage.tsx (0.43), src/pages/ReferralDetailPage.tsx (0.43), src/pages/ReferralListPage.tsx (0.43), src/scheduling/service.ts (0.43), src/triage/banding.ts (0.43), src/triage/eligibility.ts (0.43), src/triage/routes/loadRoutes.ts (0.43), src/triage/routes/registry.ts (0.43), src/triage/validation.ts (0.43), src/types/domain.ts (0.43), src/api/api-client.ts (0.41), src/api/pipeline/redact-stage.ts (0.28), src/App.tsx (0.28), src/audit/logger.ts (0.28), src/components/PriorityPanel.tsx (0.28), src/components/ReferralTable.tsx (0.28), src/components/SlotPicker.tsx (0.28), src/config/priorityRules.ts (0.28), src/events/types.ts (0.28), src/hooks/useReferralFilters.ts (0.28), src/jobs/nightlyReverification.ts (0.28), src/scheduling/eventListener.ts (0.28), src/scheduling/oldSlotFinder.ts (0.28), src/scheduling/slotFinder.ts (0.28), src/scheduling/types.ts (0.28), src/triage/routes/followUp.ts (0.28), src/triage/routes/routine.ts (0.28), src/triage/routes/urgent.ts (0.28), src/utils/format.ts (0.28), src/api/pipeline/auth-stage.ts (0.27), src/api/pipeline/trace-stage.ts (0.27), src/api/pipeline/types.ts (0.27), README.md (0.03), src/styles.css (0), index.html (0), package.json (0), src/main.tsx (0), tsconfig.app.json (0), tsconfig.json (0), tsconfig.node.json (0), vite.config.ts (0)
 
 ```
-Yes, safeguarding referrals (type `"safeguarding"`) and safeguarding clinical signals (`signals.safeguardingConcern`) are handled differently across priority scoring, eligibility rules, routing pathways, workspace metrics, visual styling, tests, and API pipeline helpers.
+Yes, safeguarding referrals (where `referral.type === "safeguarding"` or `signals.safeguardingConcern === true`) are treated differently across clinical priority scoring, eligibility rules, routing guidance, workspace metrics, visual styling, and defined API pipeline middleware.
 
 ---
 
-Exact Locations & Behaviour
+1. Priority Scoring and Response Target
+**`src/config/priorityRules.ts`**:
 
-1. **Priority Scoring & Target SLA**
+* **Policy configuration**: `referralPolicies.safeguarding` assigns `basePoints: 8` (the highest base points of any type) and `targetHours: 4` (compared to 24–336 hours for other pathways).
 
-* **Files:** `src/config/priorityRules.ts`, `src/triage/banding.ts`
+* **Escalation rule**: The `safeguarding-signal` rule checks `context.safeguardingConcern`, adding 10 points and setting the band to `"red"`.
 
-* **Policy Configuration:** `referralPolicies.safeguarding` configures a `basePoints` of `8` (the highest base score across all referral types) and a `targetHours` SLA of `4` hours (the shortest response time).
+**Runtime usage**: Executed via `calculateBand` in `src/triage/banding.ts`, which is called during store acceptance (`src/store/useClinicStore.ts`) and rendered in `src/components/PriorityPanel.tsx`.
 
-* **Signal Escalation Rule:** The `safeguarding-signal` rule in `priorityRules` matches whenever `signals.safeguardingConcern` is `true`, adding `10` points and assigning a `"red"` priority band.
+---
 
-* **Live Reach:** Evaluated via `calculateBand()` in `src/triage/banding.ts`, which is called by `useClinicStore.acceptReferral` (`src/store/useClinicStore.ts`) and rendered in `PriorityPanel` (`src/components/PriorityPanel.tsx`). Tested in `src/tests/banding.test.ts`.
+2. Eligibility Validation
+**`src/triage/eligibility.ts`**:
 
-2. **Under-16 Eligibility Restriction**
+* `checkEligibility()` checks if `referral.type === "safeguarding"` and the patient's age is under 16 (`age < 16`). If so, eligibility fails with the reason `"Child safeguarding team must coordinate this referral"`.
 
-* **File:** `src/triage/eligibility.ts`
+**Runtime usage**: Evaluated when accepting a referral (`src/store/useClinicStore.ts`), booking an appointment (`src/triage/validation.ts`), or running nightly reverification (`src/jobs/nightlyReverification.ts`).
 
-* **Behaviour:** In `checkEligibility()`, if `referral.type === "safeguarding"` and the calculated patient age is under 16 years, eligibility fails with the reason `"Child safeguarding team must coordinate this referral"`.
+---
 
-* **Live Reach:** Executed when accepting referrals (`acceptReferral` in `src/store/useClinicStore.ts`), validating bookings (`checkAppointment` in `src/triage/validation.ts`), and running background checks (`runNightlyReverification` in `src/jobs/nightlyReverification.ts`). Tested in `src/tests/eligibility.test.ts`.
+3. Pathway Routing Guidance
+**`src/triage/routes/safeguarding.ts`**:
 
-3. **Restricted Pathway Guidance & Phone Requirement**
+* Registers a dedicated route handler for `"safeguarding"` returning:
 
-* **Files:** `src/triage/routes/safeguarding.ts`, `src/pages/ReferralDetailPage.tsx`
+* `summary`: `"Restricted safeguarding review for [Patient Name]"`
 
-* **Behaviour:** Registers a dedicated pathway route handler for `"safeguarding"`:
+* `recommendedService`: `"Community nursing"`
 
-* Sets `recommendedService` to `"Community nursing"`.
+* `requiresPhoneCall`: `true`
 
-* Sets `requiresPhoneCall` to `true`.
+* `instructions`: `["Do not leave a voicemail", "Check safe contact method", "Notify safeguarding lead"]`
 
-* Generates summary `"Restricted safeguarding review for [Patient Name]"` and specific instructions: `"Do not leave a voicemail"`, `"Check safe contact method"`, and `"Notify safeguarding lead"`.
+**Runtime usage**: Dynamically loaded by `src/triage/routes/loadRoutes.ts` and called in `src/pages/ReferralDetailPage.tsx`. Because `requiresPhoneCall` is `true`, `ReferralDetailPage` renders a dedicated warning notice: `"Telephone contact is required before booking."`
 
-* **Live Reach:** Dynamically loaded by `src/triage/routes/loadRoutes.ts` and evaluated in `ReferralDetailPage.tsx`. When `requiresPhoneCall` is `true`, `ReferralDetailPage.tsx` renders a warning notice: `"Telephone contact is required before booking."`
+---
 
-4. **Workspace "Time Sensitive" Metric**
+4. Workspace Metrics
+**`src/pages/ReferralListPage.tsx`**:
 
-* **File:** `src/pages/ReferralListPage.tsx`
+* When calculating the **"Time sensitive"** metric card, `item.type === "safeguarding"` is explicitly included alongside `item.priority === "red"` and `item.type === "urgent"`.
 
-* **Behaviour:** The metric card calculation for "Time sensitive" referrals explicitly filters for `item.type === "safeguarding"` alongside `item.type === "urgent"` and `item.priority === "red"`.
+---
 
-5. **UI Badges & Clinical Signal Flags**
+5. UI Indicators & Visual Styling
+**`src/pages/ReferralDetailPage.tsx`**:
 
-* **Files:** `src/styles.css`, `src/pages/ReferralDetailPage.tsx`
+* Renders an explicit `<span>Safeguarding</span>` tag in the clinical signals section when `referral.signals.safeguardingConcern` is `true`.
 
-* **Behaviour:**
+**`src/components/ReferralTable.tsx` & `src/pages/ReferralDetailPage.tsx`**:
 
-* `src/styles.css` applies red warning badges (`#c65358` font / `#faeaeb` background) specifically to `.type-dot.type-safeguarding` and `.type-badge.type-safeguarding`.
+* Renders type indicators with CSS classes `type-safeguarding`, `type-dot type-safeguarding`, and `type-badge type-safeguarding`.
 
-* `ReferralDetailPage.tsx` renders an explicit red `"Safeguarding"` signal badge under "Clinical signals" when `signals.safeguardingConcern` is `true`.
+**`src/styles.css`**:
 
-6. **API Data Redaction Stage (Unused Helper Path)**
+* Pairs safeguarding tags with red highlight styling (`.type-dot.type-safeguarding` uses `#c65358`, and `.type-badge.type-safeguarding` uses `#9d3b42` text on a `#faeaeb` background).
 
-* **Files:** `src/api/pipeline/redact-stage.ts`, `src/api/api-client.ts`, `src/api/referrals-api.ts`
+---
 
-* **Behaviour:** `redactStage` inspects outgoing request bodies. If `referral.type === "safeguarding"`, it replaces sensitive patient fields prior to dispatch (`notes` $\rightarrow$ `"[restricted clinical note]"`, `phone` $\rightarrow$ `"[safe contact required]"`, `postcode` $\rightarrow$ `"[restricted]"`).
+6. API Pipeline Redaction (Defined Code Path)
+**`src/api/pipeline/redact-stage.ts`**:
 
-* **Usage Distinction:** While composed into `apiRequest` (`src/api/api-client.ts`) and wrapped in `submitReferral` / `recordBooking` (`src/api/referrals-api.ts`), these API endpoints are not currently invoked by any UI component or Zustand store action, which manage referral state locally in `src/store/useClinicStore.ts`.
+* Middleware checks if `referral.type === "safeguarding"`. If matched, it redacts outbound body payload fields:
+
+* `notes` $\rightarrow$ `"[restricted clinical note]"`
+
+* `patient.phone` $\rightarrow$ `"[safe contact required]"`
+
+* `patient.postcode` $\rightarrow$ `"[restricted]"`
+
+**Reach distinction**: `redactStage` is registered in `src/api/api-client.ts` and called by `src/api/referrals-api.ts`. However, these API helpers are not called by any active React components, store actions, or running application entry points.
 ```
 
 **Verdict:** <!-- correct | incorrect -->
@@ -1345,58 +1291,64 @@ Evidence panel: Evidence · 52 files retrieved
 Retrieved: src/components/SlotPicker.tsx (0.66), src/scheduling/oldSlotFinder.ts (0.66), src/scheduling/slotFinder.ts (0.66), src/pages/ReferralDetailPage.tsx (0.63), src/scheduling/eventListener.ts (0.63), src/scheduling/service.ts (0.63), src/scheduling/types.ts (0.63), src/types/domain.ts (0.48), src/utils/format.ts (0.48), src/App.tsx (0.45), src/components/PriorityPanel.tsx (0.45), src/config/priorityRules.ts (0.45), src/events/channel.ts (0.45), src/store/useClinicStore.ts (0.45), src/tests/scheduling.test.ts (0.45), src/triage/routes/loadRoutes.ts (0.45), src/triage/routes/registry.ts (0.45), src/triage/validation.ts (0.4), src/api/pipeline/redact-stage.ts (0.32), src/api/referrals-api.ts (0.32), src/audit/logger.ts (0.32), src/components/Layout.tsx (0.32), src/components/ReferralTable.tsx (0.32), src/data/seed.ts (0.32), src/events/types.ts (0.32), src/hooks/useReferralFilters.ts (0.32), src/jobs/nightlyReverification.ts (0.32), src/pages/AuditLogPage.tsx (0.32), src/pages/ClinicianOverviewPage.tsx (0.32), src/triage/banding.ts (0.32), src/triage/eligibility.ts (0.32), src/main.tsx (0.3), src/pages/ReferralListPage.tsx (0.3), src/tests/eligibility.test.ts (0.3), src/tests/registry.test.ts (0.3), src/triage/routes/followUp.ts (0.3), src/triage/routes/routine.ts (0.3), src/triage/routes/safeguarding.ts (0.3), src/triage/routes/urgent.ts (0.3), src/styles.css (0.02), index.html (0), package.json (0), README.md (0), src/api/api-client.ts (0), src/api/pipeline/auth-stage.ts (0), src/api/pipeline/trace-stage.ts (0), src/api/pipeline/types.ts (0), src/tests/banding.test.ts (0), tsconfig.app.json (0), tsconfig.json (0), tsconfig.node.json (0), vite.config.ts (0)
 
 ```
-A slot is actually booked at runtime in **`checkAppointment()`** in **`src/triage/validation.ts` (line 36)** by directly mutating the clinician's in-memory slot object: `slot.bookedReferralId = referral.id`.
+In the running application, a slot is actually booked in **`src/triage/validation.ts`** inside the **`checkAppointment()`** function (line 35), where the selected clinician slot's `bookedReferralId` property is directly mutated:
+
+```ts
+
+slot.bookedReferralId = referral.id;
+
+```
 
 ---
 
-Execution Flow & Call Chain
+Control and Data Flow
 
-1. **User Action:**
+1. **User Action (`src/components/SlotPicker.tsx`)**:
 
-In `<SlotPicker>` (`src/components/SlotPicker.tsx`, line 91), clicking **Confirm appointment** invokes `submit()` (lines 20–33), which validates selection and calls the `onBook(slot.clinicianId, slot.id)` callback prop (line 28).
+The user chooses a slot and clicks "Confirm appointment" (`src/components/SlotPicker.tsx`, line 89). The `submit` handler calls `onBook(slot.clinicianId, slot.id)` (`src/components/SlotPicker.tsx`, line 27).
 
-2. **Page Handler:**
+2. **Page Handler (`src/pages/ReferralDetailPage.tsx`)**:
 
-In `<ReferralDetailPage>` (`src/pages/ReferralDetailPage.tsx`, lines 65–69), `onBook` executes `book(referral.id, clinicianId, slotId)`, where `book` is the `bookAppointment` action bound from `useClinicStore`.
+`ReferralDetailPage` handles `onBook` by calling the Zustand store action `book(referral.id, clinicianId, slotId)` (`src/pages/ReferralDetailPage.tsx`, lines 62–66).
 
-3. **Validation & In-Memory Mutation:**
+3. **Validation & Slot Mutation (`src/triage/validation.ts` via `src/store/useClinicStore.ts`)**:
 
-In `src/store/useClinicStore.ts` (lines 106–138), `bookAppointment` retrieves the matching `referral` and `clinician` records from store state and invokes `checkAppointment(referral, clinician, slotId, state.actor)`.
+The store's `bookAppointment` action calls `checkAppointment(referral, clinician, slotId, state.actor)` (`src/store/useClinicStore.ts`, line 116).
 
-Inside `checkAppointment()` (`src/triage/validation.ts`, lines 8–42):
+In `checkAppointment` (`src/triage/validation.ts`, lines 8–42):
 
-- Validates patient eligibility via `checkEligibility(referral)` (`src/triage/eligibility.ts`). If ineligible, emits `eligibility:failed` and throws an error.
+- Verifies referral eligibility via `checkEligibility(referral)` (lines 14–22).
 
-- Asserts slot existence, availability (`!slot.bookedReferralId`), and service coverage (`clinician.services.includes(referral.service)`).
+- Confirms the slot exists, is unbooked (`!slot.bookedReferralId`), and matches the clinician's covered services (lines 23–27).
 
-- **Performs the booking mutation:** `slot.bookedReferralId = referral.id;` (line 36).
+- Creates the `Appointment` object (lines 28–34).
 
-- Instantiates an `Appointment` record and emits `"appointment:booked"` through `clinicEvents` (`src/events/channel.ts`).
+- **Mutates the slot**: `slot.bookedReferralId = referral.id` (line 35).
 
-4. **Event Listeners:**
+- Emits the `"appointment:booked"` event via `clinicEvents` (lines 36–39).
 
-Emitting `"appointment:booked"` triggers two registered listeners:
+4. **Event Subscribers (`src/scheduling/eventListener.ts` and `src/audit/logger.ts`)**:
 
-- `src/scheduling/eventListener.ts` (lines 4–6): Adds `appointment.slotId` to the `recentlyBooked` set.
+Emitting `"appointment:booked"` synchronously triggers two registered event listeners:
 
-- `src/audit/logger.ts` (lines 4–14): Prepends an entry to `eventEntries`.
+- `src/scheduling/eventListener.ts` (lines 4–6) records `appointment.slotId` in its module-level `recentlyBooked` set.
 
-5. **Store State & Audit Update:**
+- `src/audit/logger.ts` (lines 4–14) prepends an audit entry to `eventEntries`.
 
-After `checkAppointment` returns, `bookAppointment` (`src/store/useClinicStore.ts`, lines 118–137) updates Zustand state:
+5. **Store State Update & Store Audit (`src/store/useClinicStore.ts`)**:
 
-- Appends the returned `Appointment` to `state.appointments`.
-
-- Mutates referral status to `"booked"`, sets `appointmentId`, and updates `assignedClinicianId`.
-
-- Calls `addAudit()` to record a `"Appointment booked"` entry in `state.audit`.
+`bookAppointment` receives the returned `Appointment` object, updates Zustand store state (`appointments` array and sets referral `status` to `"booked"`, `appointmentId`, and `assignedClinicianId` on lines 122–134), and calls `get().addAudit(...)` to append an audit log entry to store state (lines 135–141).
 
 ---
 
-Non-Production Call Sites & Unused Helpers
-**Test Invocation:** `checkAppointment()` is also called directly in unit tests within `src/tests/scheduling.test.ts` (lines 20–22 and 31–33).
-**`reserveSlot()`** (`src/scheduling/service.ts`, lines 22–26): An exported pure helper that returns a shallow copy of a slot with `bookedReferralId`. It is not called anywhere in the active application or test suite.
-**`recordBooking()`** (`src/api/referrals-api.ts`, lines 10–16): An exported API wrapper for posting booking updates. It is not invoked in the application code.
+Test-Only Call Sites
+**`src/tests/scheduling.test.ts`**: Directly calls `checkAppointment()` (lines 20–22 and 29–31) to verify booking availability and double-booking prevention without invoking the Zustand store action.
+
+---
+
+Unused Helpers / Unreachable Booking Code
+**`reserveSlot` (`src/scheduling/service.ts`, lines 21–25)**: An exported pure function that returns a cloned slot object with `bookedReferralId` set. It is not imported or called anywhere in the application or tests.
+**`recordBooking` (`src/api/referrals-api.ts`, lines 10–16)**: An exported API client helper intended to POST booking details to an endpoint. It is not imported or called anywhere in the codebase.
 ```
 
 **Verdict:** <!-- correct | incorrect -->

@@ -11,9 +11,14 @@ export interface GenerationUsageMetadata {
 
 /** Shared by the deployed proxy and local Vite middleware so captures are reproducible. */
 export const GENERATION_CONFIG = {
-  // Both draft and semantic-audit calls use medium reasoning. The audit re-solves the question
-  // against the same evidence before any answer is released.
+  // The draft uses medium reasoning to solve the repository question from full context.
   thinkingConfig: { thinkingLevel: "medium" },
+  maxOutputTokens: MODEL_BUDGET.MAX_OUTPUT_TOKENS,
+} as const;
+
+/** A focused low-latency pass checks the draft against the explicit semantic audit rubric. */
+export const AUDIT_GENERATION_CONFIG = {
+  thinkingConfig: { thinkingLevel: "low" },
   maxOutputTokens: MODEL_BUDGET.MAX_OUTPUT_TOKENS,
 } as const;
 

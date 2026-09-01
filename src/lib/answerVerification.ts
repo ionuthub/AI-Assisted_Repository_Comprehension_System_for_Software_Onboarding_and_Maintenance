@@ -120,11 +120,11 @@ export function buildAnswerReviewPrompt(question: string, draft: string): string
 }
 
 /**
- * Final semantic pass after the independent review.
+ * Exhaustive semantic review after the initial draft.
  *
- * The review catches obvious mistakes, but a fluent cross-file answer can still omit one link
- * in a complete execution path or retain an unchecked numerical inference. This pass gives the
- * model a concrete, question-shaped audit checklist before any text reaches the user.
+ * A fluent cross-file draft can omit one link in a complete execution path or retain an
+ * unchecked numerical inference. This pass gives the model a concrete, question-shaped audit
+ * checklist before any text reaches the user.
  */
 export function buildAnswerAuditPrompt(question: string, reviewedAnswer: string): string {
   return [
@@ -132,6 +132,9 @@ export function buildAnswerAuditPrompt(question: string, reviewedAnswer: string)
     "Independently derive a private checklist of every fact needed to answer the exact question, then return only the corrected final answer. Do not output the checklist, audit notes, or a preamble.",
     "Do not merely polish the prose. Preserve supported details, fill material omissions, and remove contradictions, unreachable claims, and arithmetic or threshold errors.",
     "Apply every relevant check below:",
+    "- trace definitions through direct callers, configuration, consumers, real UI or job entry points, and mutations before claiming a runtime effect",
+    "- inspect caller arguments and defaults: if every live caller supplies an override, do not present the bypassed fallback as live application behaviour",
+    "- verify that apparent configuration fields, exported helpers, store actions, and event types are actually used before describing them as live",
     "- execution start: distinguish the HTML loader, module-scope evaluation, React render, effects, and initialization timing",
     "- selected implementation or strategy: trace the configuration key through dispatch and summarize what the selected implementation actually does when that behaviour answers the question",
     "- mutation or where something actually happens: name the exact mutation, the immediately resulting state fields and events, and distinguish similarly named unused helpers",

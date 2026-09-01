@@ -16,7 +16,6 @@ import {
 import {
   buildAnswerAuditPrompt,
   buildAnswerRepairPrompt,
-  buildAnswerReviewPrompt,
   extractEvidencePathsFromContext,
   verifyGeneratedAnswer,
 } from "./src/lib/answerVerification";
@@ -143,16 +142,7 @@ async function generateVerifiedDevAnswer(
   addUsage(draft.usageMetadata);
 
   let reviewed = await callDevGemini(
-    [{ role: 'user', content: buildAnswerReviewPrompt(question, draft.text) }],
-    systemPrompt,
-    model,
-    apiKey,
-    signal
-  );
-  addUsage(reviewed.usageMetadata);
-
-  reviewed = await callDevGemini(
-    [{ role: 'user', content: buildAnswerAuditPrompt(question, reviewed.text) }],
+    [{ role: 'user', content: buildAnswerAuditPrompt(question, draft.text) }],
     systemPrompt,
     model,
     apiKey,

@@ -132,6 +132,10 @@ describe("verification prompts", () => {
     expect(prompt).toContain("private checklist");
     expect(prompt).toContain("if every live caller supplies an override");
     expect(prompt).toContain("explicitly identify relevant emitted event types with no listener");
+    expect(prompt).toContain("whether it mutates the supplied objects or a cloned structure");
+    expect(prompt).toContain("do not count seed values, initialization, resets, decrements");
+    expect(prompt).toContain("inspect the complete returned object or assignment block");
+    expect(prompt).toContain("audit every file-location claim and causal statement");
     expect(prompt).toContain("recompute comparisons");
     expect(prompt).toContain("One listener creates a notification.");
   });

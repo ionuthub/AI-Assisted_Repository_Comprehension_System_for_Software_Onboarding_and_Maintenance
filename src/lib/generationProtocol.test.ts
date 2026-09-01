@@ -20,7 +20,7 @@ const streamOf = (parts: string[]) =>
 
 describe("Gemini stream parsing", () => {
   it("uses the current GA Flash model for verified repository answers", () => {
-    expect(DEFAULT_GEMINI_MODEL).toBe("gemini-3.7-flash");
+    expect(DEFAULT_GEMINI_MODEL).toBe("gemini-3.6-flash");
   });
 
   it("keeps enough output headroom for verified cross-file answers", () => {

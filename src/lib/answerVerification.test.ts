@@ -130,6 +130,7 @@ describe("verification prompts", () => {
       "One listener creates a notification."
     );
     expect(prompt).toContain("private checklist");
+    expect(prompt).toContain("if every live caller supplies an override");
     expect(prompt).toContain("explicitly identify relevant emitted event types with no listener");
     expect(prompt).toContain("recompute comparisons");
     expect(prompt).toContain("One listener creates a notification.");

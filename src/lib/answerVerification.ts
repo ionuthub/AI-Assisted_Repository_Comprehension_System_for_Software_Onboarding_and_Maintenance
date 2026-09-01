@@ -119,6 +119,37 @@ export function buildAnswerReviewPrompt(question: string, draft: string): string
   ].join("\n");
 }
 
+/**
+ * Final semantic pass after the independent review.
+ *
+ * The review catches obvious mistakes, but a fluent cross-file answer can still omit one link
+ * in a complete execution path or retain an unchecked numerical inference. This pass gives the
+ * model a concrete, question-shaped audit checklist before any text reaches the user.
+ */
+export function buildAnswerAuditPrompt(question: string, reviewedAnswer: string): string {
+  return [
+    "Perform a final exhaustive semantic audit of the proposed repository answer against Project Context.",
+    "Independently derive a private checklist of every fact needed to answer the exact question, then return only the corrected final answer. Do not output the checklist, audit notes, or a preamble.",
+    "Do not merely polish the prose. Preserve supported details, fill material omissions, and remove contradictions, unreachable claims, and arithmetic or threshold errors.",
+    "Apply every relevant check below:",
+    "- execution start: distinguish the HTML loader, module-scope evaluation, React render, effects, and initialization timing",
+    "- selected implementation or strategy: trace the configuration key through dispatch and summarize what the selected implementation actually does when that behaviour answers the question",
+    "- mutation or where something actually happens: name the exact mutation, the immediately resulting state fields and events, and distinguish similarly named unused helpers",
+    "- emitted events: enumerate every relevant registered listener and explicitly identify relevant emitted event types with no listener",
+    "- change impact: trace changed inputs through outputs, warnings, status, stored state, reservations, later jobs or release paths, UI consumers, and tests; keep dead or merely callable paths separate",
+    "- exhaustive special cases: enumerate each independent branch and verify its predicate, effect, and runtime reach",
+    "- adding a type: check exhaustive typed maps, dynamic-registry runtime requirements, hard-coded UI lists or styles, tests, and genuinely optional domain rules",
+    "- numerical claims: recompute comparisons from the cited values before using words such as always, automatically, never, or exactly",
+    "- completeness: compare the final answer to the private checklist once more and do not substitute examples for a requested complete set",
+    "Support every repository-specific claim with exact file paths from Project Context. If a checklist item cannot be established from that context, say so instead of guessing.",
+    "",
+    `Question: ${question}`,
+    "",
+    "Proposed answer:",
+    reviewedAnswer,
+  ].join("\n");
+}
+
 export function buildAnswerRepairPrompt(
   question: string,
   reviewedAnswer: string,

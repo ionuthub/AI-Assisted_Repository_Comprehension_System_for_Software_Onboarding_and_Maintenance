@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  buildAnswerAuditPrompt,
   buildAnswerRepairPrompt,
   buildAnswerReviewPrompt,
   verifyGeneratedAnswer,
@@ -121,6 +122,17 @@ describe("verification prompts", () => {
     expect(prompt).toContain("real UI/job/runtime entry points");
     expect(prompt).toContain("if every live caller supplies an override");
     expect(prompt).toContain("bypassed fallback as live application behaviour");
+  });
+
+  it("requires an exhaustive final audit shaped by the question", () => {
+    const prompt = buildAnswerAuditPrompt(
+      "What reacts when an event is emitted?",
+      "One listener creates a notification."
+    );
+    expect(prompt).toContain("private checklist");
+    expect(prompt).toContain("explicitly identify relevant emitted event types with no listener");
+    expect(prompt).toContain("recompute comparisons");
+    expect(prompt).toContain("One listener creates a notification.");
   });
 
   it("includes release-gate findings in a repair prompt", () => {

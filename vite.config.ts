@@ -14,6 +14,7 @@ import {
   systemContextFitsBudget,
 } from "./src/lib/promptBuilder";
 import {
+  buildAnswerAuditPrompt,
   buildAnswerRepairPrompt,
   buildAnswerReviewPrompt,
   extractEvidencePathsFromContext,
@@ -143,6 +144,15 @@ async function generateVerifiedDevAnswer(
 
   let reviewed = await callDevGemini(
     [{ role: 'user', content: buildAnswerReviewPrompt(question, draft.text) }],
+    systemPrompt,
+    model,
+    apiKey,
+    signal
+  );
+  addUsage(reviewed.usageMetadata);
+
+  reviewed = await callDevGemini(
+    [{ role: 'user', content: buildAnswerAuditPrompt(question, reviewed.text) }],
     systemPrompt,
     model,
     apiKey,

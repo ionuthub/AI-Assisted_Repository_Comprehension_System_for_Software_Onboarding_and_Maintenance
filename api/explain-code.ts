@@ -14,6 +14,7 @@ import {
   systemContextFitsBudget,
 } from '../src/lib/promptBuilder';
 import {
+  buildAnswerAuditPrompt,
   buildAnswerRepairPrompt,
   buildAnswerReviewPrompt,
   extractEvidencePathsFromContext,
@@ -282,6 +283,14 @@ async function generateVerifiedAnswer(
 
   let reviewed = await callGemini(
     [{ role: 'user', content: buildAnswerReviewPrompt(question, draft.text) }],
+    systemPrompt,
+    apiKey,
+    signal
+  );
+  addUsage(usage, reviewed.usageMetadata);
+
+  reviewed = await callGemini(
+    [{ role: 'user', content: buildAnswerAuditPrompt(question, reviewed.text) }],
     systemPrompt,
     apiKey,
     signal

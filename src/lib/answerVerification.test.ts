@@ -3,6 +3,7 @@ import {
   buildAnswerAdjudicationPrompt,
   buildAnswerAuditPrompt,
   buildAnswerRepairPrompt,
+  buildAnswerRuntimeReconciliationPrompt,
   buildAnswerReviewPrompt,
   requiresSemanticAdjudication,
   verifyGeneratedAnswer,
@@ -181,6 +182,21 @@ describe("verification prompts", () => {
     expect(prompt).toContain("remove every claim that changing it alters live stored state");
     expect(prompt).toContain("A bypassed fallback changes every downstream screen.");
   });
+  it("mechanically reconciles branch effects and runtime reach", () => {
+    const prompt = buildAnswerRuntimeReconciliationPrompt(
+      "Are restricted records treated differently anywhere?",
+      "A skipped callback applies another penalty and an uncalled helper changes the UI."
+    );
+    expect(prompt).toContain("Do not add new facts, sections, examples, or broader claims");
+    expect(prompt).toContain("ordered branch table");
+    expect(prompt).toContain("continue or return");
+    expect(prompt).toContain("report only that guard effect");
+    expect(prompt).toContain("does not make candidates allowed");
+    expect(prompt).toContain("keep it only when");
+    expect(prompt).toContain("defined but not reached by the running application");
+    expect(prompt).toContain("A skipped callback applies another penalty");
+  });
+
   it("includes release-gate findings in a repair prompt", () => {
     const prompt = buildAnswerRepairPrompt(
       "Where does execution start?",

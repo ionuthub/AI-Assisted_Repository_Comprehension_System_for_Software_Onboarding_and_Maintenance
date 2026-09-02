@@ -133,7 +133,8 @@ describe("verification prompts", () => {
     );
     expect(prompt).toContain("private checklist");
     expect(prompt).toContain("if every live caller supplies an override");
-    expect(prompt).toContain("explicitly identify relevant emitted event types with no listener");
+    expect(prompt).toContain("complete declared event map");
+    expect(prompt).toContain("declared or emitted type with zero subscribers");
     expect(prompt).toContain("whether it mutates the supplied objects or a cloned structure");
     expect(prompt).toContain("never reduce the final answer to only the strategy name and mapping");
     expect(prompt).toContain("the opening answer and total must count only production sites");

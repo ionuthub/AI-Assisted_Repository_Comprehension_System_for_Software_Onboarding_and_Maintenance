@@ -32,6 +32,15 @@ export const ADJUDICATION_GENERATION_CONFIG = {
   maxOutputTokens: MODEL_BUDGET.MAX_OUTPUT_TOKENS,
 } as const;
 
+/**
+ * The final mechanical reconciliation needs enough reasoning to prove enclosing branch order.
+ * Its answer is deletion-focused, so a smaller output cap bounds latency without losing detail.
+ */
+export const RUNTIME_RECONCILIATION_GENERATION_CONFIG = {
+  thinkingConfig: { thinkingLevel: "medium" },
+  maxOutputTokens: 4_096,
+} as const;
+
 /** Short, bounded backoff inside the overall request deadline. */
 export const MODEL_RETRY_DELAYS_MS = [2_000, 5_000] as const;
 

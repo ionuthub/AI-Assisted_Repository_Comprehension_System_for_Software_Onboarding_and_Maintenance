@@ -6,6 +6,7 @@ import {
   encodeGenerationEvent,
   GENERATION_CONFIG,
   MODEL_RETRY_DELAYS_MS,
+  RUNTIME_RECONCILIATION_GENERATION_CONFIG,
   shouldRetryModelResponse,
   successfulFinishReason,
   type GenerationUsageMetadata,
@@ -217,7 +218,7 @@ async function callGemini(
   systemPrompt: string,
   apiKey: string,
   signal: AbortSignal,
-  generationConfig: typeof GENERATION_CONFIG | typeof AUDIT_GENERATION_CONFIG | typeof ADJUDICATION_GENERATION_CONFIG = GENERATION_CONFIG
+  generationConfig: typeof GENERATION_CONFIG | typeof AUDIT_GENERATION_CONFIG | typeof ADJUDICATION_GENERATION_CONFIG | typeof RUNTIME_RECONCILIATION_GENERATION_CONFIG = GENERATION_CONFIG
 ): Promise<GeminiResult> {
   const url = `https://generativelanguage.googleapis.com/v1beta/models/${getGeminiModel()}:generateContent?key=${apiKey}`;
   const response = await fetchGeminiWithRetry(url, {
@@ -313,7 +314,7 @@ async function generateVerifiedAnswer(
       systemPrompt,
       apiKey,
       signal,
-      ADJUDICATION_GENERATION_CONFIG
+      RUNTIME_RECONCILIATION_GENERATION_CONFIG
     );
     addUsage(usage, reviewed.usageMetadata);
   }

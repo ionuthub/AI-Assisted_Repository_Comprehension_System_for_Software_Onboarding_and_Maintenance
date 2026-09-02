@@ -19,6 +19,7 @@ import {
   buildAnswerAdjudicationPrompt,
   buildAnswerAuditPrompt,
   buildAnswerRepairPrompt,
+  buildAnswerRuntimeReconciliationPrompt,
   extractEvidencePathsFromContext,
   requiresSemanticAdjudication,
   verifyGeneratedAnswer,
@@ -297,6 +298,18 @@ async function generateVerifiedAnswer(
   if (requiresSemanticAdjudication(question)) {
     reviewed = await callGemini(
       [{ role: 'user', content: buildAnswerAdjudicationPrompt(question, reviewed.text) }],
+      systemPrompt,
+      apiKey,
+      signal,
+      ADJUDICATION_GENERATION_CONFIG
+    );
+    addUsage(usage, reviewed.usageMetadata);
+
+    reviewed = await callGemini(
+      [{
+        role: 'user',
+        content: buildAnswerRuntimeReconciliationPrompt(question, reviewed.text),
+      }],
       systemPrompt,
       apiKey,
       signal,

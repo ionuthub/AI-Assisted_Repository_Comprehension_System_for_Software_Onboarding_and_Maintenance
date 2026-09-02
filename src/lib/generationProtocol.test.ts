@@ -7,6 +7,7 @@ import {
   encodeGenerationEvent,
   extractJsonObjects,
   GENERATION_CONFIG,
+  RUNTIME_RECONCILIATION_GENERATION_CONFIG,
   shouldRetryModelResponse,
 } from "./generationProtocol";
 import { MODEL_BUDGET } from "../constants/appConstants";
@@ -45,6 +46,14 @@ describe("Gemini stream parsing", () => {
     expect(ADJUDICATION_GENERATION_CONFIG.maxOutputTokens).toBe(GENERATION_CONFIG.maxOutputTokens);
     expect(ADJUDICATION_GENERATION_CONFIG).not.toHaveProperty("temperature");
   });
+  it("uses medium reasoning with a smaller cap for runtime reconciliation", () => {
+    expect(RUNTIME_RECONCILIATION_GENERATION_CONFIG.thinkingConfig.thinkingLevel).toBe("medium");
+    expect(RUNTIME_RECONCILIATION_GENERATION_CONFIG.maxOutputTokens).toBe(4_096);
+    expect(RUNTIME_RECONCILIATION_GENERATION_CONFIG.maxOutputTokens)
+      .toBeLessThan(GENERATION_CONFIG.maxOutputTokens);
+    expect(RUNTIME_RECONCILIATION_GENERATION_CONFIG).not.toHaveProperty("temperature");
+  });
+
   it("allows verified generation to outlive the former 90-second abort", () => {
     expect(MODEL_BUDGET.MAX_REQUEST_DURATION_MS).toBe(285_000);
   });

@@ -178,6 +178,16 @@ export function requiresSemanticAdjudication(question: string): boolean {
   return ADJUDICATION_QUESTION_PATTERNS.some((pattern) => pattern.test(question));
 }
 
+const MEDIUM_RECONCILIATION_QUESTION_PATTERNS = [
+  /\b(?:treated differently|special cases?)\b/i,
+  /\bwhich code\b[^?]*\b(?:decides|determines|selects|handles|processes)\b/i,
+];
+
+/** Question shapes that require stronger ordered-branch reasoning in the final scrub. */
+export function requiresMediumRuntimeReconciliation(question: string): boolean {
+  return MEDIUM_RECONCILIATION_QUESTION_PATTERNS.some((pattern) => pattern.test(question));
+}
+
 /**
  * Independent final adjudication for causal, exhaustive, and hidden-mutation answers.
  * The proposed answer is evidence to inspect, not context to trust.

@@ -6,6 +6,7 @@ import {
   buildAnswerRuntimeReconciliationPrompt,
   buildAnswerReviewPrompt,
   requiresSemanticAdjudication,
+  requiresMediumRuntimeReconciliation,
   verifyGeneratedAnswer,
 } from "@/lib/answerVerification";
 import type { RetrievedEvidence } from "@/components/EvidencePanel";
@@ -164,6 +165,21 @@ describe("verification prompts", () => {
     expect(requiresSemanticAdjudication("How is an order assigned to a warehouse zone?")).toBe(true);
     expect(requiresSemanticAdjudication("Which code decides how a given order type is processed?")).toBe(true);
     expect(requiresSemanticAdjudication("Where does execution start?")).toBe(false);
+  });
+
+  it("reserves medium reconciliation for branch-heavy question shapes", () => {
+    expect(requiresMediumRuntimeReconciliation(
+      "Are hazardous orders treated differently anywhere?"
+    )).toBe(true);
+    expect(requiresMediumRuntimeReconciliation(
+      "Which code decides how a given order type is processed?"
+    )).toBe(true);
+    expect(requiresMediumRuntimeReconciliation(
+      "If the zone rules changed, what else would be affected?"
+    )).toBe(false);
+    expect(requiresMediumRuntimeReconciliation(
+      "Where would a new order type be added?"
+    )).toBe(false);
   });
 
   it("requires an independent claim-ledger adjudication", () => {

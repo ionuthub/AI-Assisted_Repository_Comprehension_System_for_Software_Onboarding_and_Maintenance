@@ -326,7 +326,7 @@ jobs:
           from pathlib import Path
 
           app = 'https://repo-comprehension-system.vercel.app/'
-          tool_version = '87fc403'
+          tool_version = '73f0d93'
           model = 'gemini-3.6-flash'
           repositories = {
               'clinic-triage': 'https://github.com/ionuthub/clinic-triage',
@@ -337,11 +337,13 @@ jobs:
               'maxOutputTokens': 8192,
               'semanticReviewPasses': 1,
               'semanticAuditThinkingLevel': 'medium',
-              'semanticAuditContractRevision': 7,
+              'semanticAuditContractRevision': 8,
               'semanticAuditChecklist': True,
               'semanticAdjudicationPasses': 1,
               'semanticAdjudicationThinkingLevel': 'low',
               'semanticAdjudicationTargeted': True,
+              'semanticRuntimeReconciliationPasses': 1,
+              'semanticRuntimeReconciliationThinkingLevel': 'low',
               'maxEvidenceRepairAttempts': 2,
           }
 
@@ -417,7 +419,7 @@ jobs:
             --truth study/ground-truth.clinic-triage.md \
             --accept-tool-verified \
             --url https://repo-comprehension-system.vercel.app/ \
-            --tool-version 87fc403
+            --tool-version 73f0d93
 
       - name: Checkpoint partial clinic evidence after capture failure
         if: ${{ failure() }}
@@ -467,7 +469,7 @@ jobs:
             --truth study/ground-truth.warehouse-dispatch.md \
             --accept-tool-verified \
             --url https://repo-comprehension-system.vercel.app/ \
-            --tool-version 87fc403
+            --tool-version 73f0d93
 
       - name: Build bound marking sheets
         run: |

@@ -23,6 +23,7 @@ import {
   buildAnswerRuntimeReconciliationPrompt,
   extractEvidencePathsFromContext,
   requiresSemanticAdjudication,
+  requiresMediumRuntimeReconciliation,
   verifyGeneratedAnswer,
 } from '../src/lib/answerVerification';
 import { MODEL_BUDGET } from '../src/constants/appConstants';
@@ -306,6 +307,9 @@ async function generateVerifiedAnswer(
     );
     addUsage(usage, reviewed.usageMetadata);
 
+    const reconciliationConfig = requiresMediumRuntimeReconciliation(question)
+      ? RUNTIME_RECONCILIATION_GENERATION_CONFIG
+      : ADJUDICATION_GENERATION_CONFIG;
     reviewed = await callGemini(
       [{
         role: 'user',
@@ -314,7 +318,7 @@ async function generateVerifiedAnswer(
       systemPrompt,
       apiKey,
       signal,
-      RUNTIME_RECONCILIATION_GENERATION_CONFIG
+      reconciliationConfig
     );
     addUsage(usage, reviewed.usageMetadata);
   }

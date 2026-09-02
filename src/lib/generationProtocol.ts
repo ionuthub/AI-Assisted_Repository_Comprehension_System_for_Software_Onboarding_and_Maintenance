@@ -23,14 +23,15 @@ export const AUDIT_GENERATION_CONFIG = {
 } as const;
 
 /**
- * High reasoning is reserved for question shapes whose answers must reconcile multiple
- * execution paths or prove a complete set. Keeping ordinary questions at two calls limits
- * latency while giving causal and exhaustive answers an independent final adjudication.
+ * A bounded final pass is reserved for question shapes whose answers must reconcile multiple
+ * execution paths or prove a complete set. Two medium passes already derive and audit the facts;
+ * low reasoning keeps this third claim-consistency pass inside the request deadline.
  */
 export const ADJUDICATION_GENERATION_CONFIG = {
-  thinkingConfig: { thinkingLevel: "high" },
+  thinkingConfig: { thinkingLevel: "low" },
   maxOutputTokens: MODEL_BUDGET.MAX_OUTPUT_TOKENS,
 } as const;
+
 /** Short, bounded backoff inside the overall request deadline. */
 export const MODEL_RETRY_DELAYS_MS = [2_000, 5_000] as const;
 

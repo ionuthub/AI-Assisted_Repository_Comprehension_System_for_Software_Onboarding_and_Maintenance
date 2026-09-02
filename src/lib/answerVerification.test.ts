@@ -141,7 +141,10 @@ describe("verification prompts", () => {
     expect(prompt).toContain("inspect the complete returned object or assignment block");
     expect(prompt).toContain("audit every file-location claim and causal statement");
     expect(prompt).toContain("trace guards, early returns, and loop continue paths");
-    expect(prompt).toContain("skipped or unreachable callback as an applied runtime score");
+    expect(prompt).toContain("never describe the callback literal as an applied runtime score");
+    expect(prompt).toContain("never say it pre-populates state unless that data flow exists");
+    expect(prompt).toContain("complete declared event map");
+    expect(prompt).toContain("zero subscribers");
     expect(prompt).toContain("make the first paragraph the narrowest verified direct answer");
     expect(prompt).toContain("privately compare every headline and causal claim");
     expect(prompt).toContain("rewrite the broader claim so the final answer cannot assert both");
@@ -155,6 +158,9 @@ describe("verification prompts", () => {
     expect(requiresSemanticAdjudication("If the routing rules changed, what else would be affected?")).toBe(true);
     expect(requiresSemanticAdjudication("Are restricted records treated differently anywhere?")).toBe(true);
     expect(requiresSemanticAdjudication("Which pricing implementation runs for a bulk request?")).toBe(true);
+    expect(requiresSemanticAdjudication("How is a referral given its priority band?")).toBe(true);
+    expect(requiresSemanticAdjudication("How is an order assigned to a warehouse zone?")).toBe(true);
+    expect(requiresSemanticAdjudication("Which code decides how a given order type is processed?")).toBe(true);
     expect(requiresSemanticAdjudication("Where does execution start?")).toBe(false);
   });
 
@@ -165,8 +171,11 @@ describe("verification prompts", () => {
     );
     expect(prompt).toContain("Treat the proposed answer as untrusted");
     expect(prompt).toContain("guards and early exits");
-    expect(prompt).toContain("preference map does not restrict candidates");
-    expect(prompt).toContain("skips a callback");
+    expect(prompt).toContain("does not filter it");
+    expect(prompt).toContain("only the guard effect applies");
+    expect(prompt).toContain("state initializer or an assignment actually consumes it");
+    expect(prompt).toContain("complete declared event map");
+    expect(prompt).toContain("every declared or emitted event type with no subscriber");
     expect(prompt).toContain("do not stack mutually exclusive branch effects");
     expect(prompt).toContain("remove every claim that changing it alters live stored state");
     expect(prompt).toContain("A bypassed fallback changes every downstream screen.");

@@ -207,6 +207,35 @@ export function buildAnswerAdjudicationPrompt(question: string, reviewedAnswer: 
     reviewedAnswer,
   ].join("\n");
 }
+/**
+ * Deletion-focused final pass for answers whose correctness depends on runtime reachability.
+ *
+ * The broader adjudicator resolves omissions and causal chains. This pass only reconciles branch
+ * execution and live reach so it cannot re-expand an answer with a contradicted implementation.
+ */
+export function buildAnswerRuntimeReconciliationPrompt(
+  question: string,
+  adjudicatedAnswer: string
+): string {
+  return [
+    "Perform one narrow mechanical runtime-reachability reconciliation of this repository answer against Project Context.",
+    "Return the complete corrected answer only. Do not add new facts, sections, examples, or broader claims; preserve supported content and delete or qualify only claims that fail the checks below.",
+    "Privately construct an ordered branch table for every described rule, callback, fallback, and subsystem: enclosing predicate, guard result, whether control continues or returns, whether the callback executes, exact applied effect, and live caller.",
+    "Mandatory checks:",
+    "- an effect inside a callback or later branch is not applied when an enclosing guard executes continue or return; if the guard itself applies a penalty or mutation, report only that guard effect and delete every stacked or alternative effect from the skipped code",
+    "- a configuration list or map used only to add, subtract, sort, rank, or prefer does not make candidates allowed, eligible, required, restricted, excluded, or filtered; use ranking language unless a separate predicate actually removes candidates",
+    "- inspect every numerical effect in the proposed answer and keep it only when the ordered branch table proves that exact value executes for the stated case",
+    "- for every named subsystem, trace from a real UI, store, job, module-scope, or server entry point; when exported helpers have no such caller, label that subsystem as defined but not reached by the running application and do not count it as live behavior",
+    "- compare the opening, headings, bullets, and later caveats; narrow or delete any broad wording that conflicts with the branch table or runtime reach",
+    "Do not discuss this reconciliation. Output only the full answer after these mechanical corrections.",
+    "",
+    `Question: ${question}`,
+    "",
+    "Answer to reconcile:",
+    adjudicatedAnswer,
+  ].join("\n");
+}
+
 export function buildAnswerRepairPrompt(
   question: string,
   reviewedAnswer: string,

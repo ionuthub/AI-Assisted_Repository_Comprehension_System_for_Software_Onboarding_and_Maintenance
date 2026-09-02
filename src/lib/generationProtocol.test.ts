@@ -40,8 +40,8 @@ describe("Gemini stream parsing", () => {
     expect(AUDIT_GENERATION_CONFIG).not.toHaveProperty("temperature");
   });
 
-  it("reserves high reasoning for targeted final adjudication", () => {
-    expect(ADJUDICATION_GENERATION_CONFIG.thinkingConfig.thinkingLevel).toBe("high");
+  it("uses bounded reasoning for targeted final adjudication", () => {
+    expect(ADJUDICATION_GENERATION_CONFIG.thinkingConfig.thinkingLevel).toBe("low");
     expect(ADJUDICATION_GENERATION_CONFIG.maxOutputTokens).toBe(GENERATION_CONFIG.maxOutputTokens);
     expect(ADJUDICATION_GENERATION_CONFIG).not.toHaveProperty("temperature");
   });

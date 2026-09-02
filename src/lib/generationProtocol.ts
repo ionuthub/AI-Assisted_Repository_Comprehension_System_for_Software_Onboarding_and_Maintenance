@@ -33,12 +33,12 @@ export const ADJUDICATION_GENERATION_CONFIG = {
 } as const;
 
 /**
- * The final mechanical reconciliation needs enough reasoning to prove enclosing branch order.
- * Its answer is deletion-focused, so a smaller output cap bounds latency without losing detail.
+ * Medium reasoning is reserved for the narrow question shapes that need ordered-branch proof.
+ * The standard output budget prevents a correct long answer from ending at MAX_TOKENS.
  */
 export const RUNTIME_RECONCILIATION_GENERATION_CONFIG = {
   thinkingConfig: { thinkingLevel: "medium" },
-  maxOutputTokens: 4_096,
+  maxOutputTokens: MODEL_BUDGET.MAX_OUTPUT_TOKENS,
 } as const;
 
 /** Short, bounded backoff inside the overall request deadline. */

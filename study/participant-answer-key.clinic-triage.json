@@ -1,0 +1,81 @@
+{
+  "schemaVersion": 1,
+  "protocolVersion": "usability-v1",
+  "repository": "clinic-triage",
+  "coreArtefactCommit": "85ab075065732b3652acabf8f67d2cee33e14d6f",
+  "repositoryCommit": "67d7a5a0c37452946876b0e7626b6c882888d4f0",
+  "scoring": "binary-correct-incorrect-no-partial-credit",
+  "tasks": [
+    {
+      "id": 1,
+      "category": "orientation",
+      "sourceQuestion": "Q1",
+      "prompt": "Where does execution start in this project? Describe the startup flow.",
+      "answerKey": "Browser execution starts in src/main.tsx, which finds the root element and renders App inside React strict mode. App defines the client routes. Importing App also installs the scheduling and audit event listeners through bare side-effect imports.",
+      "requiredFacts": [
+        "Identifies src/main.tsx as the browser entry point.",
+        "Explains that main.tsx renders App inside React strict mode.",
+        "Explains the material startup flow in App: client routes are defined and scheduling/audit listeners are installed by side-effect imports."
+      ],
+      "expectedFiles": [
+        "src/main.tsx",
+        "src/App.tsx"
+      ]
+    },
+    {
+      "id": 2,
+      "category": "type-processing",
+      "sourceQuestion": "Q3",
+      "prompt": "Which code decides how a given referral type is processed? Explain how the correct route handler is selected.",
+      "answerKey": "The route registry decides. loadRoutes dynamically imports each route module, those modules register handlers keyed by referral type, and routeReferral retrieves and invokes the handler for referral.type. The detail page loads the route modules before routing the current referral.",
+      "requiredFacts": [
+        "Identifies the route registry/routeReferral as the decision point.",
+        "Explains that loadRoutes dynamically imports route modules and those modules register handlers keyed by referral type.",
+        "Explains that referral.type is used to retrieve and invoke the correct handler."
+      ],
+      "expectedFiles": [
+        "src/triage/routes/loadRoutes.ts",
+        "src/triage/routes/registry.ts",
+        "src/triage/routes"
+      ]
+    },
+    {
+      "id": 3,
+      "category": "cross-cutting",
+      "sourceQuestion": "Q4",
+      "prompt": "Eligibility is checked in more than one place in this codebase. Find every production place where it happens. Test files do not count.",
+      "answerKey": "checkEligibility is called from exactly three production paths: when accepting a referral, when booking an appointment, and during reverification of accepted or booked referrals. Each caller emits eligibility:failed on failure with a phase identifying acceptance, booking, or nightly processing.",
+      "requiredFacts": [
+        "Names referral acceptance as an eligibility-check path.",
+        "Names appointment booking as an eligibility-check path.",
+        "Names nightly reverification as an eligibility-check path.",
+        "Does not count test-only calls as production paths."
+      ],
+      "expectedFiles": [
+        "src/store/useClinicStore.ts",
+        "src/triage/validation.ts",
+        "src/jobs/nightlyReverification.ts",
+        "src/triage/eligibility.ts"
+      ]
+    },
+    {
+      "id": 4,
+      "category": "change-impact",
+      "sourceQuestion": "Q9",
+      "prompt": "A new referral type is to be added. Where would you add it, and what else would need to change for the application to work?",
+      "answerKey": "Four changes are mandatory: add the literal to ReferralType; add a complete entry to referralPolicies; extend the object literal inside humaniseType; and add a route module that registers a handler, since routeReferral throws at runtime for an unregistered type. The route loader discovers the module automatically. Tests, the hardcoded pathway filter, and type-specific styling may also need follow-up updates.",
+      "requiredFacts": [
+        "Adds the new literal to ReferralType.",
+        "Adds a complete entry to referralPolicies.",
+        "Extends humaniseType for the new referral type.",
+        "Adds a route module that registers the handler; notes that the loader discovers it automatically."
+      ],
+      "expectedFiles": [
+        "src/types/domain.ts",
+        "src/config/priorityRules.ts",
+        "src/utils/format.ts",
+        "src/triage/routes"
+      ]
+    }
+  ]
+}

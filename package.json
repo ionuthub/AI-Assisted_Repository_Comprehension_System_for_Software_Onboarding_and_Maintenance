@@ -15,11 +15,6 @@
     "test:e2e": "playwright test",
     "test": "npm run test:unit -- run && npm run test:e2e",
     "typecheck": "tsc -b",
-    "gate:clinic": "node analysis/capture_gate.mjs --repo https://github.com/ionuthub/clinic-triage --gate study/accuracy-gate.clinic-triage.json --truth study/ground-truth.clinic-triage.md --accept-tool-verified",
-    "gate:warehouse": "node analysis/capture_gate.mjs --repo https://github.com/ionuthub/warehouse-dispatch --gate study/accuracy-gate.warehouse-dispatch.json --truth study/ground-truth.warehouse-dispatch.md --accept-tool-verified",
-    "gate:score": "python3 analysis/accuracy_gate.py study/accuracy-gate.clinic-triage.json study/accuracy-gate.warehouse-dispatch.json",
-    "gate:mark": "python3 analysis/marking_sheet.py build study/accuracy-gate.clinic-triage.json study/ground-truth.clinic-triage.md && python3 analysis/marking_sheet.py build study/accuracy-gate.warehouse-dispatch.json study/ground-truth.warehouse-dispatch.md",
-    "gate:compare": "python3 analysis/compare_runs.py --latest study/accuracy-gate.clinic-triage.json && python3 analysis/compare_runs.py --latest study/accuracy-gate.warehouse-dispatch.json",
     "measure:questions": "node analysis/score_questions.mjs"
   },
   "dependencies": {
@@ -55,7 +50,6 @@
     "@types/react-dom": "^18.3.7",
     "@vitejs/plugin-react": "^5.1.2",
     "@vitejs/plugin-react-swc": "^3.11.0",
-    "@vitest/ui": "^4.0.16",
     "autoprefixer": "^10.4.21",
     "eslint": "^9.32.0",
     "eslint-plugin-react-hooks": "^5.2.0",

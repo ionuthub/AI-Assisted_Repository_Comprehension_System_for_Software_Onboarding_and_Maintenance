@@ -38,6 +38,11 @@ coverage
 playwright-report
 test-results
 
+# Participant study data (keep outside the public repository)
+study-data/
+study-P*.json
+study/study-P*.json
+
 # TypeScript incremental build info (produced by `tsc -b`)
 *.tsbuildinfo
 

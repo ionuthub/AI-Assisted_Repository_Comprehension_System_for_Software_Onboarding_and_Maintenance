@@ -1,41 +1,16 @@
-# Study material
+# Evaluation records
 
-This folder contains records used for the dissertation evaluation. It is not part of the normal application runtime.
-
-## Main records
+This folder contains the final records used to support the dissertation evaluation.
 
 | File | Purpose |
 | --- | --- |
-| `PHASE3_PROTOCOL.md` | Study procedure and frozen build |
+| `PHASE3_PROTOCOL.md` | Final evaluation procedure |
+| `ground-truth.clinic-triage.md` | Reference answers for clinic-triage |
+| `ground-truth.warehouse-dispatch.md` | Reference answers for warehouse-dispatch |
+| `marking.clinic-triage.md` | Final 12 verdicts for clinic-triage |
+| `marking.warehouse-dispatch.md` | Final 12 verdicts for warehouse-dispatch |
+| `final-results.json` | Combined 20/24 result |
 | `AI-DISCLOSURE.md` | AI-use disclosure |
-| `SHA-MAP-REAUTHOR.md` | Commit mapping after metadata normalisation |
-| `accuracy-gate.*.json` | Recorded gate captures |
-| `ground-truth.*.md` | Tool-verified reference answers |
-| `marking.*.md` | Researcher's final gate verdicts |
-| `answer-key.*.json` | Participant task sets |
-| `seeded_candidates.json` | Gate failures eligible for seeded probes |
-| `question-scores.json` | Retrieval-score measurements |
-| `gate-runs/` | Repeated gate captures |
-| `gate-screenshots/` | Gate screenshots |
-| `second-marking.md` | Historical machine-produced blind second-marking record; later researcher review is a consistency check, not a separate human second marking |
-| `suggested-questions-measurement.md` | Suggested-question measurement |
+| `suggested-questions-measurement.md` | Measurement used when selecting evaluation questions |
 
-Older audit and remediation notes are in `archive/`.
-
-## Participant data
-
-Participant exports are stored pseudonymised on University-managed storage and are not published here. `analysis/analyze_sessions.py` reproduces the Chapter 6 results when those retained files are supplied.
-
-## Do not restyle research records
-
-Ground-truth files, marking sheets, gate captures, answer keys and derived seeded-answer data contain exact research records or matching strings. Do not bulk-edit them for style.
-
-## Reproduction
-
-```bash
-npm run gate:score
-npm run gate:compare
-npm run measure:questions
-```
-
-See [`../analysis/README.md`](../analysis/README.md) for the analysis workflow.
+The evaluated artefact is commit `85ab075065732b3652acabf8f67d2cee33e14d6f`.

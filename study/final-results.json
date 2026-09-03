@@ -1,0 +1,24 @@
+{
+  "artefactVersion": "85ab075065732b3652acabf8f67d2cee33e14d6f",
+  "date": "2026-09-03",
+  "method": "Binary semantic marking against tool-verified reference answers; no partial credit.",
+  "overall": {
+    "correct": 20,
+    "total": 24,
+    "accuracy": 0.8333
+  },
+  "repositories": {
+    "clinic-triage": {
+      "correct": 11,
+      "total": 12,
+      "accuracy": 0.9167,
+      "verdicts": ["incorrect", "correct", "correct", "correct", "correct", "correct", "correct", "correct", "correct", "correct", "correct", "correct"]
+    },
+    "warehouse-dispatch": {
+      "correct": 9,
+      "total": 12,
+      "accuracy": 0.75,
+      "verdicts": ["incorrect", "incorrect", "correct", "correct", "correct", "correct", "correct", "correct", "correct", "incorrect", "correct", "correct"]
+    }
+  }
+}

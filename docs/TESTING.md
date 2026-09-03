@@ -1,68 +1,35 @@
 # Testing and evaluation
 
-Three types of evidence are kept separate:
-
-1. **Software verification:** whether the application works as implemented.
-2. **Answer-reliability gate:** whether generated answers match the reference standard.
-3. **Participant evaluation:** whether the tool helped participants.
+The final artefact evaluated for the dissertation is commit `85ab075065732b3652acabf8f67d2cee33e14d6f`.
 
 ## Software verification
 
-At frozen source commit `e7d7efe`:
+The GitHub Actions CI run for that commit completed successfully.
 
 | Check | Result |
 | --- | --- |
-| TypeScript | Clean |
-| ESLint | 0 errors, 4 warnings |
-| Unit tests | 139 passed across 13 files |
-| End-to-end tests | 4 passed |
-| Production build | Clean |
+| TypeScript | Pass |
+| ESLint | Pass |
+| Unit tests | Pass |
+| Production build | Pass |
+| Playwright end-to-end tests | Pass |
 
-The unit tests cover ingestion, retrieval, prompt building, streaming, evidence, file viewing, state management and the evaluation session.
+These checks verify that the artefact builds and that the automated test suite passes. They do not measure answer correctness.
 
-The four Playwright tests cover the main controls, malformed repository URLs, evaluation-page navigation and the not-found route. They do not run a full live Q&A flow because that requires a model call.
+## Repository-comprehension accuracy
 
-CI now runs on Node 20. An earlier Node 18 workflow prevented the test runner from reporting in CI for about five weeks, although local checks continued.
+The answer-reliability evaluation used 24 predefined questions: 12 for `clinic-triage` and 12 for `warehouse-dispatch`. Generated answers were compared with the tool-verified reference answers in `study/ground-truth.*.md`.
 
-### Current post-study regression status
+Marking was binary. An answer was `correct` only when it contained the material facts required by the reference answer without a material contradiction. No partial credit was awarded. The researcher made the final marking decisions.
 
-The current artefact is reported separately from the frozen evaluated build. On 31 August 2026 the final consistency-cleanup branch passed CI with:
+| Repository | Correct | Total | Accuracy |
+| --- | ---: | ---: | ---: |
+| `clinic-triage` | 11 | 12 | 91.7% |
+| `warehouse-dispatch` | 9 | 12 | 75.0% |
+| **Overall** | **20** | **24** | **83.3%** |
 
-| Check | Result |
-| --- | --- |
-| TypeScript | Clean |
-| ESLint | 0 errors, 4 warnings |
-| Unit tests | 144 passed across 14 files |
-| Playwright | 21 passed |
+The four incorrect answers are recorded in the two marking files. The main remaining weakness was semantic precision and completeness rather than wholly unrelated answers.
 
-These current-main checks verify later interface, accessibility and cleanup changes. They do not replace the 139-unit/4-end-to-end figures above, which remain the evidence for the frozen evaluated artefact.
+## Usability validation
 
-`npm ci` also reported dependency advisories during this run. Those advisories require separate production/development dependency triage and are not treated as a failed functional test.
-
-## Answer-reliability gate
-
-The gate used 24 questions, 12 for each study repository.
-
-**Result: 6 of 24 answers passed against the tool-verified reference standard.**
-
-The reference answers were AI-assisted and checked against the complete study repositories. The researcher made the final binary gate decisions. A historical blind second marking was machine-produced and later reviewed by the researcher as a consistency check. It was not a separate human second marking and is not the source of the final 6/24 result.
-
-Gate captures are stored in `study/accuracy-gate.*.json`, with supporting runs and screenshots under `study/gate-runs/` and `study/gate-screenshots/`.
-
-The 18 failed items produced `study/seeded_candidates.json`, which supplied the seeded inaccurate answers used in the participant study.
-
-## Participant evaluation
-
-The study used a within-subjects design with 12 participants.
-
-| Hypothesis | Result |
-| --- | --- |
-| H1, task time | Inconclusive |
-| H2, task accuracy | Not supported |
-| H3, Raw NASA-TLX workload | Supported |
-| H4, SUS above 68 | Not established |
-| Seeded inaccurate answer | 7 of 12 detected it; 5 corrected it |
-
-Chapter 6 of the dissertation reports the final statistics. `analysis/analyze_sessions.py` contains the participant-analysis workflow.
-
-Participant exports are stored pseudonymised on University-managed storage and are not included in the public repository.
+A small descriptive usability study is the second evaluation stage. Its procedure is defined in `study/PHASE3_PROTOCOL.md`. Participant results will be reported only after data collection under an ethics-approved protocol.

@@ -1,221 +1,61 @@
-# Design system and interface rationale
+# Design system
 
-This document records the visual system and interaction logic used by the repository-comprehension artefact. It describes the current implementation, the design decisions behind it, and the accessibility rules that should remain stable as the interface changes.
-
-## Design direction
-
-The interface combines two familiar interaction patterns.
-
-The start experience was inspired by focused conversational AI interfaces such as Claude and ChatGPT. The aim is to give the user one obvious starting action: provide a public GitHub repository URL and analyse it. The screen therefore avoids a dashboard, decorative imagery and competing controls.
-
-After analysis, the workspace takes more inspiration from developer tools such as VS Code and Antigravity. Repository identity, file navigation, code, search and contextual information are arranged like an editor rather than a chat application. This supports the intended behaviour: generated answers should lead the user back to source evidence, not replace inspection of the code.
-
-These products are references for familiar interaction patterns rather than visual templates.
+The interface is designed as a focused repository-analysis workspace rather than a general chat application.
 
 ## User journey
 
-```text
-Public GitHub URL
-       |
-       v
-Analyse repository
-       |
-       v
-Repository overview
-   |       |       |
-   v       v       v
- Code    Search   Answers
-   |                 |
-   v                 v
-Selected file     Retrieved evidence
-   |                 |
-   +--> Ask about    +--> Open evidence in Code
-        this file
-```
-
-The intended journey is sequential:
-
-1. The user enters a public GitHub repository URL.
-2. The artefact resolves repository metadata, reads the file tree, fetches eligible file contents and builds the search index.
-3. The analysed repository becomes the active context.
-4. **Overview** supports orientation, **Code** supports inspection, **Search** locates repository content and **Answers** handles repository-wide AI questions.
-5. In Code, **Ask about this file** anchors the question to the selected path. The underlying retrieval pipeline may also retrieve related indexed files, so the interface states this explicitly rather than implying that the model sees only one file.
-6. Retrieved evidence is shown beside generated answers so users can inspect what was actually supplied to the model.
-7. **Codemap**, **Analyse** and **New repository** all mean the same thing: clear the active repository context and return to an empty Analyse screen.
+1. Enter a public GitHub repository URL.
+2. Analyse the repository and build the index.
+3. Use **Overview** for orientation, **Code** for inspection, **Search** for retrieval and **Answers** for repository-wide questions.
+4. Inspect the evidence shown with generated answers.
 
 ## Design principles
 
-1. **Repository context comes first.** AI interaction appears only after a repository has been analysed.
-2. **One main task at a time.** Search and Answers take the main workspace instead of being squeezed between unrelated panels.
-3. **Use developer-tool conventions.** File paths and code use a monospace face; Code uses explorer, editor and insight regions.
-4. **Make scope visible.** Repository-wide questions live in Answers; file-anchored questions live beside the selected file.
-5. **Evidence is more important than decoration.** Answers are paired with retrieved files, line ranges and excerpts.
-6. **Show limits.** Index coverage, excluded files, missing evidence and unverified file mentions remain visible.
-7. **Do not present AI output as proven correct.** The UI reports what was retrieved and leaves correctness to the user.
-8. **Do not rely on colour alone.** State also uses text, icons, borders, underlines or patterns.
-9. **Keyboard focus must always be visible.** Native and custom interactive elements share a visible focus treatment.
-10. **Motion must be optional.** Reduced-motion preferences disable decorative transitions and smooth scrolling.
+1. Repository context comes before AI interaction.
+2. Keep one main task visible at a time.
+3. Use familiar developer-tool patterns for files, paths and code.
+4. Make repository scope and evidence visible.
+5. Do not present generated answers as automatically correct.
+6. Do not rely on colour alone for state.
+7. Keep keyboard focus visible.
+8. Respect reduced-motion preferences.
 
-## Colour system
+## Visual system
 
-The application uses a dark developer-tool palette with a single green primary accent. Dark surfaces reduce visual competition with code. Green is used for primary actions and positive evidence states; amber is reserved for caution and red for failure or missing evidence.
+The application uses a dark developer-tool palette with green as the primary accent, amber for caution and red for errors or missing evidence. Inter is used for interface text and JetBrains Mono for code, paths and identifiers.
 
-| Token | Hex | Main use |
-| --- | --- | --- |
-| Background | `#070a09` | Page background |
-| Card | `#0d1311` | Panels and grouped content |
-| Input / popover | `#121a17` | Inputs and raised controls |
-| Raised surface | `#19231f` | Active tabs, chips and secondary surfaces |
-| Foreground | `#e9edef` | Primary text |
-| Secondary foreground | `#c8d0d4` | Supporting text |
-| Muted foreground | `#a2acb1` | Labels and secondary information |
-| Dim foreground | `#8a9398` | Low-priority but still readable metadata |
-| Primary | `#6ee7a0` | Primary action, active state and evidence |
-| Primary highlight | `#9df2c2` | Hover state |
-| Warning | `#e5b567` | Unverified mentions and caution |
-| Destructive | `#ef8a7a` | Errors and no-evidence states |
-| Border | `#24302b` | Decorative/layout separation |
-| Strong border | `#313f39` | Stronger non-control separation |
-| Control border | `#64736c` | Input and interactive-control boundaries |
-| Code background | `#0a0f0d` | Editor and evidence excerpts |
+Ordinary text targets WCAG AA contrast. Interactive controls use visible boundaries and keyboard focus states. Meaningful states combine text, icons, borders or other cues with colour.
 
-Decorative separators are intentionally subtle. Interactive control boundaries use the stronger `control-border` token instead of relying on the normal panel border.
+## Main views
 
-### Contrast targets
-
-Contrast was calculated from the implemented tokens using the WCAG relative-luminance formula. Approximate ratios against the main dark background are:
-
-| Pair | Approx. ratio | Target |
-| --- | ---: | --- |
-| Foreground / background | 17.1:1 | >= 4.5:1 |
-| Muted foreground / background | 8.5:1 | >= 4.5:1 |
-| Dim foreground / background | 6.4:1 | >= 4.5:1 |
-| Primary / background | 13:1 | >= 4.5:1 for text |
-| Warning / background | 10.6:1 | >= 4.5:1 |
-| Destructive / background | 8.2:1 | >= 4.5:1 |
-| Control border / input surface | about 3.6:1 | >= 3:1 |
-
-Meaningful text should not use opacity modifiers that reduce it below these targets. Opacity is acceptable for decorative graphics and disabled states, but not as the normal presentation of required text.
-
-## Typography hierarchy
-
-Inter is used for interface text and prose. JetBrains Mono is reserved for code, file paths, identifiers and technical values.
-
-| Role | Size / line height | Use |
-| --- | --- | --- |
-| Page title | 32 / 40px, bold | Primary start-page title |
-| View title | 24 / 32px, semibold | Overview, Search, Answers and major workspace states |
-| Panel title | 20 / 28px, semibold | Main task heading inside a view |
-| Section heading | 18 / 26px, semibold | Groups within panels |
-| Body | 16 / 26px | Explanations and generated prose |
-| UI | 14 / 21px | Navigation, buttons, labels and rows |
-| Metadata | 12 / 18px | Counts, coverage and secondary helper text |
-| Repository path | 15px monospace | Paths and identifiers |
-| Evidence/code | 15px monospace | Readable excerpts |
-| Dense editor code | 13-14px monospace | Main code viewer only |
-
-The 12px metadata step is the smallest supported interface text. File sizes and secondary editor paths use this step rather than 9-10px text or reduced opacity.
-
-Semantic heading order follows the same hierarchy. A view title is the page/view `h1`; subordinate task and section headings use `h2`/`h3` as appropriate.
-
-## Component states
-
-| State | Visual treatment |
+| View | Purpose |
 | --- | --- |
-| Default control | Readable foreground, visible control boundary where required |
-| Hover | Surface or border change while retaining text contrast |
-| Keyboard focus | 2px green focus outline/ring with offset |
-| Active/current | Surface change plus weight/underline/ARIA state; never colour alone |
-| Disabled | Reduced opacity and no pointer interaction; label remains understandable |
-| Error | Red plus explicit text/icon; not red alone |
-| Warning | Amber plus warning text/icon/border |
+| Start | Repository URL and primary analyse action |
+| Analysing | Ingestion progress |
+| Overview | Technologies, scale, entry point and important files |
+| Code | File explorer, source viewer and file insights |
+| Search | Ranked repository search results |
+| Answers | Repository-wide questions and retrieved evidence |
 
-The shared `Button` and `Input` components implement the standard states. A global focus-visible rule also covers raw links, buttons, disclosure summaries and tree items.
+## Supported viewport
 
-## Page and view logic
+The evaluated interface targets desktop and laptop browsers. Narrow layouts may stack defensively, but mobile and tablet usability are not claimed.
 
-| View | Design logic |
-| --- | --- |
-| **Start** | One repository field and one primary action. Recent repositories and the example are secondary. |
-| **Analysing** | Shows ingestion stages only. Completed, active and pending steps use different icons as well as colour. |
-| **Overview** | Answers onboarding questions first: what the project is, entry point, scale, technologies and highly depended-on files. Coverage is explicit. |
-| **Code** | Explorer, source and file insight areas follow an IDE mental model. The right panel contains the file-anchored AI action. |
-| **Search results** | Full-width ranked result list with matched terms and nearby code. Search is a toolbar utility rather than a permanent tab. |
-| **Answers** | Repository-wide AI workspace. The answer and retrieved evidence are the primary reading task. |
-| **Evaluation** | Separate research instrumentation. It remains reachable from the header but is labelled as research evaluation so it is not confused with the normal product journey. |
+## Evidence states
 
-### Evaluation runner
+The evidence panel distinguishes retrieving, evidence available, no evidence and unverified file mentions. A positive evidence state means that supporting files were retrieved and supplied to the model; it does not certify that the generated answer is correct.
 
-The Evaluation view is separate from the normal repository-comprehension journey because it is research instrumentation rather than an end-user product workflow. Its interface is structured around five stages: **Setup, Tasks, NASA-TLX, SUS and Export**. A visible progress indicator communicates the current stage while the controlled sequence remains governed by the study runner.
+## Accessibility
 
-Session setup deliberately requires an explicit condition selection. **Manual** and **Tool** are presented as mutually exclusive selection cards and no condition is preselected. This prevents an unobserved default from incorrectly classifying a manual session as a tool session. Selection is communicated through text, iconography, border treatment and `aria-pressed`, rather than colour alone.
+Implemented safeguards include semantic headings, labelled form controls, visible keyboard focus, ARIA state where appropriate, non-colour state cues, reduced-motion handling and automated accessibility smoke tests. Full WCAG 2.2 AA certification is not claimed.
 
-The setup view also presents counterbalancing order and answer-key state as separate groups. A readiness summary shows whether the required **Participant ID**, **session condition** and **study answer key** are present. **Begin tasks** remains disabled until all three requirements are satisfied.
+## Main implementation files
 
-Once a session begins, the active condition remains visible throughout the task and questionnaire stages. The Manual condition additionally states **Do not use the tool**, reducing the risk of condition contamination during the within-subjects study.
-
-These interface safeguards complement, rather than replace, the underlying study controls. They do not alter the task model, timing, scoring, questionnaire calculations or JSON/CSV export structure. The polished Evaluation presentation was applied after participant data collection and is documented as current-interface evidence rather than as the exact participant-study screen.
-
-## Supported viewport and responsive scope
-
-The current artefact is designed for **desktop and laptop use only**. The primary workspace depends on desktop-style navigation, a project explorer, a source editor and a file-insights panel, and no mobile-specific interaction model was designed or evaluated.
-
-The Code workspace uses three columns on its intended desktop layout. At narrower browser widths, some regions can stack to prevent severe compression, but this is a defensive layout safeguard rather than a supported mobile experience. The project does not claim mobile or tablet usability, touch-first navigation, or mobile accessibility validation.
-
-Search and Answers remain single-task views, while the start and analysing screens use a centred readable column. These adaptations improve resilience when a desktop window is resized, but they should not be interpreted as full responsive-mobile support. A dedicated mobile/tablet experience is future work if the product scope expands beyond desktop repository analysis.
-
-## Evidence and trust states
-
-The evidence panel distinguishes:
-
-- **Retrieving:** neutral loading state.
-- **Evidence available:** green icon/border plus explicit retrieved-file count.
-- **No evidence:** red 2px border, warning icon, text and patterned background.
-- **Unverified mention:** amber warning state for paths named by the answer but not retrieved.
-
-Green evidence styling means only that files were retrieved and supplied to the model. It does not certify correctness. Relevance bars represent lexical similarity, not confidence.
-
-## Accessibility rules
-
-The supported desktop/laptop interface is designed against WCAG 2.2 AA criteria, but it is not described as formally WCAG-certified because no complete manual screen-reader audit has been performed. Mobile and tablet accessibility were outside the supported interface scope and were not evaluated.
-
-Implemented safeguards include:
-
-- semantic headings and navigation landmarks;
-- labelled form controls;
-- visible keyboard focus on links, buttons, inputs, summaries and tree items;
-- keyboard line selection in the code viewer;
-- `aria-current`, `aria-expanded`, `aria-selected`, `aria-pressed` and progress semantics where appropriate;
-- non-colour state cues;
-- >= 4.5:1 target for ordinary text;
-- >= 3:1 target for interactive control boundaries and non-text UI where required;
-- reduced-motion handling through CSS and Framer Motion;
-- no required text below 12px;
-- no normal-state meaningful text hidden behind low-opacity styling.
-
-Playwright accessibility smoke tests in `e2e/accessibility.spec.ts` guard the start-page heading/label structure, keyboard-visible focus, core text/control contrast and reduced-motion behaviour. These are regression checks, not a substitute for a complete manual accessibility audit.
-
-## Motion
-
-Normal transitions are short and functional. Route changes use a small fade/vertical movement. When `prefers-reduced-motion: reduce` is active, smooth scrolling and decorative animation/transition durations are effectively removed, and route motion is disabled.
-
-## Implementation references
-
-| Area | Main source |
-| --- | --- |
-| Colour tokens, focus and reduced motion | `src/index.css` |
-| Typography, spacing and Tailwind tokens | `tailwind.config.ts` |
-| Font loading | `index.html` |
-| Header and main navigation | `src/components/layout/Header.tsx` |
-| Page transition and reduced motion | `src/components/layout/Layout.tsx` |
-| Start, analysing and repository workspace | `src/pages/Index.tsx` |
-| Repository overview | `src/components/RepositoryOverview.tsx` |
-| Code editor behaviour | `src/components/CodeViewer.tsx` |
-| Repository explorer | `src/components/FolderTree.tsx` |
-| File context and file-anchored questions | `src/components/FileInsightsPanel.tsx` |
-| Search result layout | `src/components/WorkspaceSearchView.tsx` |
-| Repository Q&A layout | `src/components/WorkspaceQAView.tsx` |
-| Evidence states | `src/components/EvidencePanel.tsx` |
-| Coverage limits | `src/components/CoveragePanel.tsx` |
-| Accessibility regression checks | `e2e/accessibility.spec.ts` |
-| Research-session interface | `src/pages/Evaluation.tsx` |
+- `src/pages/Index.tsx`
+- `src/components/RepositoryOverview.tsx`
+- `src/components/CodeViewer.tsx`
+- `src/components/FolderTree.tsx`
+- `src/components/WorkspaceSearchView.tsx`
+- `src/components/WorkspaceQAView.tsx`
+- `src/components/EvidencePanel.tsx`
+- `src/components/CoveragePanel.tsx`

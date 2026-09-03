@@ -8,9 +8,7 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import Layout from "./components/layout/Layout";
 import { Skeleton } from "./components/ui/skeleton";
 
-// Load pages only when they are needed.
 const Index = lazy(() => import("./pages/Index"));
-const Evaluation = lazy(() => import("./pages/Evaluation"));
 const NotFound = lazy(() => import("./pages/NotFound"));
 
 const PageLoader = () => (
@@ -35,7 +33,6 @@ const App = () => (
             <Suspense fallback={<PageLoader />}>
               <Routes>
                 <Route path="/" element={<Index />} />
-                <Route path="/evaluation" element={<Evaluation />} />
                 <Route path="*" element={<NotFound />} />
               </Routes>
             </Suspense>

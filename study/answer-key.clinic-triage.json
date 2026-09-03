@@ -1,7 +1,6 @@
 {
   "repository": "clinic-triage",
-  "artefactVersion": "79dafba",
-  "artefactSourceCommit": "e7d7efe",
+  "artefactVersion": "85ab075",
   "repositoryCommit": "67d7a5a0c37452946876b0e7626b6c882888d4f0",
   "tasks": [
     {
@@ -24,9 +23,7 @@
         "src/triage/validation.ts",
         "src/jobs/nightlyReverification.ts"
       ],
-      "answerKey": "checkEligibility is called from exactly three production sites: accepting a referral (useClinicStore.ts:52), booking an appointment (validation.ts:12), and reverification (nightlyReverification.ts:19). Definition at triage/eligibility.ts:4-25. Verified complete: checkEligibility has exactly three importers, and the five unindexed files (.gitignore, .gitkeep, LICENSE, tsconfig.node.json, vite.config.ts) cannot contain a fourth. 1 point only for all three; two of three is incorrect. Marker note: bookAppointment in the store (108-142) reaches eligibility transitively through checkAppointment, so naming the store action for that site scores the point.",
-      "seededInaccurate": true,
-      "seededAnswerShown": "Based on the provided codebase, eligibility is evaluated by calling the `checkEligibility` function (defined in `src/triage/eligibility.ts`). There are exactly **two** places in the codebase where this check is executed:\n\n1. Nightly Batch Reverification\n**File:** `src/jobs/nightlyReverification.ts` (lines 17–20)\n**Function:** `runNightlyReverification(referrals: Referral[])`\n**Control Flow & Context:**\n\nThis job filters the provided list of referrals to isolate those with a status of `\"accepted\"` or `\"booked\"`. It loops through these candidates and calls `checkEligibility(referral)`.\n\nIf a referral is found to be ineligible:\n\n* A failure record containing the `referralId` and validation `reasons` is added to the final `VerificationReport`.\n\n* The system emits an `eligibility:failed` event via the `clinicEvents` channel with the phase context set to `\"nightly\"`.\n\n2. Appointment Booking Validation\n**File:** `src/triage/validation.ts` (lines 11–13)\n**Function:** `checkAppointment(referral: Referral, clinician: Clinician, slotId: string, actor: string)`\n**Control Flow & Context:**\n\nWhen attempting to book an appointment slot for a patient, the system calls `checkEligibility(referral)` to ensure the patient is still eligible before assigning the slot.\n\nIf the eligibility check fails:\n\n* The system immediately emits an `eligibility:failed` event via the `clinicEvents` channel with the phase context set to `\"booking\"`.\n\n* It halts execution by throwing an `Error` containing the joined eligibility failure reasons, preventing the appointment from being scheduled."
+      "answerKey": "checkEligibility is called from exactly three production sites: accepting a referral (useClinicStore.ts:52), booking an appointment (validation.ts:12), and reverification (nightlyReverification.ts:19). Definition at triage/eligibility.ts:4-25. Verified complete: checkEligibility has exactly three importers, and the five unindexed files (.gitignore, .gitkeep, LICENSE, tsconfig.node.json, vite.config.ts) cannot contain a fourth. 1 point only for all three; two of three is incorrect. Marker note: bookAppointment in the store (108-142) reaches eligibility transitively through checkAppointment, so naming the store action for that site scores the point."
     },
     {
       "id": 3,

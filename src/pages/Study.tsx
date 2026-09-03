@@ -7,7 +7,6 @@ import { Textarea } from "@/components/ui/textarea";
 const CORE_ARTEFACT_COMMIT = "85ab075065732b3652acabf8f67d2cee33e14d6f";
 
 type RepositoryKey = "warehouse-dispatch" | "clinic-triage";
-type ExperienceBand = "<1-year" | "1-2-years" | "3-5-years" | "5+-years";
 type Phase = "setup" | "prepared" | "tasks" | "sus" | "feedback" | "complete";
 
 type StudyTask = {
@@ -134,7 +133,6 @@ function downloadJson(filename: string, value: unknown) {
 export default function Study() {
   const [phase, setPhase] = useState<Phase>("setup");
   const [participantId, setParticipantId] = useState("");
-  const [experienceBand, setExperienceBand] = useState<ExperienceBand | "">("");
   const [repositoryKey, setRepositoryKey] = useState<RepositoryKey>("warehouse-dispatch");
   const [sessionStartedAt, setSessionStartedAt] = useState<string | null>(null);
   const [taskIndex, setTaskIndex] = useState(0);
@@ -157,7 +155,7 @@ export default function Study() {
   }, [susComplete, susResponses]);
 
   const prepareSession = () => {
-    if (!participantId.trim() || !experienceBand) return;
+    if (!participantId.trim()) return;
     setPhase("prepared");
   };
 
@@ -194,14 +192,13 @@ export default function Study() {
   };
 
   const exportSession = () => {
-    if (!sessionStartedAt || susScore === null || !feedbackComplete || !experienceBand) return;
+    if (!sessionStartedAt || susScore === null || !feedbackComplete) return;
     const completedAt = new Date().toISOString();
     const payload = {
-      schemaVersion: 2,
+      schemaVersion: 3,
       protocolVersion: "usability-v1",
       participant: {
         id: participantId.trim(),
-        programmingExperience: experienceBand,
       },
       coreArtefactCommit: CORE_ARTEFACT_COMMIT,
       repository: {
@@ -236,7 +233,6 @@ export default function Study() {
   const resetSession = () => {
     setPhase("setup");
     setParticipantId("");
-    setExperienceBand("");
     setRepositoryKey("warehouse-dispatch");
     setSessionStartedAt(null);
     setTaskIndex(0);
@@ -261,6 +257,10 @@ export default function Study() {
 
       {phase === "setup" && (
         <section className="space-y-6 rounded-lg border border-border bg-card p-6">
+          <p className="rounded-md border border-border bg-muted/30 p-4 text-ui text-muted-foreground">
+            Eligibility: current Year 3 Computer Science student. Eligibility is confirmed by the researcher during recruitment.
+          </p>
+
           <div className="space-y-2">
             <Label htmlFor="participant-id">Participant ID</Label>
             <Input
@@ -270,22 +270,6 @@ export default function Study() {
               placeholder="e.g. P01"
               autoComplete="off"
             />
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="experience">Programming experience</Label>
-            <select
-              id="experience"
-              value={experienceBand}
-              onChange={(event) => setExperienceBand(event.target.value as ExperienceBand)}
-              className="h-10 w-full rounded-md border border-control-border bg-input px-3 text-ui text-foreground focus-ring"
-            >
-              <option value="">Select one</option>
-              <option value="<1-year">Less than 1 year</option>
-              <option value="1-2-years">1–2 years</option>
-              <option value="3-5-years">3–5 years</option>
-              <option value="5+-years">5+ years</option>
-            </select>
           </div>
 
           <div className="space-y-2">
@@ -301,7 +285,7 @@ export default function Study() {
             </select>
           </div>
 
-          <Button onClick={prepareSession} disabled={!participantId.trim() || !experienceBand}>
+          <Button onClick={prepareSession} disabled={!participantId.trim()}>
             Prepare session
           </Button>
         </section>

@@ -4,7 +4,8 @@ This is the fixed procedure for Stage 2 of the final evaluation.
 
 ## Sample and assignment
 
-- Recruit a minimum of 12 participants with programming experience under the approved ethics procedure.
+- Recruit a minimum of 12 current Year 3 Computer Science students under the approved ethics procedure.
+- Confirm eligibility during recruitment; do not include participants outside this group.
 - Use pseudonymous IDs only: `P01`, `P02`, `P03`, and so on.
 - Balance the two repositories by alternating assignment:
   - odd participant IDs -> `warehouse-dispatch`
@@ -14,12 +15,13 @@ This is the fixed procedure for Stage 2 of the final evaluation.
 ## Before each session
 
 1. Complete the approved participant-information and consent process. Do not replace the approved ethics wording with text from this repository.
-2. Use the same browser/device setup where practical and ensure the internet connection is stable.
-3. Open the production Codemap study route at `/study`.
-4. Enter the participant ID, select the participant's programming-experience band, and select the assigned repository.
-5. Select **Prepare session**.
-6. Open Codemap in the second tab, analyse the repository shown by the study runner, and wait until the workspace is ready.
-7. Do not inspect the repository or answer any study task before selecting **Begin timed tasks**.
+2. Confirm that the participant is a current Year 3 Computer Science student.
+3. Use the same browser/device setup where practical and ensure the internet connection is stable.
+4. Open the production Codemap study route at `/study`.
+5. Enter the participant ID and select the assigned repository.
+6. Select **Prepare session**.
+7. Open Codemap in the second tab, analyse the repository shown by the study runner, and wait until the workspace is ready.
+8. Do not inspect the repository or answer any study task before selecting **Begin timed tasks**.
 
 ## Instructions to give every participant
 
@@ -66,7 +68,6 @@ For change-impact tasks, use only the mandatory facts in `requiredFacts`; option
 For each participant retain:
 
 - assigned repository;
-- programming-experience band;
 - task completion (`completed`);
 - binary task correctness;
 - task duration in seconds;
@@ -75,7 +76,7 @@ For each participant retain:
 
 For the dissertation, report at minimum:
 
-- number of participants and repository split;
+- number of Year 3 Computer Science participants and repository split;
 - task completion/success rate;
 - task correctness rate;
 - task-time summary (median is preferred for a small sample; mean may also be shown);
@@ -86,4 +87,4 @@ Task success should be defined consistently as a task that was both completed an
 
 ## Do not change after Participant 1
 
-Once data collection begins, do not change the task wording, task order, answer keys, scoring rules, repository commits, or participant instructions. If a technical failure makes a session unusable, record the incident separately rather than altering the protocol mid-study.
+Once data collection begins, do not change the task wording, task order, answer keys, scoring rules, repository commits, participant eligibility or participant instructions. If a technical failure makes a session unusable, record the incident separately rather than altering the protocol mid-study.

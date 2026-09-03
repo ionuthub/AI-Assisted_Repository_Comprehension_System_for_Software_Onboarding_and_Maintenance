@@ -7,9 +7,9 @@ test.describe('participant usability study runner', () => {
     await expect(
       page.getByRole('heading', { level: 1, name: 'Repository comprehension usability test' }),
     ).toBeVisible();
+    await expect(page.getByText('Eligibility: current Year 3 Computer Science student.')).toBeVisible();
 
     await page.getByLabel('Participant ID').fill('P99');
-    await page.getByLabel('Programming experience').selectOption('1-2-years');
     await page.getByLabel('Assigned repository').selectOption('warehouse-dispatch');
     await page.getByRole('button', { name: 'Prepare session' }).click();
 

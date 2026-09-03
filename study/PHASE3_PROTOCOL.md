@@ -27,7 +27,7 @@ Final technical result:
 
 ## Stage 2: usability validation
 
-The participant stage is supplementary to the technical benchmark. The target is approximately 10 participants with programming experience.
+The participant stage is supplementary to the technical benchmark. A minimum of 12 participants with programming experience will be recruited.
 
 Each participant will use the artefact on an unfamiliar study repository and complete four representative comprehension tasks covering:
 

@@ -9,6 +9,7 @@ import Layout from "./components/layout/Layout";
 import { Skeleton } from "./components/ui/skeleton";
 
 const Index = lazy(() => import("./pages/Index"));
+const Study = lazy(() => import("./pages/Study"));
 const NotFound = lazy(() => import("./pages/NotFound"));
 
 const PageLoader = () => (
@@ -33,6 +34,7 @@ const App = () => (
             <Suspense fallback={<PageLoader />}>
               <Routes>
                 <Route path="/" element={<Index />} />
+                <Route path="/study" element={<Study />} />
                 <Route path="*" element={<NotFound />} />
               </Routes>
             </Suspense>

@@ -1,7 +1,6 @@
 {
   "repository": "warehouse-dispatch",
-  "artefactVersion": "79dafba",
-  "artefactSourceCommit": "e7d7efe",
+  "artefactVersion": "85ab075",
   "repositoryCommit": "937be9d5598f81703e95c1a3ce2a2ec234287ee9",
   "tasks": [
     {
@@ -24,9 +23,7 @@
         "src/dispatch/releaseService.ts",
         "src/jobs/revalidation.ts"
       ],
-      "answerKey": "applyStockReservation is called from exactly three production sites: initial allocation (allocator.ts:57), release of a shipment (releaseService.ts:31), and the periodic revalidation job (revalidation.ts:21, inside revalidateReservations 10-49, made periodic by startRevalidationJob 51-61). Definition at stock/reservation.ts:9-45. 1 point only for all three. Test-file exclusion: applyStockReservation has a fourth importer, tests/reservation.test.ts (import at line 2, calls at 22 and 31). A participant who names it scores neither the point nor a detection; record it separately. Verified not to be reservation sites: commitReleasedStock (stockService.ts:16-37) decrements onHand and reserved; availableStock (11-14) is read-only.",
-      "seededInaccurate": true,
-      "seededAnswerShown": "Based on the provided repository context, stock reservation is executed and tested in the following locations:\n\n1. Stock Reservation Implementation\n**File:** `src/stock/reservation` (implied by import, though the implementation file itself is not in the provided context).\n**Function:** `applyStockReservation(order, allocations, zones)`\n\n* This function performs the actual stock reservation logic. As verified by unit tests, it increments the `reserved` stock count for a given SKU within a zone and populates lot codes.\n\n2. Unit Tests\n**File:** `src/tests/reservation.test.ts` (Lines 18–37)\n\n* Stock reservation is executed inside the test suite to verify behavior:\n\n* **Line 19:** Calls `applyStockReservation(order, [request], zones)` to assert that it correctly increments reserved stock (e.g., `expect(after).toBe(before + 10)`).\n\n* **Line 29:** Calls `applyStockReservation` with a high quantity to test shortage reporting and ensure reservation does not result in negative availability.\n\n---\n\nRelated Files (Read/Release Only)\n\nThe following files interact with reserved stock but **do not** reserve new stock:\n\n**`src/stock/stockService.ts`**:\n\n* `availableStock` (Line 10) reads `item.reserved` to calculate availability.\n\n* `commitReleasedStock` (Lines 16–36) decrements the `reserved` count (Line 26) when stock is committed and released; it does not reserve stock.\n\n**`src/components/ZoneCard.tsx`**:\n\n* Reads and aggregates `item.reserved` (Lines 6, 42) to display reservation metrics in the UI."
+      "answerKey": "applyStockReservation is called from exactly three production sites: initial allocation (allocator.ts:57), release of a shipment (releaseService.ts:31), and the periodic revalidation job (revalidation.ts:21, inside revalidateReservations 10-49, made periodic by startRevalidationJob 51-61). Definition at stock/reservation.ts:9-45. 1 point only for all three. Test-file exclusion: applyStockReservation has a fourth importer, tests/reservation.test.ts (import at line 2, calls at 22 and 31). A participant who names it scores neither the point nor a detection; record it separately. Verified not to be reservation sites: commitReleasedStock (stockService.ts:16-37) decrements onHand and reserved; availableStock (11-14) is read-only."
     },
     {
       "id": 3,

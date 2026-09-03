@@ -26,8 +26,6 @@ Main files: `src/lib/semanticSearch.ts` and `src/lib/retrievalPipeline.ts`.
 
 The retrieval pipeline is deterministic and primarily lexical. It combines TF-IDF with file-path and symbol matches, then expands strong candidates through resolved imports and `usedBy` relationships. The full eligible repository remains indexed; only the evidence sent to the language model is bounded.
 
-Current Q&A limits:
-
 | Setting | Value |
 | --- | ---: |
 | Candidate files | 24 |
@@ -55,7 +53,3 @@ The generation prompt requires repository-specific claims to be grounded in the 
 Main files: `src/components/EvidencePanel.tsx` and `src/components/WorkspaceQAView.tsx`.
 
 The interface shows retrieved files, ranking information, line ranges, excerpts and repository coverage. Evidence is assembled before generation, so a path invented by the model cannot become retrieved evidence. Retrieval scores are ranking signals, not correctness probabilities.
-
-## Architecture figure
-
-See [`figure1_architecture.png`](figure1_architecture.png).

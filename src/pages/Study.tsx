@@ -7,6 +7,7 @@ import { Textarea } from "@/components/ui/textarea";
 const CORE_ARTEFACT_COMMIT = "85ab075065732b3652acabf8f67d2cee33e14d6f";
 
 type RepositoryKey = "warehouse-dispatch" | "clinic-triage";
+type ExperienceBand = "<1-year" | "1-2-years" | "3-5-years" | "5+-years";
 type Phase = "setup" | "prepared" | "tasks" | "sus" | "feedback" | "complete";
 
 type StudyTask = {
@@ -18,6 +19,7 @@ type StudyTask = {
 
 type TaskResult = StudyTask & {
   answer: string;
+  completed: boolean;
   startedAt: string;
   completedAt: string;
   durationMs: number;
@@ -132,6 +134,7 @@ function downloadJson(filename: string, value: unknown) {
 export default function Study() {
   const [phase, setPhase] = useState<Phase>("setup");
   const [participantId, setParticipantId] = useState("");
+  const [experienceBand, setExperienceBand] = useState<ExperienceBand | "">("");
   const [repositoryKey, setRepositoryKey] = useState<RepositoryKey>("warehouse-dispatch");
   const [sessionStartedAt, setSessionStartedAt] = useState<string | null>(null);
   const [taskIndex, setTaskIndex] = useState(0);
@@ -154,7 +157,7 @@ export default function Study() {
   }, [susComplete, susResponses]);
 
   const prepareSession = () => {
-    if (!participantId.trim()) return;
+    if (!participantId.trim() || !experienceBand) return;
     setPhase("prepared");
   };
 
@@ -165,14 +168,15 @@ export default function Study() {
     setPhase("tasks");
   };
 
-  const submitTask = () => {
-    if (!currentTask || !taskStartedAt || !answer.trim()) return;
+  const finishTask = (completed: boolean) => {
+    if (!currentTask || !taskStartedAt || (completed && !answer.trim())) return;
     const now = Date.now();
     setTaskResults((results) => [
       ...results,
       {
         ...currentTask,
-        answer: answer.trim(),
+        answer: completed ? answer.trim() : "",
+        completed,
         startedAt: new Date(taskStartedAt).toISOString(),
         completedAt: new Date(now).toISOString(),
         durationMs: now - taskStartedAt,
@@ -190,12 +194,15 @@ export default function Study() {
   };
 
   const exportSession = () => {
-    if (!sessionStartedAt || susScore === null || !feedbackComplete) return;
+    if (!sessionStartedAt || susScore === null || !feedbackComplete || !experienceBand) return;
     const completedAt = new Date().toISOString();
     const payload = {
-      schemaVersion: 1,
+      schemaVersion: 2,
       protocolVersion: "usability-v1",
-      participantId: participantId.trim(),
+      participant: {
+        id: participantId.trim(),
+        programmingExperience: experienceBand,
+      },
       coreArtefactCommit: CORE_ARTEFACT_COMMIT,
       repository: {
         name: repository.label,
@@ -208,7 +215,6 @@ export default function Study() {
       },
       tasks: taskResults.map((result) => ({
         ...result,
-        completed: true,
         durationSeconds: Math.round(result.durationMs / 100) / 10,
       })),
       sus: {
@@ -230,6 +236,7 @@ export default function Study() {
   const resetSession = () => {
     setPhase("setup");
     setParticipantId("");
+    setExperienceBand("");
     setRepositoryKey("warehouse-dispatch");
     setSessionStartedAt(null);
     setTaskIndex(0);
@@ -266,6 +273,22 @@ export default function Study() {
           </div>
 
           <div className="space-y-2">
+            <Label htmlFor="experience">Programming experience</Label>
+            <select
+              id="experience"
+              value={experienceBand}
+              onChange={(event) => setExperienceBand(event.target.value as ExperienceBand)}
+              className="h-10 w-full rounded-md border border-control-border bg-input px-3 text-ui text-foreground focus-ring"
+            >
+              <option value="">Select one</option>
+              <option value="<1-year">Less than 1 year</option>
+              <option value="1-2-years">1–2 years</option>
+              <option value="3-5-years">3–5 years</option>
+              <option value="5+-years">5+ years</option>
+            </select>
+          </div>
+
+          <div className="space-y-2">
             <Label htmlFor="repository">Assigned repository</Label>
             <select
               id="repository"
@@ -278,7 +301,7 @@ export default function Study() {
             </select>
           </div>
 
-          <Button onClick={prepareSession} disabled={!participantId.trim()}>
+          <Button onClick={prepareSession} disabled={!participantId.trim() || !experienceBand}>
             Prepare session
           </Button>
         </section>
@@ -340,12 +363,17 @@ export default function Study() {
           </div>
 
           <p className="text-metadata text-muted-foreground">
-            The task timer stops when you submit this answer. Answers cannot be edited after submission.
+            The task timer stops when you submit or skip this task. Answers cannot be edited after submission.
           </p>
 
-          <Button onClick={submitTask} disabled={!answer.trim()}>
-            {taskIndex === repository.tasks.length - 1 ? "Submit task and continue" : "Submit and next task"}
-          </Button>
+          <div className="flex flex-wrap gap-3">
+            <Button onClick={() => finishTask(true)} disabled={!answer.trim()}>
+              {taskIndex === repository.tasks.length - 1 ? "Submit task and continue" : "Submit and next task"}
+            </Button>
+            <Button variant="outline" onClick={() => finishTask(false)}>
+              Unable to answer / skip
+            </Button>
+          </div>
         </section>
       )}
 

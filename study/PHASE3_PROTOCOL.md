@@ -27,9 +27,11 @@ Final technical result:
 
 ## Stage 2: usability validation
 
-The participant stage is supplementary to the technical benchmark. A minimum of 12 participants with programming experience will be recruited. Participants are assigned pseudonymous IDs (`P01`, `P02`, etc.). Repository assignment alternates by ID so that 12 participants produce six sessions per repository; additional participants continue the same alternating pattern.
+The participant stage is supplementary to the technical benchmark. A minimum of 12 current Year 3 Computer Science students will be recruited under the approved ethics procedure. This deliberately homogeneous sample keeps participants at a broadly comparable educational stage and is appropriate for evaluating the artefact with users who have recent programming and software-development experience but are not assumed to be professional developers.
 
-Only one background variable is collected: programming-experience band (`<1 year`, `1–2 years`, `3–5 years`, or `5+ years`). Names, email addresses and other identifying information are not collected in the runner.
+Participants are assigned pseudonymous IDs (`P01`, `P02`, etc.). Repository assignment alternates by ID so that 12 participants produce six sessions per repository; additional participants continue the same alternating pattern.
+
+No demographic or programming-experience variables are collected in the study runner. Eligibility as a current Year 3 Computer Science student is confirmed during recruitment. Names, email addresses and other identifying information are not collected in the runner.
 
 The study runner is available at `/study`. It is not linked from the normal product navigation. The runner contains task prompts only; reference answers are not shown to participants or embedded in the participant interface.
 
@@ -63,8 +65,8 @@ After the four tasks, participants complete the 10-item System Usability Scale (
 2. What was difficult or confusing?
 3. What would you improve?
 
-The runner exports one pseudonymised JSON record containing the participant ID, programming-experience band, assigned repository, task responses and timings, SUS responses and score, and the three open-ended responses. Participant data is stored separately and is not committed to the public repository.
+The runner exports one pseudonymised JSON record containing the participant ID, assigned repository, task responses and timings, SUS responses and score, and the three open-ended responses. Participant data is stored separately and is not committed to the public repository.
 
-The participant stage is descriptive. It is intended to assess usability and task completion, not to establish a causal claim that the artefact makes developers faster than alternative methods.
+The participant stage is descriptive. It is intended to assess usability and task completion within a Year 3 Computer Science student population, not to establish a causal claim that the artefact makes developers faster than alternative methods or to generalise directly to professional software developers.
 
 The detailed session procedure and marking rules are fixed in `PARTICIPANT_TESTING_GUIDE.md`. Participant testing proceeds under the confirmed applicable ethics approval.

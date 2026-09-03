@@ -319,7 +319,7 @@
      "totalTokenCount": 70142
     }
    },
-   "correct": null
+   "correct": false
   },
   {
    "id": 2,
@@ -613,7 +613,7 @@
      "totalTokenCount": 150979
     }
    },
-   "correct": null
+   "correct": false
   },
   {
    "id": 3,
@@ -910,7 +910,7 @@
      "totalTokenCount": 146856
     }
    },
-   "correct": null
+   "correct": true
   },
   {
    "id": 4,
@@ -1205,7 +1205,7 @@
      "totalTokenCount": 142042
     }
    },
-   "correct": null
+   "correct": true
   },
   {
    "id": 5,
@@ -1507,7 +1507,7 @@
      "totalTokenCount": 70117
     }
    },
-   "correct": null
+   "correct": true
   },
   {
    "id": 6,
@@ -1798,7 +1798,7 @@
      "totalTokenCount": 137159
     }
    },
-   "correct": null
+   "correct": true
   },
   {
    "id": 7,
@@ -2092,7 +2092,7 @@
      "totalTokenCount": 139091
     }
    },
-   "correct": null
+   "correct": true
   },
   {
    "id": 8,
@@ -2391,7 +2391,7 @@
      "totalTokenCount": 142955
     }
    },
-   "correct": null
+   "correct": true
   },
   {
    "id": 9,
@@ -2688,7 +2688,7 @@
      "totalTokenCount": 175605
     }
    },
-   "correct": null
+   "correct": true
   },
   {
    "id": 10,
@@ -2984,7 +2984,7 @@
      "totalTokenCount": 146237
     }
    },
-   "correct": null
+   "correct": false
   },
   {
    "id": 11,
@@ -3280,7 +3280,7 @@
      "totalTokenCount": 148379
     }
    },
-   "correct": null
+   "correct": true
   },
   {
    "id": 12,
@@ -3575,7 +3575,7 @@
      "totalTokenCount": 140465
     }
    },
-   "correct": null
+   "correct": true
   }
  ],
  "notes": "QUESTION STEMS ONLY. correctAnswer must be written by the researcher from reading the code, BEFORE the tool is asked anything. toolAnswer is pasted verbatim from the tool afterwards. 'correct' is the researcher's marking. Questions may be reworded or replaced; they are drafted to cover each architectural pattern once so the gate exercises the same structures the study tasks will target.",

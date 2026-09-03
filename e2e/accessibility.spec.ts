@@ -83,8 +83,8 @@ test.describe('accessibility design-system smoke checks', () => {
     const scrollBehavior = await page.evaluate(() => getComputedStyle(document.documentElement).scrollBehavior);
     expect(scrollBehavior).toBe('auto');
 
-    const analyseLink = page.getByRole('link', { name: 'Analyse' });
-    const transitionDuration = await analyseLink.evaluate((element) => getComputedStyle(element).transitionDuration);
+    const logo = page.getByRole('link', { name: /Codemap, start a new repository analysis/i });
+    const transitionDuration = await logo.evaluate((element) => getComputedStyle(element).transitionDuration);
     expect(parseFloat(transitionDuration)).toBeLessThanOrEqual(0.00001);
   });
 });

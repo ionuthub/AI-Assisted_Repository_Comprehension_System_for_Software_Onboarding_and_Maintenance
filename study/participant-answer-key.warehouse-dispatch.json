@@ -1,6 +1,7 @@
 {
-  "schemaVersion": 1,
+  "schemaVersion": 2,
   "protocolVersion": "comparative-v1",
+  "answerKeyVersion": "source-code-audited-2026-09-04",
   "repository": "warehouse-dispatch",
   "coreArtefactCommit": "85ab075065732b3652acabf8f67d2cee33e14d6f",
   "repositoryCommit": "937be9d5598f81703e95c1a3ce2a2ec234287ee9",
@@ -11,24 +12,32 @@
       "category": "orientation",
       "sourceQuestion": "Q1",
       "prompt": "Where does execution start in this project? Describe the startup flow.",
-      "answerKey": "Browser execution starts in src/main.tsx, which finds the root element and renders App inside React strict mode. The router is built once at module scope when App.tsx is imported. App installs the notification listeners, calls the store's initialize function, and renders RouterProvider around the existing router.",
+      "answerKey": "The web bootstrap starts at index.html, whose module script loads /src/main.tsx. src/main.tsx is the JavaScript/React entry module and mounts App into the root element. App provides the routing layer and performs the material startup initialization by installing notification listeners and calling the store initialize function.",
       "requiredFacts": [
-        "Identifies src/main.tsx as the browser entry point.",
-        "Explains that main.tsx renders App inside React strict mode.",
-        "Explains the material startup flow in App: router already exists at module scope, notification listeners are installed, store initialization runs, and RouterProvider is rendered."
+        "Correctly explains the index.html -> src/main.tsx bootstrap relationship. Either index.html as the web entry or src/main.tsx as the JavaScript/React entry is acceptable when the relationship is clear.",
+        "Explains that src/main.tsx mounts/renders App into the root element.",
+        "Explains the material App startup flow: routing is established/rendered and the notification listeners plus store initialization are started."
       ],
-      "expectedFiles": ["src/main.tsx", "src/App.tsx"]
+      "scoringNotes": [
+        "Do not mark an answer incorrect merely because it calls index.html the entry point.",
+        "React StrictMode and the fact that the router is created at module scope are valid supporting details but are not mandatory for participant correctness."
+      ],
+      "expectedFiles": ["index.html", "src/main.tsx", "src/App.tsx"]
     },
     {
       "id": 2,
       "category": "type-processing",
       "sourceQuestion": "Q3",
       "prompt": "Which code decides how a given order type is processed? Explain how the correct handler is selected.",
-      "answerKey": "The dispatch-handler registry makes the decision. On first use, getHandler dynamically imports every handler module; each module registers one handler keyed by its type. Allocation and release look up the handler using order.type and call its preparation, inspection, or shipment-default methods.",
+      "answerKey": "The dispatch-handler registry makes the handler-selection decision. On first use, getHandler dynamically imports the handler modules; each module registers a handler keyed by type. allocateOrder and releaseShipment call getHandler using the order type, after which the selected handler's prepare, inspect, or shipmentDefaults behaviour is used.",
       "requiredFacts": [
-        "Identifies the dispatch-handler registry/getHandler as the decision point.",
+        "Identifies the dispatch-handler registry/getHandler as the handler-selection point.",
         "Explains dynamic loading and registration of handlers keyed by type.",
-        "Explains that order.type is used to select the handler used by allocation/release."
+        "Explains that input.type/order.type is used to retrieve the correct handler for allocation/release."
+      ],
+      "scoringNotes": [
+        "Additional correct discussion of other order-type-specific logic such as zone rules, pricing, validation, or interceptors does not make an otherwise correct answer incorrect.",
+        "This participant task maps to technical benchmark Q3, not Q2."
       ],
       "expectedFiles": ["src/dispatch/handlers/registry.ts", "src/dispatch/allocator.ts", "src/dispatch/releaseService.ts"]
     },
@@ -37,7 +46,7 @@
       "category": "cross-cutting",
       "sourceQuestion": "Q4",
       "prompt": "Stock is reserved in more than one place in this codebase. Find every production place where it happens. Test files do not count.",
-      "answerKey": "Actual reservation changes are centralized in applyStockReservation. It is called in exactly three production paths: initial allocation, shipment release, and the periodic revalidation job after reserved counts are reset and rebuilt for active orders. The store installs the revalidation job during initialization.",
+      "answerKey": "Actual reservation changes are centralized in applyStockReservation. It is called in exactly three production paths: initial allocation, shipment release, and periodic reservation revalidation.",
       "requiredFacts": [
         "Names initial allocation as a reservation path.",
         "Names shipment release as a reservation path.",
@@ -51,11 +60,11 @@
       "category": "change-impact",
       "sourceQuestion": "Q9",
       "prompt": "A new order type is to be added. Where would you add it, and what else would need to change for the application to work?",
-      "answerKey": "Add the literal to OrderType; add entries to both exhaustive order-type maps for zone preferences and pricing; and add a handler module that calls registerHandler with preparation, inspection, and shipment defaults. The dynamically loaded registry discovers the handler automatically. Seed data, UI fixtures, and tests should also be extended if the new type must appear and be verified.",
+      "answerKey": "Add the new literal to OrderType, add entries to both exhaustive OrderType configuration maps for zone preferences and pricing, and add a handler module that registers the new type. The handler registry discovers the new module automatically. UI filter, seed-data, or test updates are useful follow-up work but are not required by this marking key unless they are needed for the stated scenario.",
       "requiredFacts": [
         "Adds the new literal to OrderType.",
         "Updates both exhaustive order-type maps for zone preferences and pricing.",
-        "Adds a handler module that registers the new type; notes that the registry discovers it dynamically."
+        "Adds a handler module that registers the new type; automatic registry discovery may be stated explicitly or described equivalently."
       ],
       "expectedFiles": ["src/types/domain.ts", "src/config/zoneRules.ts", "src/dispatch/handlers"]
     }

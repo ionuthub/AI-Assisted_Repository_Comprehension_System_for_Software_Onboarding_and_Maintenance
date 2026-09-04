@@ -1,7 +1,7 @@
 {
   "schemaVersion": 2,
   "protocolVersion": "comparative-v1",
-  "answerKeyVersion": "source-code-audited-2026-09-04",
+  "answerKeyVersion": "source-code-audited-2026-09-04-t2-refined",
   "repository": "clinic-triage",
   "coreArtefactCommit": "85ab075065732b3652acabf8f67d2cee33e14d6f",
   "repositoryCommit": "67d7a5a0c37452946876b0e7626b6c882888d4f0",
@@ -29,17 +29,25 @@
       "category": "type-processing",
       "sourceQuestion": "Q3",
       "prompt": "Which code decides how a given referral type is processed? Explain how the correct route handler is selected.",
-      "answerKey": "The route registry makes the handler-selection decision. loadRoutes dynamically imports the route modules, those modules register handlers keyed by referral type, and routeReferral retrieves and invokes the handler using referral.type. ReferralDetailPage loads the route modules before routing the referral.",
+      "answerKey": "For pathway/routing processing, the dispatch point is the route registry in src/triage/routes/registry.ts. The concrete route modules define the type-specific RouteHandler functions and register them with registerRoute(type, handler), so the registry contains a mapping from ReferralType to RouteHandler. In the normal application flow, ReferralDetailPage calls loadRoutes(), which dynamically imports those route modules so their top-level registerRoute calls run. It then calls routeReferral(referral). routeReferral performs handlers.get(referral.type); if a matching handler exists it invokes that handler and returns its RouteOutcome, otherwise it throws an error saying that no routing handler is registered for that referral type. Other referral-type-dependent behaviour also exists in priority policy, scheduling, eligibility and redaction, but those areas do not select the pathway route handler asked about in this task.",
       "requiredFacts": [
-        "Identifies the route registry/routeReferral as the handler-selection point.",
-        "Explains that loadRoutes dynamically imports route modules and those modules register handlers keyed by referral type.",
-        "Explains that referral.type is used to retrieve and invoke the correct handler."
+        "Identifies the route registry/route modules as the mechanism for type-specific pathway processing.",
+        "Explains that route handlers are registered against referral types, for example through registerRoute(type, handler).",
+        "Explains that routeReferral uses referral.type to retrieve the matching registered handler and invokes it."
       ],
       "scoringNotes": [
-        "Additional correct discussion of priority policy, scheduling, eligibility, or redaction does not make an otherwise correct answer incorrect.",
+        "The exact function name loadRoutes and the dynamic-import detail are supporting implementation details, not mandatory when the answer correctly explains registration by type followed by routeReferral lookup and invocation.",
+        "A correct explanation that loadRoutes dynamically imports the route modules before routeReferral runs should receive credit.",
+        "Additional correct discussion of priority policy, scheduling, eligibility or redaction is allowed, but it does not substitute for explaining how the pathway route handler is registered and selected.",
+        "The answer does not have to use the exact words Map, handlers.get or RouteOutcome if it describes the same mechanism accurately.",
         "This participant task maps to technical benchmark Q3, not Q2."
       ],
-      "expectedFiles": ["src/triage/routes/loadRoutes.ts", "src/triage/routes/registry.ts", "src/triage/routes"]
+      "expectedFiles": [
+        "src/triage/routes/loadRoutes.ts",
+        "src/triage/routes/registry.ts",
+        "src/triage/routes",
+        "src/pages/ReferralDetailPage.tsx"
+      ]
     },
     {
       "id": 3,

@@ -7,7 +7,10 @@ import { Textarea } from "@/components/ui/textarea";
 const CORE_ARTEFACT_COMMIT = "85ab075065732b3652acabf8f67d2cee33e14d6f";
 
 type RepositoryKey = "warehouse-dispatch" | "clinic-triage";
-type Phase = "setup" | "prepared" | "tasks" | "sus" | "feedback" | "complete";
+type Condition = "manual" | "codemap";
+type SequenceId = "A" | "B" | "C" | "D";
+type Phase = "setup" | "prepare-condition" | "tasks" | "nasa" | "sus" | "feedback" | "complete";
+type NasaKey = "mentalDemand" | "physicalDemand" | "temporalDemand" | "performance" | "effort" | "frustration";
 
 type StudyTask = {
   id: number;
@@ -22,6 +25,30 @@ type TaskResult = StudyTask & {
   startedAt: string;
   completedAt: string;
   durationMs: number;
+  durationSeconds: number;
+};
+
+type ConditionAssignment = {
+  condition: Condition;
+  repositoryKey: RepositoryKey;
+};
+
+type NasaResponses = Record<NasaKey, number | null>;
+type CompletedNasaResponses = Record<NasaKey, number>;
+
+type ConditionResult = {
+  order: number;
+  condition: Condition;
+  repository: {
+    name: string;
+    url: string;
+    commit: string;
+  };
+  tasks: TaskResult[];
+  nasaTlx: {
+    responses: CompletedNasaResponses;
+    rawScore: number;
+  };
 };
 
 const REPOSITORIES: Record<
@@ -98,6 +125,39 @@ const REPOSITORIES: Record<
   },
 };
 
+const SEQUENCES: Record<SequenceId, [ConditionAssignment, ConditionAssignment]> = {
+  A: [
+    { condition: "manual", repositoryKey: "warehouse-dispatch" },
+    { condition: "codemap", repositoryKey: "clinic-triage" },
+  ],
+  B: [
+    { condition: "codemap", repositoryKey: "clinic-triage" },
+    { condition: "manual", repositoryKey: "warehouse-dispatch" },
+  ],
+  C: [
+    { condition: "manual", repositoryKey: "clinic-triage" },
+    { condition: "codemap", repositoryKey: "warehouse-dispatch" },
+  ],
+  D: [
+    { condition: "codemap", repositoryKey: "warehouse-dispatch" },
+    { condition: "manual", repositoryKey: "clinic-triage" },
+  ],
+};
+
+// Fixed before data collection: three balanced blocks of four participants.
+const RANDOMISED_SEQUENCE: SequenceId[] = ["A", "D", "B", "C", "C", "B", "D", "A", "D", "A", "C", "B"];
+
+const NASA_DIMENSIONS: { key: NasaKey; label: string; low: string; high: string }[] = [
+  { key: "mentalDemand", label: "Mental Demand", low: "Low", high: "High" },
+  { key: "physicalDemand", label: "Physical Demand", low: "Low", high: "High" },
+  { key: "temporalDemand", label: "Temporal Demand", low: "Low", high: "High" },
+  { key: "performance", label: "Performance", low: "Perfect", high: "Failure" },
+  { key: "effort", label: "Effort", low: "Low", high: "High" },
+  { key: "frustration", label: "Frustration", low: "Low", high: "High" },
+];
+
+const NASA_VALUES = Array.from({ length: 21 }, (_, index) => index * 5);
+
 const SUS_ITEMS = [
   "I think that I would like to use this system frequently.",
   "I found the system unnecessarily complex.",
@@ -111,11 +171,34 @@ const SUS_ITEMS = [
   "I needed to learn a lot of things before I could get going with this system.",
 ];
 
+function emptyNasaResponses(): NasaResponses {
+  return {
+    mentalDemand: null,
+    physicalDemand: null,
+    temporalDemand: null,
+    performance: null,
+    effort: null,
+    frustration: null,
+  };
+}
+
 function calculateSusScore(responses: number[]): number {
   const contribution = responses.reduce((total, value, index) => {
     return total + (index % 2 === 0 ? value - 1 : 5 - value);
   }, 0);
   return contribution * 2.5;
+}
+
+function calculateRawNasaTlx(responses: CompletedNasaResponses): number {
+  const values = NASA_DIMENSIONS.map((dimension) => responses[dimension.key]);
+  return Math.round((values.reduce((total, value) => total + value, 0) / values.length) * 10) / 10;
+}
+
+function participantNumberFromId(value: string): number | null {
+  const match = value.trim().match(/^P?(\d+)$/i);
+  if (!match) return null;
+  const parsed = Number.parseInt(match[1], 10);
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : null;
 }
 
 function downloadJson(filename: string, value: unknown) {
@@ -133,21 +216,28 @@ function downloadJson(filename: string, value: unknown) {
 export default function Study() {
   const [phase, setPhase] = useState<Phase>("setup");
   const [participantId, setParticipantId] = useState("");
-  const [repositoryKey, setRepositoryKey] = useState<RepositoryKey>("warehouse-dispatch");
+  const [sequenceId, setSequenceId] = useState<SequenceId | null>(null);
+  const [conditionIndex, setConditionIndex] = useState(0);
   const [sessionStartedAt, setSessionStartedAt] = useState<string | null>(null);
   const [taskIndex, setTaskIndex] = useState(0);
   const [taskStartedAt, setTaskStartedAt] = useState<number | null>(null);
   const [answer, setAnswer] = useState("");
-  const [taskResults, setTaskResults] = useState<TaskResult[]>([]);
+  const [currentTaskResults, setCurrentTaskResults] = useState<TaskResult[]>([]);
+  const [conditionResults, setConditionResults] = useState<ConditionResult[]>([]);
+  const [nasaResponses, setNasaResponses] = useState<NasaResponses>(emptyNasaResponses());
   const [susResponses, setSusResponses] = useState<(number | null)[]>(Array(10).fill(null));
   const [helped, setHelped] = useState("");
   const [difficult, setDifficult] = useState("");
-  const [improve, setImprove] = useState("");
+  const [preferred, setPreferred] = useState("");
 
-  const repository = REPOSITORIES[repositoryKey];
-  const currentTask = repository.tasks[taskIndex];
+  const participantNumber = useMemo(() => participantNumberFromId(participantId), [participantId]);
+  const sequence = sequenceId ? SEQUENCES[sequenceId] : null;
+  const assignment = sequence?.[conditionIndex] ?? null;
+  const repository = assignment ? REPOSITORIES[assignment.repositoryKey] : null;
+  const currentTask = repository?.tasks[taskIndex] ?? null;
+  const nasaComplete = NASA_DIMENSIONS.every((dimension) => nasaResponses[dimension.key] !== null);
   const susComplete = susResponses.every((value) => value !== null);
-  const feedbackComplete = [helped, difficult, improve].every((value) => value.trim().length > 0);
+  const feedbackComplete = [helped, difficult, preferred].every((value) => value.trim().length > 0);
 
   const susScore = useMemo(() => {
     if (!susComplete) return null;
@@ -155,13 +245,18 @@ export default function Study() {
   }, [susComplete, susResponses]);
 
   const prepareSession = () => {
-    if (!participantId.trim()) return;
-    setPhase("prepared");
+    if (!participantNumber) return;
+    const assignedSequence = RANDOMISED_SEQUENCE[(participantNumber - 1) % RANDOMISED_SEQUENCE.length];
+    setSequenceId(assignedSequence);
+    setConditionIndex(0);
+    setPhase("prepare-condition");
   };
 
   const beginTasks = () => {
+    if (!assignment || !repository) return;
     const now = Date.now();
-    setSessionStartedAt(new Date(now).toISOString());
+    if (!sessionStartedAt) setSessionStartedAt(new Date(now).toISOString());
+    setTaskIndex(0);
     setTaskStartedAt(now);
     setPhase("tasks");
   };
@@ -169,7 +264,8 @@ export default function Study() {
   const finishTask = (completed: boolean) => {
     if (!currentTask || !taskStartedAt || (completed && !answer.trim())) return;
     const now = Date.now();
-    setTaskResults((results) => [
+    const durationMs = now - taskStartedAt;
+    setCurrentTaskResults((results) => [
       ...results,
       {
         ...currentTask,
@@ -177,81 +273,115 @@ export default function Study() {
         completed,
         startedAt: new Date(taskStartedAt).toISOString(),
         completedAt: new Date(now).toISOString(),
-        durationMs: now - taskStartedAt,
+        durationMs,
+        durationSeconds: Math.round(durationMs / 100) / 10,
       },
     ]);
     setAnswer("");
 
-    if (taskIndex === repository.tasks.length - 1) {
+    if (repository && taskIndex === repository.tasks.length - 1) {
       setTaskStartedAt(null);
-      setPhase("sus");
+      setPhase("nasa");
     } else {
       setTaskIndex((index) => index + 1);
       setTaskStartedAt(now);
     }
   };
 
-  const exportSession = () => {
-    if (!sessionStartedAt || susScore === null || !feedbackComplete) return;
-    const completedAt = new Date().toISOString();
-    const payload = {
-      schemaVersion: 3,
-      protocolVersion: "usability-v1",
-      participant: {
-        id: participantId.trim(),
-      },
-      coreArtefactCommit: CORE_ARTEFACT_COMMIT,
+  const submitNasa = () => {
+    if (!assignment || !repository || !nasaComplete) return;
+    const completedResponses = nasaResponses as CompletedNasaResponses;
+    const result: ConditionResult = {
+      order: conditionIndex + 1,
+      condition: assignment.condition,
       repository: {
         name: repository.label,
         url: repository.url,
         commit: repository.commit,
       },
+      tasks: currentTaskResults,
+      nasaTlx: {
+        responses: completedResponses,
+        rawScore: calculateRawNasaTlx(completedResponses),
+      },
+    };
+
+    setConditionResults((results) => [...results, result]);
+    setCurrentTaskResults([]);
+    setNasaResponses(emptyNasaResponses());
+    setTaskIndex(0);
+
+    if (conditionIndex === 0) {
+      setConditionIndex(1);
+      setPhase("prepare-condition");
+    } else {
+      setPhase("sus");
+    }
+  };
+
+  const exportSession = () => {
+    if (!sessionStartedAt || !sequenceId || susScore === null || !feedbackComplete || conditionResults.length !== 2) return;
+    const completedAt = new Date().toISOString();
+    const payload = {
+      schemaVersion: 4,
+      protocolVersion: "comparative-v1",
+      participant: {
+        id: participantId.trim(),
+        eligibility: "current-year-3-computer-science-student",
+      },
+      coreArtefactCommit: CORE_ARTEFACT_COMMIT,
+      assignment: {
+        sequenceId,
+        sequence: SEQUENCES[sequenceId],
+        method: "pre-randomised-balanced-block",
+      },
       session: {
         startedAt: sessionStartedAt,
         completedAt,
       },
-      tasks: taskResults.map((result) => ({
-        ...result,
-        durationSeconds: Math.round(result.durationMs / 100) / 10,
-      })),
+      conditions: conditionResults,
       sus: {
+        appliesTo: "codemap",
         responses: susResponses,
         score: susScore,
       },
       feedback: {
-        helped: helped.trim(),
-        difficult: difficult.trim(),
-        improve: improve.trim(),
+        codemapHelped: helped.trim(),
+        codemapDifficult: difficult.trim(),
+        preferredMethodAndWhy: preferred.trim(),
       },
     };
 
     const safeId = participantId.trim().replace(/[^a-zA-Z0-9_-]+/g, "-") || "participant";
-    downloadJson(`study-${safeId}-${repository.label}.json`, payload);
+    downloadJson(`study-${safeId}-comparative.json`, payload);
     setPhase("complete");
   };
 
   const resetSession = () => {
     setPhase("setup");
     setParticipantId("");
-    setRepositoryKey("warehouse-dispatch");
+    setSequenceId(null);
+    setConditionIndex(0);
     setSessionStartedAt(null);
     setTaskIndex(0);
     setTaskStartedAt(null);
     setAnswer("");
-    setTaskResults([]);
+    setCurrentTaskResults([]);
+    setConditionResults([]);
+    setNasaResponses(emptyNasaResponses());
     setSusResponses(Array(10).fill(null));
     setHelped("");
     setDifficult("");
-    setImprove("");
+    setPreferred("");
   };
 
   return (
-    <main className="container mx-auto max-w-4xl px-4 py-10 md:px-8">
+    <main className="container mx-auto max-w-4xl px-4 py-10 pb-16 md:px-8 md:pb-20">
       <div className="mb-8">
         <p className="text-metadata uppercase tracking-wider text-muted-foreground">Research study</p>
-        <h1 className="mt-2 text-view font-semibold text-foreground">Repository comprehension usability test</h1>
+        <h1 className="mt-2 text-view font-semibold text-foreground">Repository comprehension evaluation</h1>
         <p className="mt-3 max-w-2xl text-body text-muted-foreground">
-          Complete the four tasks using Codemap. Use only the study ID provided by the researcher; do not enter your name or email address.
+          Compare manual repository inspection with Codemap. Use only the study ID provided by the researcher; do not enter your name or email address.
         </p>
       </div>
 
@@ -270,48 +400,54 @@ export default function Study() {
               placeholder="e.g. P01"
               autoComplete="off"
             />
+            <p className="text-metadata text-muted-foreground">Use the allocated ID format P01, P02, P03, and so on.</p>
           </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="repository">Assigned repository</Label>
-            <select
-              id="repository"
-              value={repositoryKey}
-              onChange={(event) => setRepositoryKey(event.target.value as RepositoryKey)}
-              className="h-10 w-full rounded-md border border-control-border bg-input px-3 text-ui text-foreground focus-ring"
-            >
-              <option value="warehouse-dispatch">warehouse-dispatch</option>
-              <option value="clinic-triage">clinic-triage</option>
-            </select>
-          </div>
-
-          <Button onClick={prepareSession} disabled={!participantId.trim()}>
+          <Button onClick={prepareSession} disabled={!participantNumber}>
             Prepare session
           </Button>
         </section>
       )}
 
-      {phase === "prepared" && (
+      {phase === "prepare-condition" && assignment && repository && (
         <section className="space-y-6 rounded-lg border border-border bg-card p-6">
           <div>
-            <h2 className="text-section font-semibold text-foreground">Researcher preparation</h2>
+            <p className="text-metadata text-muted-foreground">Condition {conditionIndex + 1} of 2</p>
+            <h2 className="mt-1 text-section font-semibold text-foreground">
+              {assignment.condition === "manual" ? "Manual repository inspection" : "Codemap"}
+            </h2>
             <p className="mt-2 text-body text-muted-foreground">
-              Before handing control to the participant, open Codemap in a second tab, analyse the assigned repository, and wait until the workspace is ready. Do not explore the repository before the timed tasks begin.
+              Repository: <span className="font-medium text-foreground">{repository.label}</span>
             </p>
           </div>
 
-          <div className="rounded-md border border-border bg-code-background p-4 font-mono text-ui text-foreground">
-            {repository.url}
-          </div>
-
-          <div className="flex flex-wrap gap-3">
-            <Button variant="outline" onClick={() => window.open("/", "_blank", "noopener,noreferrer")}>
-              Open Codemap in new tab
-            </Button>
-            <Button variant="outline" onClick={() => navigator.clipboard?.writeText(repository.url)}>
-              Copy repository URL
-            </Button>
-          </div>
+          {assignment.condition === "manual" ? (
+            <div className="space-y-4">
+              <p className="text-body text-muted-foreground">
+                Open the repository on GitHub. During the timed tasks use only the GitHub web interface, including normal file navigation and built-in code search. Do not use Codemap, another AI tool, an IDE, or an external search engine.
+              </p>
+              <Button variant="outline" onClick={() => window.open(repository.url, "_blank", "noopener,noreferrer")}>
+                Open repository on GitHub
+              </Button>
+            </div>
+          ) : (
+            <div className="space-y-4">
+              <p className="text-body text-muted-foreground">
+                Open Codemap in a second tab, analyse the repository below, and wait until the workspace is ready. During the timed tasks use only Codemap.
+              </p>
+              <div className="rounded-md border border-border bg-code-background p-4 font-mono text-ui text-foreground">
+                {repository.url}
+              </div>
+              <div className="flex flex-wrap gap-3">
+                <Button variant="outline" onClick={() => window.open("/", "_blank", "noopener,noreferrer")}>
+                  Open Codemap in new tab
+                </Button>
+                <Button variant="outline" onClick={() => navigator.clipboard?.writeText(repository.url)}>
+                  Copy repository URL
+                </Button>
+              </div>
+            </div>
+          )}
 
           <div className="border-t border-border pt-5">
             <Button onClick={beginTasks}>Begin timed tasks</Button>
@@ -319,12 +455,12 @@ export default function Study() {
         </section>
       )}
 
-      {phase === "tasks" && currentTask && (
+      {phase === "tasks" && assignment && repository && currentTask && (
         <section className="space-y-6 rounded-lg border border-border bg-card p-6">
           <div className="flex items-start justify-between gap-4">
             <div>
               <p className="text-metadata text-muted-foreground">
-                Task {taskIndex + 1} of {repository.tasks.length}
+                {assignment.condition === "manual" ? "Manual" : "Codemap"} · Task {taskIndex + 1} of {repository.tasks.length}
               </p>
               <h2 className="mt-1 text-section font-semibold text-foreground">{currentTask.title}</h2>
             </div>
@@ -347,7 +483,7 @@ export default function Study() {
           </div>
 
           <p className="text-metadata text-muted-foreground">
-            The task timer stops when you submit or skip this task. Answers cannot be edited after submission.
+            The timer stops when you submit or skip this task. Answers cannot be edited after submission.
           </p>
 
           <div className="flex flex-wrap gap-3">
@@ -361,12 +497,52 @@ export default function Study() {
         </section>
       )}
 
+      {phase === "nasa" && assignment && (
+        <section className="space-y-7 rounded-lg border border-border bg-card p-6">
+          <div>
+            <h2 className="text-section font-semibold text-foreground">NASA-TLX</h2>
+            <p className="mt-2 text-body text-muted-foreground">
+              Rate the workload you experienced during the {assignment.condition === "manual" ? "manual" : "Codemap"} condition. Select a value from 0 to 100 for each scale.
+            </p>
+          </div>
+
+          {NASA_DIMENSIONS.map((dimension) => (
+            <div key={dimension.key} className="space-y-2 border-b border-border pb-5 last:border-0">
+              <div className="flex items-center justify-between gap-4">
+                <Label htmlFor={`nasa-${dimension.key}`}>{dimension.label}</Label>
+                <span className="text-metadata text-muted-foreground">{dimension.low} → {dimension.high}</span>
+              </div>
+              <select
+                id={`nasa-${dimension.key}`}
+                value={nasaResponses[dimension.key] ?? ""}
+                onChange={(event) =>
+                  setNasaResponses((responses) => ({
+                    ...responses,
+                    [dimension.key]: Number(event.target.value),
+                  }))
+                }
+                className="h-10 w-full rounded-md border border-control-border bg-input px-3 text-ui text-foreground focus-ring"
+              >
+                <option value="">Select one</option>
+                {NASA_VALUES.map((value) => (
+                  <option key={value} value={value}>{value}</option>
+                ))}
+              </select>
+            </div>
+          ))}
+
+          <Button onClick={submitNasa} disabled={!nasaComplete}>
+            {conditionIndex === 0 ? "Continue to second condition" : "Continue"}
+          </Button>
+        </section>
+      )}
+
       {phase === "sus" && (
         <section className="space-y-7 rounded-lg border border-border bg-card p-6">
           <div>
             <h2 className="text-section font-semibold text-foreground">System Usability Scale</h2>
             <p className="mt-2 text-body text-muted-foreground">
-              For each statement, select one response from 1 (strongly disagree) to 5 (strongly agree).
+              Thinking only about Codemap, select one response from 1 (strongly disagree) to 5 (strongly agree).
             </p>
           </div>
 
@@ -410,16 +586,16 @@ export default function Study() {
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="helped">What helped you understand the repository?</Label>
+            <Label htmlFor="helped">What helped you understand the repository when using Codemap?</Label>
             <Textarea id="helped" value={helped} onChange={(event) => setHelped(event.target.value)} rows={4} />
           </div>
           <div className="space-y-2">
-            <Label htmlFor="difficult">What was difficult or confusing?</Label>
+            <Label htmlFor="difficult">What was difficult or confusing when using Codemap?</Label>
             <Textarea id="difficult" value={difficult} onChange={(event) => setDifficult(event.target.value)} rows={4} />
           </div>
           <div className="space-y-2">
-            <Label htmlFor="improve">What would you improve?</Label>
-            <Textarea id="improve" value={improve} onChange={(event) => setImprove(event.target.value)} rows={4} />
+            <Label htmlFor="preferred">Compared with manual browsing, which approach did you prefer and why?</Label>
+            <Textarea id="preferred" value={preferred} onChange={(event) => setPreferred(event.target.value)} rows={4} />
           </div>
 
           <Button onClick={exportSession} disabled={!feedbackComplete}>
@@ -432,7 +608,7 @@ export default function Study() {
         <section className="space-y-5 rounded-lg border border-border bg-card p-6">
           <h2 className="text-section font-semibold text-foreground">Session complete</h2>
           <p className="text-body text-muted-foreground">
-            The pseudonymised JSON record has been exported. The researcher will mark the four written answers separately against the verified reference answers.
+            The pseudonymised JSON record has been exported. The researcher will mark the eight written answers separately against the verified reference answers.
           </p>
           <Button onClick={resetSession}>Start next participant</Button>
         </section>

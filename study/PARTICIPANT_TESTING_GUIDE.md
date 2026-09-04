@@ -1,90 +1,133 @@
-# Participant usability testing guide
+# Participant comparative testing guide
 
 This is the fixed procedure for Stage 2 of the final evaluation.
 
-## Sample and assignment
+## Sample
 
 - Recruit a minimum of 12 current Year 3 Computer Science students under the approved ethics procedure.
-- Confirm eligibility during recruitment; do not include participants outside this group.
+- Confirm eligibility during recruitment.
 - Use pseudonymous IDs only: `P01`, `P02`, `P03`, and so on.
-- Balance the two repositories by alternating assignment:
-  - odd participant IDs -> `warehouse-dispatch`
-  - even participant IDs -> `clinic-triage`
-- With 12 participants this gives 6 participants per repository. If more participants are recruited, continue alternating.
+- Do not collect names, email addresses or additional demographic information in the runner.
+
+## Assignment
+
+The runner assigns each participant automatically from a fixed balanced randomisation schedule. Do not manually select a repository or condition order.
+
+The four possible sequences are:
+
+- A: manual `warehouse-dispatch` -> Codemap `clinic-triage`
+- B: Codemap `clinic-triage` -> manual `warehouse-dispatch`
+- C: manual `clinic-triage` -> Codemap `warehouse-dispatch`
+- D: Codemap `warehouse-dispatch` -> manual `clinic-triage`
+
+For 12 participants, each sequence is used three times. Do not change the allocation schedule once data collection starts.
 
 ## Before each session
 
-1. Complete the approved participant-information and consent process. Do not replace the approved ethics wording with text from this repository.
+1. Complete the approved participant-information and consent process.
 2. Confirm that the participant is a current Year 3 Computer Science student.
 3. Use the same browser/device setup where practical and ensure the internet connection is stable.
-4. Open the production Codemap study route at `/study`.
-5. Enter the participant ID and select the assigned repository.
-6. Select **Prepare session**.
-7. Open Codemap in the second tab, analyse the repository shown by the study runner, and wait until the workspace is ready.
-8. Do not inspect the repository or answer any study task before selecting **Begin timed tasks**.
+4. Open `/study`.
+5. Enter only the participant ID and select **Prepare session**.
+6. Follow the preparation screen for Condition 1.
 
-## Instructions to give every participant
+## Manual condition
 
-Use only Codemap during the four timed tasks. You may use any feature available inside Codemap. Do not open the repository directly on GitHub, use search engines, other AI tools, IDEs, or ask another person for help. Write your own answer in the study page. If you cannot answer a task, use **Unable to answer / skip**. The researcher cannot help with the answer or suggest which feature to use.
+The participant uses only the assigned repository on GitHub.
+
+Allowed:
+
+- normal GitHub file/folder navigation;
+- GitHub's built-in code search.
+
+Not allowed:
+
+- Codemap;
+- other AI tools;
+- an IDE;
+- external search engines;
+- help from another person.
+
+Open the assigned repository before the tasks begin. Do not reveal or discuss the task answers. Select **Begin timed tasks** only when the participant is ready.
+
+## Codemap condition
+
+Before timing begins:
+
+1. Open Codemap in a second tab.
+2. Analyse the repository shown by the study runner.
+3. Wait until the Codemap workspace is ready.
+4. Do not begin answering study tasks during preparation.
+
+During the timed tasks the participant uses only Codemap. Direct GitHub browsing, other AI tools, IDEs, external search engines and help from another person are not permitted.
 
 ## Timed tasks
 
-Each participant receives four tasks in the same order:
+Each condition contains four tasks in the same category order:
 
 1. project orientation and startup flow;
 2. type-specific processing;
 3. cross-cutting behaviour;
 4. change-impact reasoning.
 
-The timer starts when **Begin timed tasks** is selected. Each task timer stops when the participant submits the answer or skips the task. Submitted answers cannot be edited.
+The participant writes each answer directly into the study page. The timer for a task stops when the participant submits it or selects **Unable to answer / skip**. Submitted answers cannot be edited.
 
-## After the four tasks
+The researcher must not coach the participant, suggest a file, suggest a search term, or suggest which Codemap feature to use.
 
-1. The participant completes all 10 System Usability Scale (SUS) items using the 1-5 response scale shown in the runner.
-2. The participant answers the three short questions:
-   - What helped you understand the repository?
-   - What was difficult or confusing?
-   - What would you improve?
+## NASA-TLX after each condition
+
+Immediately after each set of four tasks, the participant completes the six Raw NASA-TLX scales shown in the runner:
+
+- Mental Demand;
+- Physical Demand;
+- Temporal Demand;
+- Performance;
+- Effort;
+- Frustration.
+
+Each scale uses 0-100 in 5-point increments. The participant should answer based only on the condition they have just completed. The runner calculates the unweighted Raw NASA-TLX mean automatically.
+
+After the first NASA-TLX, follow the preparation screen for Condition 2 and repeat the same procedure.
+
+## After both conditions
+
+1. Complete all 10 SUS items, thinking only about Codemap.
+2. Answer the three short questions:
+   - What helped you understand the repository when using Codemap?
+   - What was difficult or confusing when using Codemap?
+   - Compared with manual browsing, which approach did you prefer and why?
 3. Select **Export participant data**.
-4. Store the exported JSON securely using its generated pseudonymous filename. Do not commit participant data to the public repository.
+4. Store the exported JSON securely. Do not commit participant data to the public repository.
 
 ## Marking
 
-Mark responses after the participant session, not while the participant is working.
+Mark answers after the participant has finished the complete session.
 
-Use the repository-specific answer key:
+Use the repository-specific answer keys:
 
 - `participant-answer-key.warehouse-dispatch.json`
 - `participant-answer-key.clinic-triage.json`
 
-Each task is marked `correct` or `incorrect`; no partial credit is used. A response is correct only when it contains the required material facts without a material contradiction. A skipped task is recorded as `completed = false` and is not correct.
+The same answer key is used whether that repository was completed manually or with Codemap.
 
-For the cross-cutting task, all three production paths are required. Missing one path is incorrect.
+Each task is marked `correct` or `incorrect`; no partial credit is used. A skipped task is not correct. For the cross-cutting task, all required production paths must be present. For change-impact tasks, require only the facts listed in `requiredFacts`.
 
-For change-impact tasks, use only the mandatory facts in `requiredFacts`; optional UI/test/seed follow-up details are not required unless explicitly listed there.
+## Measures to retain
 
-## Measures to report
+For every participant retain:
 
-For each participant retain:
+- randomisation sequence;
+- manual repository;
+- Codemap repository;
+- completion and correctness for all eight tasks;
+- individual task time and total task time per condition;
+- Raw NASA-TLX score for manual;
+- Raw NASA-TLX score for Codemap;
+- Codemap SUS score;
+- the three qualitative responses.
 
-- assigned repository;
-- task completion (`completed`);
-- binary task correctness;
-- task duration in seconds;
-- SUS score;
-- the three short qualitative responses.
-
-For the dissertation, report at minimum:
-
-- number of Year 3 Computer Science participants and repository split;
-- task completion/success rate;
-- task correctness rate;
-- task-time summary (median is preferred for a small sample; mean may also be shown);
-- SUS summary;
-- concise themes from the three open-ended questions.
-
-Task success should be defined consistently as a task that was both completed and marked correct.
+The primary comparison is within participant: Codemap versus manual correctness, time and Raw NASA-TLX workload.
 
 ## Do not change after Participant 1
 
-Once data collection begins, do not change the task wording, task order, answer keys, scoring rules, repository commits, participant eligibility or participant instructions. If a technical failure makes a session unusable, record the incident separately rather than altering the protocol mid-study.
+Once data collection begins, do not change task wording, task order, answer keys, repository commits, randomisation schedule, NASA-TLX scales, SUS wording, scoring rules, eligibility criteria or participant instructions. Record technical failures separately rather than altering the procedure during the study.

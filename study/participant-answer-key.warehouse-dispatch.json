@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "protocolVersion": "usability-v1",
+  "protocolVersion": "comparative-v1",
   "repository": "warehouse-dispatch",
   "coreArtefactCommit": "85ab075065732b3652acabf8f67d2cee33e14d6f",
   "repositoryCommit": "937be9d5598f81703e95c1a3ce2a2ec234287ee9",
@@ -17,10 +17,7 @@
         "Explains that main.tsx renders App inside React strict mode.",
         "Explains the material startup flow in App: router already exists at module scope, notification listeners are installed, store initialization runs, and RouterProvider is rendered."
       ],
-      "expectedFiles": [
-        "src/main.tsx",
-        "src/App.tsx"
-      ]
+      "expectedFiles": ["src/main.tsx", "src/App.tsx"]
     },
     {
       "id": 2,
@@ -33,11 +30,7 @@
         "Explains dynamic loading and registration of handlers keyed by type.",
         "Explains that order.type is used to select the handler used by allocation/release."
       ],
-      "expectedFiles": [
-        "src/dispatch/handlers/registry.ts",
-        "src/dispatch/allocator.ts",
-        "src/dispatch/releaseService.ts"
-      ]
+      "expectedFiles": ["src/dispatch/handlers/registry.ts", "src/dispatch/allocator.ts", "src/dispatch/releaseService.ts"]
     },
     {
       "id": 3,
@@ -51,12 +44,7 @@
         "Names periodic revalidation as a reservation path.",
         "Does not count test-only calls as production paths."
       ],
-      "expectedFiles": [
-        "src/dispatch/allocator.ts",
-        "src/dispatch/releaseService.ts",
-        "src/jobs/revalidation.ts",
-        "src/stock/reservation.ts"
-      ]
+      "expectedFiles": ["src/dispatch/allocator.ts", "src/dispatch/releaseService.ts", "src/jobs/revalidation.ts", "src/stock/reservation.ts"]
     },
     {
       "id": 4,
@@ -69,11 +57,7 @@
         "Updates both exhaustive order-type maps for zone preferences and pricing.",
         "Adds a handler module that registers the new type; notes that the registry discovers it dynamically."
       ],
-      "expectedFiles": [
-        "src/types/domain.ts",
-        "src/config/zoneRules.ts",
-        "src/dispatch/handlers"
-      ]
+      "expectedFiles": ["src/types/domain.ts", "src/config/zoneRules.ts", "src/dispatch/handlers"]
     }
   ]
 }

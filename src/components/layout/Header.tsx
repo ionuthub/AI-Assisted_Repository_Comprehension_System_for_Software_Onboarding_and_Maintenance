@@ -1,5 +1,6 @@
 import type { MouseEvent } from "react";
 import { Link } from "react-router-dom";
+import { Button } from "@/components/ui/button";
 import { useProjectStore } from "@/store/useProjectStore";
 
 const Header = () => {
@@ -22,6 +23,12 @@ const Header = () => {
                     <span className="h-4 w-4 rounded-sm bg-primary" aria-hidden="true" />
                     <span className="text-ui font-semibold text-foreground">Codemap</span>
                 </Link>
+
+                <div className="ml-auto">
+                    <Button asChild variant="outline" size="sm">
+                        <Link to="/study">Evaluation</Link>
+                    </Button>
+                </div>
             </div>
         </header>
     );

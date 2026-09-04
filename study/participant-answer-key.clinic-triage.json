@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "protocolVersion": "usability-v1",
+  "protocolVersion": "comparative-v1",
   "repository": "clinic-triage",
   "coreArtefactCommit": "85ab075065732b3652acabf8f67d2cee33e14d6f",
   "repositoryCommit": "67d7a5a0c37452946876b0e7626b6c882888d4f0",
@@ -17,10 +17,7 @@
         "Explains that main.tsx renders App inside React strict mode.",
         "Explains the material startup flow in App: client routes are defined and scheduling/audit listeners are installed by side-effect imports."
       ],
-      "expectedFiles": [
-        "src/main.tsx",
-        "src/App.tsx"
-      ]
+      "expectedFiles": ["src/main.tsx", "src/App.tsx"]
     },
     {
       "id": 2,
@@ -33,11 +30,7 @@
         "Explains that loadRoutes dynamically imports route modules and those modules register handlers keyed by referral type.",
         "Explains that referral.type is used to retrieve and invoke the correct handler."
       ],
-      "expectedFiles": [
-        "src/triage/routes/loadRoutes.ts",
-        "src/triage/routes/registry.ts",
-        "src/triage/routes"
-      ]
+      "expectedFiles": ["src/triage/routes/loadRoutes.ts", "src/triage/routes/registry.ts", "src/triage/routes"]
     },
     {
       "id": 3,
@@ -51,12 +44,7 @@
         "Names nightly reverification as an eligibility-check path.",
         "Does not count test-only calls as production paths."
       ],
-      "expectedFiles": [
-        "src/store/useClinicStore.ts",
-        "src/triage/validation.ts",
-        "src/jobs/nightlyReverification.ts",
-        "src/triage/eligibility.ts"
-      ]
+      "expectedFiles": ["src/store/useClinicStore.ts", "src/triage/validation.ts", "src/jobs/nightlyReverification.ts", "src/triage/eligibility.ts"]
     },
     {
       "id": 4,
@@ -70,12 +58,7 @@
         "Extends humaniseType for the new referral type.",
         "Adds a route module that registers the handler; notes that the loader discovers it automatically."
       ],
-      "expectedFiles": [
-        "src/types/domain.ts",
-        "src/config/priorityRules.ts",
-        "src/utils/format.ts",
-        "src/triage/routes"
-      ]
+      "expectedFiles": ["src/types/domain.ts", "src/config/priorityRules.ts", "src/utils/format.ts", "src/triage/routes"]
     }
   ]
 }

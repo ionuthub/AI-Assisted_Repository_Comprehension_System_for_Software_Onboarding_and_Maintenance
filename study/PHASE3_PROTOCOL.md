@@ -15,13 +15,15 @@ The final artefact is checked through TypeScript, ESLint, unit tests, production
 
 ### Answer-reliability gate
 
-The system is evaluated using 24 predefined repository-comprehension questions, 12 per repository. Each generated answer is compared with the corresponding reference answer in `ground-truth.*.md`. Marking is binary: `correct` or `incorrect`; no partial credit is awarded.
+The system is evaluated using 24 predefined repository-comprehension questions, 12 per repository. Each generated answer is compared with the corresponding source-code-audited reference answer in `ground-truth.*.md`. Marking is binary: `correct` or `incorrect`; no partial credit is awarded.
 
-Final technical result:
+A source-code audit on 4 September 2026 corrected the Q1 entry-point rubric in both repositories. The original reference incorrectly treated `src/main.tsx` as the only acceptable starting point, while `index.html` is the web bootstrap document that explicitly loads `/src/main.tsx`. The generated answers themselves were unchanged; only the over-narrow reference and resulting verdicts were corrected.
 
-- `clinic-triage`: 11/12 correct
-- `warehouse-dispatch`: 9/12 correct
-- overall: 20/24 correct (83.3%)
+Final technical result after that audit:
+
+- `clinic-triage`: 12/12 correct
+- `warehouse-dispatch`: 10/12 correct
+- overall: 22/24 correct (91.7%)
 
 ## Stage 2: comparative participant evaluation
 
@@ -53,7 +55,9 @@ Each condition contains four fixed repository-comprehension tasks, in the same c
 3. cross-cutting behaviour;
 4. change-impact reasoning.
 
-The repository-specific prompts reuse Q1, Q3, Q4 and Q9 from the verified technical benchmark. For each task, the runner records completion status, written response and completion time. The researcher marks each response after the session against the corresponding `participant-answer-key.*.json` file using binary `correct`/`incorrect` scoring with no partial credit.
+The repository-specific prompts reuse **Q1, Q3, Q4 and Q9** from the technical benchmark. Participant Task 2 therefore maps to technical Q3, not technical Q2. For each task, the runner records completion status, written response and completion time. The researcher marks each response after the session against the corresponding `participant-answer-key.*.json` file using binary `correct`/`incorrect` scoring with no partial credit.
+
+The participant answer keys were source-code audited on 4 September 2026 after P01 and before P02. The task wording, study procedure and repositories did not change. The only substantive scoring correction was the Q1 entry-point ambiguity described above, and that correction is applied consistently to P01 and every later participant. No further answer-key changes are permitted once this audit is complete.
 
 ### Performance measures
 

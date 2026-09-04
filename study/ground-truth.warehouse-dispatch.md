@@ -6,12 +6,17 @@ These are the required answers used for the final 24-question accuracy evaluatio
 
 > Where does execution start in this project?
 
-Browser execution starts in `src/main.tsx`, which finds the `root` element and renders `App`
-inside React strict mode. The router is not created by `App`: it is built once at module scope
-when `App.tsx` is first imported. `App` itself installs the notification listeners, calls the
-store's `initialize`, and renders the `RouterProvider` around the router that already exists.
+The web bootstrap starts with `index.html`, whose module script loads `/src/main.tsx`. `src/main.tsx`
+is the JavaScript/React entry module: it finds the `root` element and mounts `App` inside React
+strict mode. Importing `App.tsx` creates the router at module scope. Once `App` mounts, it installs
+the notification listeners, calls the store's `initialize`, and renders `RouterProvider`.
 
-**Files:** src/main.tsx:1-10, src/App.tsx:11-22, src/App.tsx:24-31
+For marking, both "execution starts in `index.html`" and "execution starts in `src/main.tsx`" are
+acceptable when the answer correctly explains the `index.html` -> `src/main.tsx` bootstrap chain
+and the material React/App startup flow. The distinction is web-document entry versus JavaScript
+module entry, not a correctness difference.
+
+**Files:** index.html:1, src/main.tsx:1-10, src/App.tsx:11-22, src/App.tsx:24-31
 
 ## Q2 — config-driven behaviour
 

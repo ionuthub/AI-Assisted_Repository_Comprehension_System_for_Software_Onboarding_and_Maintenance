@@ -5,7 +5,7 @@ This folder contains only the records needed for the final dissertation evaluati
 | File | Purpose |
 | --- | --- |
 | `PHASE3_PROTOCOL.md` | Final two-stage evaluation protocol |
-| `PARTICIPANT_TESTING_GUIDE.md` | Fixed researcher procedure for the usability study |
+| `PARTICIPANT_TESTING_GUIDE.md` | Fixed researcher procedure for the comparative participant study |
 | `participant-answer-key.warehouse-dispatch.json` | Four-task participant marking key for warehouse-dispatch |
 | `participant-answer-key.clinic-triage.json` | Four-task participant marking key for clinic-triage |
 | `participant-marking-template.csv` | One-row-per-participant marking/summary template |

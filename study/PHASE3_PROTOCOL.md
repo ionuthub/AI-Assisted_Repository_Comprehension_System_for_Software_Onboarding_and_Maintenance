@@ -15,9 +15,7 @@ The final artefact is checked through TypeScript, ESLint, unit tests, production
 
 ### Answer-reliability gate
 
-The system is evaluated using 24 predefined repository-comprehension questions, 12 per repository. The questions cover orientation, configuration-driven behaviour, handler or route selection, cross-cutting concerns, request pipelines, legacy paths, events, special cases and change-impact reasoning.
-
-Each generated answer is compared with the corresponding reference answer in `ground-truth.*.md`. Marking is binary: `correct` or `incorrect`. No partial credit is awarded. The researcher makes the final verdict.
+The system is evaluated using 24 predefined repository-comprehension questions, 12 per repository. Each generated answer is compared with the corresponding reference answer in `ground-truth.*.md`. Marking is binary: `correct` or `incorrect`; no partial credit is awarded.
 
 Final technical result:
 
@@ -25,48 +23,81 @@ Final technical result:
 - `warehouse-dispatch`: 9/12 correct
 - overall: 20/24 correct (83.3%)
 
-## Stage 2: usability validation
+## Stage 2: comparative participant evaluation
 
-The participant stage is supplementary to the technical benchmark. A minimum of 12 current Year 3 Computer Science students will be recruited under the approved ethics procedure. This deliberately homogeneous sample keeps participants at a broadly comparable educational stage and is appropriate for evaluating the artefact with users who have recent programming and software-development experience but are not assumed to be professional developers.
+A minimum of 12 current Year 3 Computer Science students are recruited under the approved ethics procedure. Participants use pseudonymous IDs (`P01`, `P02`, etc.). No names, email addresses, demographic variables or programming-experience variables are collected by the runner.
 
-Participants are assigned pseudonymous IDs (`P01`, `P02`, etc.). Repository assignment alternates by ID so that 12 participants produce six sessions per repository; additional participants continue the same alternating pattern.
+The participant evaluation uses a within-subject design. Every participant completes both a manual repository-inspection condition and a Codemap condition. To avoid exposing the same repository twice to the same participant, the two conditions use different repositories. Repository-condition pairing and condition order are balanced through four sequences:
 
-No demographic or programming-experience variables are collected in the study runner. Eligibility as a current Year 3 Computer Science student is confirmed during recruitment. Names, email addresses and other identifying information are not collected in the runner.
+- **A:** manual `warehouse-dispatch` -> Codemap `clinic-triage`
+- **B:** Codemap `clinic-triage` -> manual `warehouse-dispatch`
+- **C:** manual `clinic-triage` -> Codemap `warehouse-dispatch`
+- **D:** Codemap `warehouse-dispatch` -> manual `clinic-triage`
 
-The study runner is available at `/study`. It is not linked from the normal product navigation. The runner contains task prompts only; reference answers are not shown to participants or embedded in the participant interface.
+A blocked randomisation schedule is fixed before data collection. Each block of four contains A, B, C and D once. With 12 participants, each sequence is therefore used three times, each repository appears six times in each condition, and manual/Codemap order is balanced six-to-six.
 
-Before the timed tasks begin, the researcher loads the assigned repository in Codemap and waits for analysis to complete. The participant then completes four tasks using only Codemap. Direct GitHub browsing, search engines, other AI tools, IDEs and assistance from another person are not permitted during the timed tasks. The researcher does not coach the participant or suggest which Codemap feature to use.
+### Conditions
 
-Task timing starts when the first task is revealed. Each task timer stops when the participant submits an answer or selects `Unable to answer / skip`. A skipped task is stored as `completed = false`.
+**Manual condition.** The participant uses only the GitHub web interface for the assigned repository, including normal file navigation and GitHub's built-in code search. Codemap, other AI tools, IDEs and external search engines are not permitted.
 
-### Participant tasks
+**Codemap condition.** The assigned repository is analysed in Codemap before timing begins. During the timed tasks the participant uses only Codemap. Direct GitHub browsing, other AI tools, IDEs and external search engines are not permitted.
 
-The four tasks reuse questions already verified in the 24-question technical benchmark.
+The researcher does not coach the participant or suggest which files, searches or Codemap features to use.
 
-For `warehouse-dispatch`:
+### Tasks
 
-1. **Project orientation:** Where does execution start in this project? Describe the startup flow.
-2. **Type-specific processing:** Which code decides how a given order type is processed? Explain how the correct handler is selected.
-3. **Cross-cutting behaviour:** Stock is reserved in more than one place in this codebase. Find every production place where it happens. Test files do not count.
-4. **Change-impact reasoning:** A new order type is to be added. Where would you add it, and what else would need to change for the application to work?
+Each condition contains four fixed repository-comprehension tasks, in the same category order:
 
-For `clinic-triage`:
+1. project orientation and startup flow;
+2. type-specific processing;
+3. cross-cutting behaviour;
+4. change-impact reasoning.
 
-1. **Project orientation:** Where does execution start in this project? Describe the startup flow.
-2. **Type-specific processing:** Which code decides how a given referral type is processed? Explain how the correct route handler is selected.
-3. **Cross-cutting behaviour:** Eligibility is checked in more than one place in this codebase. Find every production place where it happens. Test files do not count.
-4. **Change-impact reasoning:** A new referral type is to be added. Where would you add it, and what else would need to change for the application to work?
+The repository-specific prompts reuse Q1, Q3, Q4 and Q9 from the verified technical benchmark. For each task, the runner records completion status, written response and completion time. The researcher marks each response after the session against the corresponding `participant-answer-key.*.json` file using binary `correct`/`incorrect` scoring with no partial credit.
 
-For each task, the runner records completion status, the written response and completion time. The researcher subsequently marks each answer `correct` or `incorrect` against `participant-answer-key.*.json`. No partial credit is used, and no automated correctness score or participant-facing correctness feedback is produced during the session.
+### Performance measures
 
-After the four tasks, participants complete the 10-item System Usability Scale (SUS) and three open-ended questions:
+For each participant and each condition, the study retains:
 
-1. What helped you understand the repository?
-2. What was difficult or confusing?
-3. What would you improve?
+- number of correctly answered tasks out of four;
+- task-success rate, where success requires both completion and correctness;
+- individual task times and total time across the four tasks.
 
-The runner exports one pseudonymised JSON record containing the participant ID, assigned repository, task responses and timings, SUS responses and score, and the three open-ended responses. Participant data is stored separately and is not committed to the public repository.
+Because every participant completes both conditions, manual and Codemap performance can be compared within participant rather than between separate groups.
 
-The participant stage is descriptive. It is intended to assess usability and task completion within a Year 3 Computer Science student population, not to establish a causal claim that the artefact makes developers faster than alternative methods or to generalise directly to professional software developers.
+### NASA-TLX
+
+Immediately after each condition, the participant completes the six Raw NASA-TLX dimensions:
+
+- Mental Demand;
+- Physical Demand;
+- Temporal Demand;
+- Performance;
+- Effort;
+- Frustration.
+
+Each dimension is rated from 0 to 100 in 5-point increments. The unweighted Raw NASA-TLX score is the arithmetic mean of the six ratings. Higher scores indicate greater perceived workload. NASA-TLX is used as the study's operational measure of workload associated with repository-comprehension activity.
+
+### SUS and qualitative feedback
+
+After both conditions, the participant completes the 10-item System Usability Scale (SUS), explicitly referring only to Codemap. SUS is scored using the standard 0-100 transformation and is not interpreted as a percentage.
+
+The participant then answers three short questions:
+
+1. What helped you understand the repository when using Codemap?
+2. What was difficult or confusing when using Codemap?
+3. Compared with manual browsing, which approach did you prefer and why?
+
+### Analysis
+
+The primary comparison is paired within participant:
+
+- Codemap versus manual task correctness;
+- Codemap versus manual task time;
+- Codemap versus manual Raw NASA-TLX workload.
+
+Descriptive statistics are reported for both conditions, together with paired differences. SUS and qualitative feedback provide supplementary usability evidence for Codemap. Findings are limited to the Year 3 Computer Science student population and the two study repositories.
+
+The runner exports one pseudonymised JSON record containing the participant ID, randomisation sequence, both condition records, task responses and timings, Raw NASA-TLX responses and scores, Codemap SUS responses and score, and the three qualitative responses. Participant data is stored separately and is not committed to the public repository.
 
 The detailed session procedure and marking rules are fixed in `PARTICIPANT_TESTING_GUIDE.md`. Participant testing proceeds under the confirmed applicable ethics approval.

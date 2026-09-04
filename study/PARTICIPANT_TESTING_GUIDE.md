@@ -110,7 +110,30 @@ Use the repository-specific answer keys:
 
 The same answer key is used whether that repository was completed manually or with Codemap.
 
-Each task is marked `correct` or `incorrect`; no partial credit is used. A skipped task is not correct. For the cross-cutting task, all required production paths must be present. For change-impact tasks, require only the facts listed in `requiredFacts`.
+The participant task numbers are **not** the same as the technical benchmark question numbers. Use this fixed mapping:
+
+| Participant task | Technical benchmark source |
+| --- | --- |
+| Task 1 — orientation | Q1 |
+| Task 2 — type-specific processing | Q3 |
+| Task 3 — cross-cutting behaviour | Q4 |
+| Task 4 — change-impact reasoning | Q9 |
+
+Do not compare Participant Task 2 with technical Q2. The repository-specific participant answer-key JSON is the marking source of truth.
+
+Each task is marked `correct` or `incorrect`; no partial credit is used. A skipped task is not correct. Equivalent wording is accepted when the material facts are present and there is no material contradiction. Extra correct detail does not make an answer incorrect.
+
+For Task 1, `index.html` is the web bootstrap document and it loads `/src/main.tsx`, which is the JavaScript/React entry module. Either can be named as where execution "starts" if the answer correctly explains their relationship and the material startup flow. Do not require React StrictMode merely to award participant correctness.
+
+For the cross-cutting task, all required production paths must be present. For change-impact tasks, require only the facts listed in `requiredFacts`.
+
+## Answer-key audit after P01
+
+After P01 and before P02, the question-to-answer mapping and all eight participant answer keys were checked directly against the frozen source repositories. The task prompts, repositories, randomisation, timings, NASA-TLX and SUS were unchanged.
+
+The audit found one substantive scoring defect: Task 1/Q1 had treated `src/main.tsx` as the only acceptable entry-point wording, even though each repository's `index.html` explicitly loads it. That rubric was corrected and the same corrected rule is applied retrospectively to P01 and prospectively to every later participant. The audit also confirmed the intended mapping Q1/Q3/Q4/Q9 and the source-code basis of the remaining required facts.
+
+No further task or answer-key changes are permitted after this audit.
 
 ## Measures to retain
 
@@ -128,6 +151,6 @@ For every participant retain:
 
 The primary comparison is within participant: Codemap versus manual correctness, time and Raw NASA-TLX workload.
 
-## Do not change after Participant 1
+## Freeze rule
 
-Once data collection begins, do not change task wording, task order, answer keys, repository commits, randomisation schedule, NASA-TLX scales, SUS wording, scoring rules, eligibility criteria or participant instructions. Record technical failures separately rather than altering the procedure during the study.
+From P02 onward, do not change task wording, task order, answer keys, repository commits, randomisation schedule, NASA-TLX scales, SUS wording, scoring rules, eligibility criteria or participant instructions. Record technical failures separately rather than altering the procedure during the study.

@@ -1,6 +1,7 @@
 {
-  "schemaVersion": 1,
+  "schemaVersion": 2,
   "protocolVersion": "comparative-v1",
+  "answerKeyVersion": "source-code-audited-2026-09-04",
   "repository": "clinic-triage",
   "coreArtefactCommit": "85ab075065732b3652acabf8f67d2cee33e14d6f",
   "repositoryCommit": "67d7a5a0c37452946876b0e7626b6c882888d4f0",
@@ -11,24 +12,32 @@
       "category": "orientation",
       "sourceQuestion": "Q1",
       "prompt": "Where does execution start in this project? Describe the startup flow.",
-      "answerKey": "Browser execution starts in src/main.tsx, which finds the root element and renders App inside React strict mode. App defines the client routes. Importing App also installs the scheduling and audit event listeners through bare side-effect imports.",
+      "answerKey": "The web bootstrap starts at index.html, whose module script loads /src/main.tsx. src/main.tsx is the JavaScript/React entry module and mounts App into the root element. Importing App installs the scheduling and audit listeners through side-effect imports, and App renders the client routes.",
       "requiredFacts": [
-        "Identifies src/main.tsx as the browser entry point.",
-        "Explains that main.tsx renders App inside React strict mode.",
-        "Explains the material startup flow in App: client routes are defined and scheduling/audit listeners are installed by side-effect imports."
+        "Correctly explains the index.html -> src/main.tsx bootstrap relationship. Either index.html as the web entry or src/main.tsx as the JavaScript/React entry is acceptable when the relationship is clear.",
+        "Explains that src/main.tsx mounts/renders App into the root element.",
+        "Explains the material App startup flow: the scheduling/audit listener modules are installed by side-effect imports and the client routes are rendered."
       ],
-      "expectedFiles": ["src/main.tsx", "src/App.tsx"]
+      "scoringNotes": [
+        "Do not mark an answer incorrect merely because it calls index.html the entry point.",
+        "React StrictMode is a valid supporting detail but is not mandatory for participant correctness."
+      ],
+      "expectedFiles": ["index.html", "src/main.tsx", "src/App.tsx"]
     },
     {
       "id": 2,
       "category": "type-processing",
       "sourceQuestion": "Q3",
       "prompt": "Which code decides how a given referral type is processed? Explain how the correct route handler is selected.",
-      "answerKey": "The route registry decides. loadRoutes dynamically imports each route module, those modules register handlers keyed by referral type, and routeReferral retrieves and invokes the handler for referral.type. The detail page loads the route modules before routing the current referral.",
+      "answerKey": "The route registry makes the handler-selection decision. loadRoutes dynamically imports the route modules, those modules register handlers keyed by referral type, and routeReferral retrieves and invokes the handler using referral.type. ReferralDetailPage loads the route modules before routing the referral.",
       "requiredFacts": [
-        "Identifies the route registry/routeReferral as the decision point.",
+        "Identifies the route registry/routeReferral as the handler-selection point.",
         "Explains that loadRoutes dynamically imports route modules and those modules register handlers keyed by referral type.",
         "Explains that referral.type is used to retrieve and invoke the correct handler."
+      ],
+      "scoringNotes": [
+        "Additional correct discussion of priority policy, scheduling, eligibility, or redaction does not make an otherwise correct answer incorrect.",
+        "This participant task maps to technical benchmark Q3, not Q2."
       ],
       "expectedFiles": ["src/triage/routes/loadRoutes.ts", "src/triage/routes/registry.ts", "src/triage/routes"]
     },
@@ -37,7 +46,7 @@
       "category": "cross-cutting",
       "sourceQuestion": "Q4",
       "prompt": "Eligibility is checked in more than one place in this codebase. Find every production place where it happens. Test files do not count.",
-      "answerKey": "checkEligibility is called from exactly three production paths: when accepting a referral, when booking an appointment, and during reverification of accepted or booked referrals. Each caller emits eligibility:failed on failure with a phase identifying acceptance, booking, or nightly processing.",
+      "answerKey": "checkEligibility is called from exactly three production paths: referral acceptance, appointment booking, and nightly reverification of accepted or booked referrals.",
       "requiredFacts": [
         "Names referral acceptance as an eligibility-check path.",
         "Names appointment booking as an eligibility-check path.",
@@ -51,12 +60,12 @@
       "category": "change-impact",
       "sourceQuestion": "Q9",
       "prompt": "A new referral type is to be added. Where would you add it, and what else would need to change for the application to work?",
-      "answerKey": "Four changes are mandatory: add the literal to ReferralType; add a complete entry to referralPolicies; extend the object literal inside humaniseType; and add a route module that registers a handler, since routeReferral throws at runtime for an unregistered type. The route loader discovers the module automatically. Tests, the hardcoded pathway filter, and type-specific styling may also need follow-up updates.",
+      "answerKey": "Four changes are mandatory: add the literal to ReferralType, add a complete entry to referralPolicies, extend humaniseType, and add a route module that registers a handler. The route loader discovers the new module automatically. Tests, the hardcoded pathway filter, styling, seed data, eligibility rules, and redaction rules are context-dependent follow-up changes rather than mandatory facts for this key.",
       "requiredFacts": [
         "Adds the new literal to ReferralType.",
         "Adds a complete entry to referralPolicies.",
         "Extends humaniseType for the new referral type.",
-        "Adds a route module that registers the handler; notes that the loader discovers it automatically."
+        "Adds a route module that registers the handler; automatic loader discovery may be stated explicitly or described equivalently."
       ],
       "expectedFiles": ["src/types/domain.ts", "src/config/priorityRules.ts", "src/utils/format.ts", "src/triage/routes"]
     }

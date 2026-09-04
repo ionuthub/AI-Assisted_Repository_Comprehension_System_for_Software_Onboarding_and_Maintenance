@@ -10,7 +10,7 @@ export const SUGGESTED_QUESTIONS = [
 
 export default function SuggestedQuestions({ onAsk }: SuggestedQuestionsProps) {
   return (
-    <section aria-label="Suggested questions" className="space-y-3">
+    <section aria-label="Suggested questions" className="space-y-3 pb-8 md:pb-10">
       <h2 className="text-section text-foreground">Start with a question</h2>
       <ul className="space-y-2">
         {SUGGESTED_QUESTIONS.map((question) => (

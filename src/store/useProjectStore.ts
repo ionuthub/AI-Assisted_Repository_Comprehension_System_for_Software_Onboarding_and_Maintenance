@@ -94,18 +94,8 @@ export const useProjectStore = create<ProjectState>((set) => ({
 
         set({
             project,
-            // The file cache is keyed by path alone, so it MUST be discarded whenever the
-            // project changes. The two study repositories are a matched pair and therefore
-            // share paths deliberately, src/types/domain.ts exists in both. Carrying the
-            // cache across a switch served the previous repository's contents under the new
-            // repository's file name: clinic-triage's ReferralType displayed as though it
-            // were part of warehouse-dispatch.
-            //
-            // In a study measuring whether participants detect incorrect output, that
-            // manufactures the very failure being observed, so it is a validity defect
-            // rather than a display glitch. Reloading the page cleared it only because the
-            // cache is in-memory with no persistence, which is a workaround a participant
-            // has no reason to know about.
+            // The cache is keyed by file path, so clear it whenever the repository changes
+            // to prevent stale content from one repository appearing under another.
             fileCache: {},
             fileCacheOrder: [],
             scanResult: scanRepository(project.files),
@@ -121,8 +111,8 @@ export const useProjectStore = create<ProjectState>((set) => ({
 
         // Since ingestion hydrates content up front, opening a file usually supplies the
         // same text the index already holds. Rebuilding then costs a full synchronous pass
-        // over every file, a visible freeze during a timed task, and produces an
-        // identical index. Only the analysis for this file is refreshed in that case.
+        // over every file and produces an identical index. Only this file's analysis is
+        // refreshed when its content has not changed.
         if (contentUnchanged && state.searchIndex) {
             const filePaths = state.project.files.map(f => f.path);
             const analyses = { ...state.staticAnalyses };
@@ -196,9 +186,6 @@ export const useProjectStore = create<ProjectState>((set) => ({
     selectedLines: new Set(),
     setSelectedLines: (selectedLines) => set({ selectedLines }),
 
-    // Default to ADVANCED: the artefact targets practising developers performing onboarding
-    // and maintenance tasks, and the evaluation study recruits that population. A beginner
-    // default answers in analogies, which would confound task time and perceived usefulness.
     isExplaining: false,
     setIsExplaining: (isExplaining) => set({ isExplaining }),
 

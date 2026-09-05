@@ -18,19 +18,3 @@ export function recordMetric(kind: MetricEntry["kind"], ms: number, detail: stri
     /* metrics are best-effort */
   }
 }
-
-export function readMetrics(): MetricEntry[] {
-  try {
-    return JSON.parse(localStorage.getItem(KEY) ?? "[]");
-  } catch {
-    return [];
-  }
-}
-
-export function clearMetrics(): void {
-  try {
-    localStorage.removeItem(KEY);
-  } catch {
-    /* ignore storage errors */
-  }
-}

@@ -70,14 +70,11 @@ export const useProjectManagement = () => {
         resetSelection();
         setSelectedFile(path);
 
-        // Repository ingestion now hydrates every readable eligible file up front. Re-fetching
-        // a file merely because the user opened it wastes a GitHub request and scales badly for
-        // large repositories. The project corpus is therefore the primary source of file text.
+        // Prefer the corpus hydrated during repository ingestion.
         const ingestedFile = project.files.find((file) => file.path === path);
         if (ingestedFile?.content) return;
 
-        // Kept as a defensive fallback for a future project source that can expose a path before
-        // hydrating its contents. It is normally unreachable for the current GitHub workflow.
+        // Defensive fallback when content is not already available locally.
         if (fileCache[path]?.content) return;
 
         if (project.summary.source === "github") {

@@ -13,9 +13,9 @@ labels: ''
 
 <FR or NFR from docs/REQUIREMENTS.md>
 
-## Study impact
+## Evaluation impact
 
-Could this change a recorded time, score, confidence value or seeded-probe result?
+Could this change a recorded task time, correctness score, Raw NASA-TLX value, SUS result or technical benchmark result?
 
 ## How it was found
 
